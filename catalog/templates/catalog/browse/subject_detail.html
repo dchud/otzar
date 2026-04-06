@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load bidi %}
+
+{% block title %}{{ subject.heading }} — otzar{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-1" dir="auto">{{ subject.heading|bidi_text }}</h1>
+{% if subject.heading_romanized %}
+<p class="text-lg text-gray-600 dark:text-gray-400 mb-4">{{ subject.heading_romanized }}</p>
+{% endif %}
+
+<p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</p>
+
+<div class="space-y-3">
+  {% for record in page_obj %}
+  <div class="border-b border-gray-100 dark:border-gray-800 pb-3">
+    <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
+       class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded" dir="auto">{{ record.title|bidi_text }}</a>
+    {% if record.date_of_publication %}
+    <span class="text-sm text-gray-500 dark:text-gray-400">({{ record.get_date_display }})</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% include "catalog/browse/_pagination.html" %}
+{% endblock %}

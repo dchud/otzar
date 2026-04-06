@@ -108,6 +108,28 @@ def location_browse(request):
     return render(request, "catalog/browse/locations.html", {"page_obj": page_obj})
 
 
+def author_detail(request, pk, slug=None):
+    author = Author.objects.get(pk=pk)
+    records = Record.objects.filter(authors=author).order_by("-created_at")
+    page_obj = _paginate(request, records)
+    return render(
+        request,
+        "catalog/browse/author_detail.html",
+        {"author": author, "page_obj": page_obj},
+    )
+
+
+def subject_detail(request, pk, slug=None):
+    subject = Subject.objects.get(pk=pk)
+    records = Record.objects.filter(subjects=subject).order_by("-created_at")
+    page_obj = _paginate(request, records)
+    return render(
+        request,
+        "catalog/browse/subject_detail.html",
+        {"subject": subject, "page_obj": page_obj},
+    )
+
+
 def series_browse(request):
     series_qs = Series.objects.annotate(
         volume_count=Count("volumes"),
