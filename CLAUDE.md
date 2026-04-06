@@ -34,8 +34,28 @@ Keep all documentation factual, concise, and plain. State what things do and how
 # Tests
 
 ```bash
-uv run pytest
+uv run pytest --ignore=tests/e2e   # unit tests only (fast)
+uv run pytest tests/e2e/            # end-to-end browser tests (Playwright)
+uv run pytest                       # everything
 ```
+
+## Testing requirements
+
+Any change that affects what users see or do **must** include or update an
+end-to-end Playwright test in `tests/e2e/`. This includes:
+
+- New pages or views
+- Changes to existing page content or layout
+- New or modified user workflows (ingest, browse, search, auth)
+- Bug fixes for issues that a user would encounter in a browser
+- Changes to navigation, links, or URL routing
+
+Unit tests (`tests/`) cover internal logic: models, search indexing,
+SRU/VIAF clients, MARC parsing, form validation. E2e tests (`tests/e2e/`)
+cover the experience from a browser: can a user actually complete the
+workflow?
+
+When in doubt, add both.
 
 # Linting & formatting
 
