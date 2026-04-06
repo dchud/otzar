@@ -79,17 +79,15 @@ def confirm_candidate(request):
                 pass
 
         record = Record(
-            title=candidate.get("title", ""),
-            title_romanized=candidate.get("title_alternate", ""),
+            title=candidate.get("title") or "",
+            title_romanized=candidate.get("title_alternate") or "",
             date_of_publication=date_int,
-            date_of_publication_display=str(date_str)
-            if date_str and not date_int
-            else "",
-            place_of_publication=candidate.get("place", ""),
-            language=candidate.get("language", ""),
+            date_of_publication_display=str(date_str) if date_str and not date_int else "",
+            place_of_publication=candidate.get("place") or "",
+            language=candidate.get("language") or "",
             source_marc=candidate.get("source_marc"),
-            source_catalog=candidate.get("source_catalog", ""),
-            notes=request.POST.get("notes", ""),
+            source_catalog=candidate.get("source_catalog") or "",
+            notes=request.POST.get("notes") or "",
             created_by=request.user,
         )
         record.save()
