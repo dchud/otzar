@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load bidi %}
+
+{% block title %}{% if query %}Search: {{ query }} - {% endif %}Search - otzar{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6">Search the Catalog</h1>
+
+  <form method="get" action="{% url 'catalog_search' %}" class="mb-8">
+    <div class="flex gap-2">
+      <input
+        type="text"
+        name="q"
+        value="{{ query }}"
+        placeholder="Search by title, author, subject..."
+        dir="auto"
+        class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+        autofocus
+      >
+      <button
+        type="submit"
+        class="rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 px-6 py-3 text-lg font-medium text-white"
+      >
+        Search
+      </button>
+    </div>
+  </form>
+
+  {% if query %}
+    {% if page_obj and result_count %}
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        {{ result_count }} result{{ result_count|pluralize }} for
+        <span class="font-medium text-gray-900 dark:text-gray-100">"{{ query }}"</span>
+      </p>
+
+      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+        {% for record in page_obj %}
+        <li class="py-4">
+          <a href="/catalog/{{ record.record_id }}/"
+             class="block group">
+            <h2 class="text-lg font-medium text-blue-700 dark:text-blue-400 group-hover:underline">
+              {{ record.title|bidi_text }}
+            </h2>
+            {% if record.subtitle %}
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                {{ record.subtitle|bidi_text }}
+              </p>
+            {% endif %}
+          </a>
+          <div class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-4">
+            {% for author in record.authors.all %}
+              <span>{{ author|bidi_auto }}</span>
+            {% endfor %}
+            {% if record.date_of_publication_display or record.date_of_publication %}
+              <span>{{ record.get_date_display }}</span>
+            {% endif %}
+            <span class="text-gray-400 dark:text-gray-500">{{ record.record_id }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      {% if page_obj.has_other_pages %}
+      <nav class="mt-8 flex items-center justify-center gap-2 text-sm" aria-label="Search results pagination">
+        {% if page_obj.has_previous %}
+          <a href="?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}"
+             class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+            Previous
+          </a>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <span class="rounded px-3 py-2 bg-blue-600 text-white font-medium">{{ num }}</span>
+          {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+            <a href="?q={{ query|urlencode }}&page={{ num }}"
+               class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+              {{ num }}
+            </a>
+          {% elif num == 1 or num == page_obj.paginator.num_pages %}
+            <a href="?q={{ query|urlencode }}&page={{ num }}"
+               class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+              {{ num }}
+            </a>
+          {% elif num == 2 or num == page_obj.paginator.num_pages|add:"-1" %}
+            <span class="px-1 text-gray-400">&hellip;</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <a href="?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}"
+             class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+            Next
+          </a>
+        {% endif %}
+      </nav>
+      {% endif %}
+
+    {% else %}
+      <p class="text-gray-500 dark:text-gray-400">
+        No results found for
+        <span class="font-medium text-gray-900 dark:text-gray-100">"{{ query }}"</span>.
+        Try a different search term.
+      </p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

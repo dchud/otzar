@@ -1,9 +1,13 @@
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import TemplateView
+from catalog.home_views import home
 
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="home.html"), name="home"),
+    path("", home, name="home"),
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("catalog/", include("catalog.urls")),
+    path("ingest/", include("ingest.urls")),
+    path("", include("catalog.search_urls")),
+    path("browse/", include("catalog.browse_urls")),
 ]

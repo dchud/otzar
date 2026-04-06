@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Scan ISBN — otzar{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Scan ISBN / Barcode</h1>
+
+<div class="max-w-2xl space-y-6">
+  <!-- Camera viewfinder placeholder -->
+  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center text-gray-500 dark:text-gray-400">
+    <p class="text-sm">Camera-based barcode scanning will use the browser's camera.</p>
+    <p class="text-sm mt-1">JS barcode library integration coming soon.</p>
+  </div>
+
+  <!-- Manual ISBN input -->
+  <form hx-post="{% url 'isbn_lookup' %}"
+        hx-target="#results"
+        hx-indicator="#loading"
+        class="flex gap-3 items-end">
+    {% csrf_token %}
+    <div class="flex-1">
+      <label for="isbn-input" class="block text-sm font-medium mb-1">ISBN</label>
+      <input type="text" name="isbn" id="isbn-input"
+             class="w-full"
+             placeholder="e.g. 978-0-06-093546-7"
+             autocomplete="off"
+             autofocus>
+    </div>
+    <button type="submit"
+            class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      Look up
+    </button>
+  </form>
+
+  <!-- Loading indicator -->
+  <div id="loading" class="htmx-indicator text-sm text-gray-500 dark:text-gray-400">
+    Searching catalogs...
+  </div>
+
+  <!-- Results container -->
+  <div id="results"></div>
+</div>
+{% endblock %}

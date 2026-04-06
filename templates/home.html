@@ -1,8 +1,69 @@
 {% extends "base.html" %}
+{% load bidi %}
 
 {% block title %}otzar — catalog{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">Catalog</h1>
-<p class="text-gray-600 dark:text-gray-400">Welcome to otzar.</p>
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold mb-6">Catalog</h1>
+
+  <form action="/search/" method="get" class="mb-8">
+    <div class="flex gap-2">
+      <input type="text" name="q" placeholder="Search the catalog..."
+             class="flex-1 px-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             dir="auto">
+      <button type="submit"
+              class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        Search
+      </button>
+    </div>
+  </form>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <a href="/browse/authors/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Authors
+    </a>
+    <a href="/browse/titles/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Titles
+    </a>
+    <a href="/browse/subjects/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Subjects
+    </a>
+    <a href="/browse/series/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Series
+    </a>
+    <a href="/browse/locations/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Locations
+    </a>
+    <a href="/browse/publishers/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Publishers
+    </a>
+    <a href="/browse/dates/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+      Dates
+    </a>
+  </div>
+
+  {% if total_records > 0 %}
+  <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    {{ total_records }} record{{ total_records|pluralize }} &middot; {{ total_authors }} author{{ total_authors|pluralize }}
+  </div>
+  {% endif %}
+
+  {% if recent_records %}
+  <div>
+    <h2 class="text-lg font-medium mb-3">Recent additions</h2>
+    <ul class="space-y-2">
+      {% for record in recent_records %}
+      <li>
+        <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
+           class="hover:underline" dir="auto">{{ record.title|bidi_text }}</a>
+        {% if record.date_of_publication %}
+        <span class="text-sm text-gray-500 dark:text-gray-400">({{ record.get_date_display }})</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

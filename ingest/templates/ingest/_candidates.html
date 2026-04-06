@@ -1,0 +1,66 @@
+{% if not candidates %}
+<p class="text-gray-500 dark:text-gray-400 text-sm">
+  No records found for ISBN <strong>{{ isbn }}</strong>.
+</p>
+{% else %}
+<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+  Found {{ candidates|length }} candidate{{ candidates|length|pluralize }} for ISBN <strong>{{ isbn }}</strong>.
+</p>
+
+<div class="space-y-4">
+  {% for candidate in candidates %}
+  <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+       x-data="{ expanded: false }">
+    <!-- Summary row -->
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <h3 class="font-medium text-base" dir="auto">
+          {{ candidate.title|default:"[No title]" }}
+        </h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          {% if candidate.author %}{{ candidate.author }}{% endif %}
+          {% if candidate.date %} &middot; {{ candidate.date }}{% endif %}
+          {% if candidate.publisher %} &middot; {{ candidate.publisher }}{% endif %}
+        </p>
+        <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded
+                     {% if candidate.source_catalog == 'NLI' %}
+                     bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                     {% else %}
+                     bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                     {% endif %}">
+          {{ candidate.source_catalog }}
+        </span>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <button @click="expanded = !expanded"
+                class="text-sm px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                x-text="expanded ? 'Collapse' : 'Expand'">
+          Expand
+        </button>
+        <a href="{% url 'manual_entry' %}?title={{ candidate.title|default:''|urlencode }}&title_romanized={{ candidate.title_alternate|default:''|urlencode }}&author_name={{ candidate.author|default:''|urlencode }}&date_of_publication={{ candidate.date|default:''|urlencode }}&place_of_publication={{ candidate.place|default:''|urlencode }}&publisher_name={{ candidate.publisher|default:''|urlencode }}&language={{ candidate.language|default:''|urlencode }}&source_catalog={{ candidate.source_catalog|default:''|urlencode }}"
+           class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+          Use this record
+        </a>
+      </div>
+    </div>
+
+    <!-- Expanded detail -->
+    <div x-show="expanded" x-cloak class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+      <h4 class="text-sm font-medium mb-2">Parsed fields</h4>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        {% for key, value in candidate.items %}
+        {% if value and key != 'source_catalog' and key != 'subjects' %}
+        <dt class="text-gray-500 dark:text-gray-400">{{ key }}</dt>
+        <dd dir="auto">{{ value }}</dd>
+        {% endif %}
+        {% endfor %}
+        {% if candidate.subjects %}
+        <dt class="text-gray-500 dark:text-gray-400">subjects</dt>
+        <dd>{{ candidate.subjects|join:", " }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

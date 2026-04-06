@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% load bidi %}
+
+{% block title %}{{ record.title }} — otzar{% endblock %}
+
+{% block content %}
+<article class="max-w-4xl">
+
+  {# Title block #}
+  <header class="mb-6">
+    <h1 class="text-2xl font-bold" dir="auto">{{ record.title|bidi_text }}</h1>
+    {% if record.title_romanized %}
+    <p class="text-lg text-gray-600 dark:text-gray-400 mt-1" dir="ltr">{{ record.title_romanized }}</p>
+    {% endif %}
+    {% if record.subtitle %}
+    <p class="text-lg text-gray-500 dark:text-gray-400 mt-1" dir="auto">{{ record.subtitle|bidi_text }}</p>
+    {% endif %}
+  </header>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+    {# Main metadata #}
+    <div class="md:col-span-2 space-y-4">
+
+      {# Authors #}
+      {% if record.authors.all %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Author{{ record.authors.count|pluralize }}</h2>
+        <ul class="mt-1 space-y-1">
+          {% for author in record.authors.all %}
+          <li dir="auto">
+            <a href="/browse/authors/{{ author.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ author.name|bidi_text }}</a>
+            {% if author.name_romanized %}
+            <span class="text-gray-500 dark:text-gray-400" dir="ltr">/ {{ author.name_romanized }}</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {# Publication info #}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Publication</h2>
+        <div class="mt-1 space-y-1">
+          {% if record.publishers.all %}
+          {% for publisher in record.publishers.all %}
+          <p dir="auto">{{ publisher.name|bidi_text }}{% if publisher.place %} <span class="text-gray-500 dark:text-gray-400">({{ publisher.place }})</span>{% endif %}</p>
+          {% endfor %}
+          {% endif %}
+          {% if record.place_of_publication %}
+          <p class="text-gray-600 dark:text-gray-400">{{ record.place_of_publication }}</p>
+          {% endif %}
+          {% if record.get_date_display %}
+          <p>{{ record.get_date_display }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Language #}
+      {% if record.language %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Language</h2>
+        <p class="mt-1">{{ record.language }}</p>
+      </div>
+      {% endif %}
+
+      {# Subjects #}
+      {% if record.subjects.all %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Subject{{ record.subjects.count|pluralize }}</h2>
+        <ul class="mt-1 space-y-1">
+          {% for subject in record.subjects.all %}
+          <li>
+            <a href="/browse/subjects/{{ subject.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline" dir="auto">{{ subject.heading|bidi_text }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {# Locations #}
+      {% if record.locations.all %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Location{{ record.locations.count|pluralize }}</h2>
+        <ul class="mt-1 space-y-1">
+          {% for location in record.locations.all %}
+          <li>{{ location.label }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {# Series membership #}
+      {% if sibling_volumes %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Series</h2>
+        {% for sv_info in sibling_volumes %}
+        <div class="mt-2">
+          <p class="font-medium" dir="auto">
+            <a href="/browse/series/{{ sv_info.series.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ sv_info.series.title|bidi_text }}</a>
+            <span class="text-gray-500 dark:text-gray-400">— vol. {{ sv_info.current_volume }}</span>
+          </p>
+          <div class="mt-1 flex flex-wrap gap-1">
+            {% for vol in sv_info.volumes %}
+            <span class="inline-block px-2 py-0.5 text-xs rounded
+              {% if vol.volume_number == sv_info.current_volume %}
+                bg-blue-600 text-white dark:bg-blue-500
+              {% elif vol.held and vol.record %}
+                bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+              {% elif not vol.held %}
+                bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 border border-dashed border-red-300 dark:border-red-700
+              {% else %}
+                bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400
+              {% endif %}
+            ">
+              {% if vol.record and vol.volume_number != sv_info.current_volume %}
+              <a href="/catalog/{{ vol.record.record_id }}/{{ vol.record.slug }}/" class="hover:underline">{{ vol.volume_number }}</a>
+              {% else %}
+              {{ vol.volume_number }}
+              {% endif %}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# External identifiers #}
+      {% if record.external_identifiers.all %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Identifiers</h2>
+        <dl class="mt-1 space-y-1">
+          {% for eid in record.external_identifiers.all %}
+          <div class="flex gap-2">
+            <dt class="font-medium text-gray-600 dark:text-gray-400 w-16">{{ eid.identifier_type }}</dt>
+            <dd>
+              {% if eid.identifier_type == "VIAF" %}
+              <a href="https://viaf.org/viaf/{{ eid.value }}" class="text-blue-700 dark:text-blue-400 hover:underline" rel="noopener" target="_blank">{{ eid.value }}</a>
+              {% elif eid.identifier_type == "LCCN" %}
+              <a href="https://lccn.loc.gov/{{ eid.value }}" class="text-blue-700 dark:text-blue-400 hover:underline" rel="noopener" target="_blank">{{ eid.value }}</a>
+              {% else %}
+              {{ eid.value }}
+              {% endif %}
+            </dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endif %}
+
+      {# Notes #}
+      {% if record.notes %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Notes</h2>
+        <p class="mt-1 whitespace-pre-line" dir="auto">{{ record.notes }}</p>
+      </div>
+      {% endif %}
+
+      {# Related: other works by same author(s) #}
+      {% if other_by_author %}
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Other works by the same author{{ record.authors.count|pluralize }}</h2>
+        <ul class="mt-2 space-y-1">
+          {% for rel in other_by_author %}
+          <li dir="auto">
+            <a href="/catalog/{{ rel.record_id }}/{{ rel.slug }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ rel.title|bidi_text }}</a>
+            {% if rel.get_date_display %}
+            <span class="text-gray-500 dark:text-gray-400">({{ rel.get_date_display }})</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {# MARC source #}
+      {% if marc_fields %}
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6"
+           x-data="{ showMarc: false }">
+        <button @click="showMarc = !showMarc"
+                class="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:text-gray-700 dark:hover:text-gray-200">
+          <span x-text="showMarc ? '&#9660;' : '&#9654;'"></span>
+          View source MARC
+        </button>
+        <div x-show="showMarc" x-cloak class="mt-3 overflow-x-auto">
+          <table class="font-mono text-sm w-full">
+            <tbody>
+              {% for field in marc_fields %}
+              <tr class="border-b border-gray-100 dark:border-gray-800 align-top">
+                <td class="pr-2 text-gray-500 dark:text-gray-400 whitespace-nowrap py-1">{{ field.tag }}</td>
+                <td class="pr-1 text-gray-400 dark:text-gray-500 whitespace-nowrap py-1">{{ field.ind1 }}{{ field.ind2 }}</td>
+                <td class="py-1" dir="auto">
+                  {% for sf in field.subfields %}
+                  {% if sf.code %}<span class="text-orange-600 dark:text-orange-400">${{ sf.code }}</span> {% endif %}{{ sf.value|bidi_text }}{% if not forloop.last %} {% endif %}
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    {# Sidebar: title page image #}
+    <div class="md:col-span-1">
+      {% if record.title_page_images.all %}
+      {% with image=record.title_page_images.all.0 %}
+      <div class="sticky top-8">
+        <img src="{{ image.image.url }}"
+             alt="Title page of {{ record.title }}"
+             class="w-full rounded shadow-md border border-gray-200 dark:border-gray-700">
+      </div>
+      {% endwith %}
+      {% endif %}
+    </div>
+
+  </div>
+
+</article>
+{% endblock %}

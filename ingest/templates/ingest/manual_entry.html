@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{% if record %}Edit record{% else %}Add record{% endif %} — otzar{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">{% if record %}Edit record{% else %}Add a new record{% endif %}</h1>
+
+<form method="post" class="max-w-2xl space-y-6">
+  {% csrf_token %}
+
+  {% if form.errors %}
+  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 text-sm text-red-800 dark:text-red-200">
+    Please correct the errors below.
+  </div>
+  {% endif %}
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Title</legend>
+
+    <div>
+      <label for="id_title" class="block text-sm font-medium mb-1">Title</label>
+      {{ form.title }}
+      {% if form.title.errors %}<p class="text-red-600 text-sm mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label for="id_title_romanized" class="block text-sm font-medium mb-1">Title (romanized)</label>
+      {{ form.title_romanized }}
+    </div>
+
+    <div>
+      <label for="id_subtitle" class="block text-sm font-medium mb-1">Subtitle</label>
+      {{ form.subtitle }}
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Author</legend>
+
+    <div>
+      <label for="id_author_name" class="block text-sm font-medium mb-1">Author name</label>
+      <input type="text" name="author_name" id="id_author_name"
+             value="{{ form.author_name.value|default:'' }}"
+             class="w-full" dir="auto">
+    </div>
+
+    <div>
+      <label for="id_author_name_romanized" class="block text-sm font-medium mb-1">Author name (romanized)</label>
+      <input type="text" name="author_name_romanized" id="id_author_name_romanized"
+             value="{{ form.author_name_romanized.value|default:'' }}"
+             class="w-full">
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Publication</legend>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="id_date_of_publication" class="block text-sm font-medium mb-1">Year</label>
+        {{ form.date_of_publication }}
+      </div>
+      <div>
+        <label for="id_date_of_publication_display" class="block text-sm font-medium mb-1">Date display</label>
+        {{ form.date_of_publication_display }}
+      </div>
+    </div>
+
+    <div>
+      <label for="id_place_of_publication" class="block text-sm font-medium mb-1">Place of publication</label>
+      {{ form.place_of_publication }}
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="id_publisher_name" class="block text-sm font-medium mb-1">Publisher</label>
+        <input type="text" name="publisher_name" id="id_publisher_name"
+               value="{{ form.publisher_name.value|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+      <div>
+        <label for="id_publisher_place" class="block text-sm font-medium mb-1">Publisher location</label>
+        <input type="text" name="publisher_place" id="id_publisher_place"
+               value="{{ form.publisher_place.value|default:'' }}"
+               class="w-full">
+      </div>
+    </div>
+
+    <div>
+      <label for="id_language" class="block text-sm font-medium mb-1">Language</label>
+      {{ form.language }}
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Location</legend>
+
+    <div>
+      <label for="id_location_label" class="block text-sm font-medium mb-1">Physical location</label>
+      <input type="text" name="location_label" id="id_location_label"
+             value="{{ form.location_label.value|default:'' }}"
+             class="w-full"
+             placeholder="e.g. Floor 1, Room B, Shelf 4a">
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Notes</legend>
+    {{ form.notes }}
+  </fieldset>
+
+  <div class="flex gap-4 pt-4">
+    <button type="submit"
+            class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      {% if record %}Save changes{% else %}Add record{% endif %}
+    </button>
+    {% if record %}
+    <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
+       class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+      Cancel
+    </a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}
