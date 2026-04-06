@@ -68,6 +68,8 @@
       {% if candidate.isbn %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">ISBN: {{ candidate.isbn }}</span>{% endif %}
       {% if candidate.lccn %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">LCCN: {{ candidate.lccn }}</span>{% endif %}
       {% if candidate.oclc %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">OCLC: {{ candidate.oclc }}</span>{% endif %}
+      {% if candidate.lc_classification %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">LC: {{ candidate.lc_classification }}</span>{% endif %}
+      {% if candidate.dewey_classification %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">DDC: {{ candidate.dewey_classification }}</span>{% endif %}
       {% if candidate.source_catalog %}
       <span class="px-2 py-0.5 rounded
                    {% if candidate.source_catalog == 'NLI' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200

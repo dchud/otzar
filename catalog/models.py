@@ -169,6 +169,8 @@ class ExternalIdentifier(models.Model):
     IDENTIFIER_TYPES = [
         ("ISBN", "ISBN"),
         ("LCCN", "LCCN"),
+        ("LCC", "LC Classification"),
+        ("DDC", "Dewey Decimal"),
         ("NLI", "NLI Control Number"),
         ("VIAF", "VIAF ID"),
         ("OCLC", "OCLC Number"),

@@ -227,6 +227,15 @@ def parse_record(marc_record: mrrc.Record) -> dict:
             break
     result["oclc"] = oclc
 
+    # --- Classification ---
+    # LC call number from 050$a + 050$b
+    lc_call = get_field_value(marc_record, "050", ["a", "b"])
+    result["lc_classification"] = lc_call
+
+    # Dewey from 082$a
+    dewey = get_field_value(marc_record, "082", ["a"])
+    result["dewey_classification"] = dewey
+
     # --- Series ---
     series_title = get_field_value(marc_record, "490", ["a"])
     if series_title is None:

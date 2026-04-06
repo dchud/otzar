@@ -82,7 +82,9 @@ def confirm_candidate(request):
             title=candidate.get("title") or "",
             title_romanized=candidate.get("title_alternate") or "",
             date_of_publication=date_int,
-            date_of_publication_display=str(date_str) if date_str and not date_int else "",
+            date_of_publication_display=str(date_str)
+            if date_str and not date_int
+            else "",
             place_of_publication=candidate.get("place") or "",
             language=candidate.get("language") or "",
             source_marc=candidate.get("source_marc"),
@@ -429,6 +431,16 @@ def _attach_from_candidate(record, candidate):
     if oclc:
         ExternalIdentifier.objects.get_or_create(
             record=record, identifier_type="OCLC", value=oclc.strip()
+        )
+    lc_class = candidate.get("lc_classification", "")
+    if lc_class:
+        ExternalIdentifier.objects.get_or_create(
+            record=record, identifier_type="LCC", value=lc_class.strip()
+        )
+    dewey = candidate.get("dewey_classification", "")
+    if dewey:
+        ExternalIdentifier.objects.get_or_create(
+            record=record, identifier_type="DDC", value=dewey.strip()
         )
 
 
