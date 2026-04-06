@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* RTL text gets a slight size bump for readability */
+  .text-rtl {
+    font-size: 1.1em;
+    line-height: 1.6;
+  }
+
+  /* Ensure proper text alignment follows direction */
+  [dir="rtl"] {
+    text-align: right;
+  }
+
+  [dir="ltr"] {
+    text-align: left;
+  }
+
+  /* Auto-direction elements follow content */
+  [dir="auto"] {
+    unicode-bidi: plaintext;
+  }
+}

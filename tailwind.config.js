@@ -8,7 +8,15 @@ module.exports = {
   ],
   darkMode: "class",
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: [
+          "system-ui", "-apple-system", "Segoe UI", "Roboto",
+          "Helvetica Neue", "Noto Sans", "Noto Sans Hebrew",
+          "Arial", "sans-serif",
+        ],
+      },
+    },
   },
   plugins: [],
 }

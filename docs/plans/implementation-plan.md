@@ -879,6 +879,8 @@ Before considering the project ready for production use:
 - [ ] Mobile tested on real devices (iOS Safari, Android Chrome)
 - [ ] Stakeholder walkthrough: demonstrate the system to the community contact
       and incorporate feedback
+- [ ] Simplicity review: assess the full codebase for redundant or overly
+      complex code that could be simplified for easier maintenance
 
 ---
 
