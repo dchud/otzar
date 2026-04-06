@@ -41,21 +41,21 @@
       <label for="id_author_name" class="block text-sm font-medium mb-1">Author name</label>
       <input type="text" name="author_name" id="id_author_name"
              value="{{ form.author_name.value|default:'' }}"
-             class="w-full" dir="auto">
+             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="auto">
     </div>
 
     <div>
       <label for="id_author_name_romanized" class="block text-sm font-medium mb-1">Author name (romanized)</label>
       <input type="text" name="author_name_romanized" id="id_author_name_romanized"
              value="{{ form.author_name_romanized.value|default:'' }}"
-             class="w-full">
+             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
     </div>
   </fieldset>
 
   <fieldset class="space-y-4">
     <legend class="text-lg font-medium mb-2">Publication</legend>
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label for="id_date_of_publication" class="block text-sm font-medium mb-1">Year</label>
         {{ form.date_of_publication }}
@@ -71,18 +71,18 @@
       {{ form.place_of_publication }}
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label for="id_publisher_name" class="block text-sm font-medium mb-1">Publisher</label>
         <input type="text" name="publisher_name" id="id_publisher_name"
                value="{{ form.publisher_name.value|default:'' }}"
-               class="w-full" dir="auto">
+               class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="auto">
       </div>
       <div>
         <label for="id_publisher_place" class="block text-sm font-medium mb-1">Publisher location</label>
         <input type="text" name="publisher_place" id="id_publisher_place"
                value="{{ form.publisher_place.value|default:'' }}"
-               class="w-full">
+               class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
     </div>
 
@@ -99,13 +99,14 @@
       <label for="id_location_label" class="block text-sm font-medium mb-1">Physical location</label>
       <input type="text" name="location_label" id="id_location_label"
              value="{{ form.location_label.value|default:'' }}"
-             class="w-full"
+             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
              placeholder="e.g. Floor 1, Room B, Shelf 4a">
     </div>
   </fieldset>
 
   <fieldset class="space-y-4">
     <legend class="text-lg font-medium mb-2">Notes</legend>
+    <label for="id_notes" class="sr-only">Notes</label>
     {{ form.notes }}
   </fieldset>
 
@@ -116,7 +117,7 @@
     </button>
     {% if record %}
     <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
-       class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+       class="px-6 py-2 min-h-[44px] inline-flex items-center border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
       Cancel
     </a>
     {% endif %}

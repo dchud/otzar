@@ -7,41 +7,42 @@
 <div class="max-w-3xl mx-auto">
   <h1 class="text-3xl font-semibold mb-6">Catalog</h1>
 
-  <form action="/search/" method="get" class="mb-8">
+  <form action="/search/" method="get" class="mb-8" role="search" aria-label="Catalog search">
     <div class="flex gap-2">
-      <input type="text" name="q" placeholder="Search the catalog..."
+      <label for="home-search-input" class="sr-only">Search the catalog</label>
+      <input type="text" name="q" id="home-search-input" placeholder="Search the catalog..."
              class="flex-1 px-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
              dir="auto">
       <button type="submit"
-              class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+              class="px-6 py-3 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
         Search
       </button>
     </div>
   </form>
 
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-    <a href="/browse/authors/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+  <nav class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8" aria-label="Browse categories">
+    <a href="/browse/authors/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Authors
     </a>
-    <a href="/browse/titles/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/titles/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Titles
     </a>
-    <a href="/browse/subjects/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/subjects/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Subjects
     </a>
-    <a href="/browse/series/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/series/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Series
     </a>
-    <a href="/browse/locations/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/locations/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Locations
     </a>
-    <a href="/browse/publishers/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/publishers/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Publishers
     </a>
-    <a href="/browse/dates/" class="block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center">
+    <a href="/browse/dates/" class="block p-4 min-h-[44px] border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
       Dates
     </a>
-  </div>
+  </nav>
 
   {% if total_records > 0 %}
   <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">

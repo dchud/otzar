@@ -35,3 +35,21 @@ shell:
 # Create a superuser
 createsuperuser:
     uv run python manage.py createsuperuser
+
+# Full CI check: tests, lint, format
+check:
+    uv run pytest
+    uv run ruff check .
+    uv run ruff format --check .
+
+# Build Tailwind CSS
+tailwind:
+    uv run python manage.py tailwind build
+
+# Load test/demo data
+load-test-data:
+    uv run python manage.py load_test_data
+
+# Clean up old discarded scans
+cleanup-staging days="30":
+    uv run python manage.py cleanup_staging --days {{days}}

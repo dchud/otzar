@@ -21,7 +21,7 @@
     <div class="flex-1">
       <label for="isbn-input" class="block text-sm font-medium mb-1">ISBN</label>
       <input type="text" name="isbn" id="isbn-input"
-             class="w-full"
+             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
              placeholder="e.g. 978-0-06-093546-7"
              autocomplete="off"
              autofocus>
@@ -38,6 +38,6 @@
   </div>
 
   <!-- Results container -->
-  <div id="results"></div>
+  <div id="results" aria-live="polite"></div>
 </div>
 {% endblock %}

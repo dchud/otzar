@@ -7,11 +7,13 @@
 <div class="max-w-3xl mx-auto">
   <h1 class="text-2xl font-bold mb-6">Search the Catalog</h1>
 
-  <form method="get" action="{% url 'catalog_search' %}" class="mb-8">
+  <form method="get" action="{% url 'catalog_search' %}" class="mb-8" role="search" aria-label="Catalog search">
     <div class="flex gap-2">
+      <label for="search-input" class="sr-only">Search the catalog</label>
       <input
         type="text"
         name="q"
+        id="search-input"
         value="{{ query }}"
         placeholder="Search by title, author, subject..."
         dir="auto"
@@ -20,7 +22,7 @@
       >
       <button
         type="submit"
-        class="rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 px-6 py-3 text-lg font-medium text-white"
+        class="rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 px-6 py-3 min-h-[44px] text-lg font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       >
         Search
       </button>
@@ -65,32 +67,32 @@
       <nav class="mt-8 flex items-center justify-center gap-2 text-sm" aria-label="Search results pagination">
         {% if page_obj.has_previous %}
           <a href="?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}"
-             class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+             class="rounded px-3 py-2 min-h-[44px] inline-flex items-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
             Previous
           </a>
         {% endif %}
 
         {% for num in page_obj.paginator.page_range %}
           {% if page_obj.number == num %}
-            <span class="rounded px-3 py-2 bg-blue-600 text-white font-medium">{{ num }}</span>
+            <span class="rounded px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-blue-600 text-white font-medium" aria-current="page">{{ num }}</span>
           {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
             <a href="?q={{ query|urlencode }}&page={{ num }}"
-               class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+               class="rounded px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {{ num }}
             </a>
           {% elif num == 1 or num == page_obj.paginator.num_pages %}
             <a href="?q={{ query|urlencode }}&page={{ num }}"
-               class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+               class="rounded px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {{ num }}
             </a>
           {% elif num == 2 or num == page_obj.paginator.num_pages|add:"-1" %}
-            <span class="px-1 text-gray-400">&hellip;</span>
+            <span class="px-1 text-gray-400 dark:text-gray-500" aria-hidden="true">&hellip;</span>
           {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
           <a href="?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}"
-             class="rounded px-3 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
+             class="rounded px-3 py-2 min-h-[44px] inline-flex items-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
             Next
           </a>
         {% endif %}

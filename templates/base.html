@@ -12,41 +12,41 @@
   <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
 </head>
 <body class="min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans">
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:text-sm dark:focus:bg-gray-800">Skip to content</a>
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:text-gray-900 dark:focus:bg-gray-800 dark:focus:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:rounded">Skip to content</a>
 
   <header class="border-b border-gray-200 dark:border-gray-700">
     <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
       <div class="flex h-16 items-center justify-between">
         <div class="flex items-center gap-6">
-          <a href="/" class="text-lg font-semibold">otzar</a>
+          <a href="/" class="text-lg font-semibold min-h-[44px] min-w-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">otzar</a>
           <div class="hidden sm:flex items-center gap-4 text-sm">
-            <a href="/" class="hover:underline">Home</a>
-            <a href="/browse/" class="hover:underline">Browse</a>
-            <a href="/search/" class="hover:underline">Search</a>
+            <a href="/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Home</a>
+            <a href="/browse/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Browse</a>
+            <a href="/search/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Search</a>
             {% if user.is_authenticated %}
-            <a href="/ingest/" class="hover:underline">Ingest</a>
+            <a href="/ingest/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Ingest</a>
             {% endif %}
           </div>
         </div>
         <div class="flex items-center gap-4 text-sm">
           <button @click="darkMode = !darkMode"
-                  class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                  class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Toggle dark mode">
             <span x-show="!darkMode">&#9790;</span>
             <span x-show="darkMode">&#9788;</span>
           </button>
           {% if user.is_authenticated %}
           <span>{{ user.username }}</span>
-          <a href="{% url 'logout' %}" class="hover:underline">Log out</a>
+          <a href="{% url 'logout' %}" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log out</a>
           {% else %}
-          <a href="{% url 'login' %}" class="hover:underline">Log in</a>
+          <a href="{% url 'login' %}" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log in</a>
           {% endif %}
         </div>
       </div>
     </nav>
   </header>
 
-  <main id="main-content" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+  <main id="main-content" role="main" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     {% block content %}{% endblock %}
   </main>
 
