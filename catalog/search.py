@@ -61,10 +61,32 @@ def remove_from_index(record_id):
         cursor.execute(f"DELETE FROM {FTS_TABLE} WHERE record_id = %s", [record_id])
 
 
+def _sanitize_query(query):
+    """Sanitize a query string for FTS5.
+
+    FTS5 treats punctuation and certain words as syntax. Strip characters
+    that cause parse errors and wrap each term in double quotes for literal
+    matching.
+    """
+    import re
+
+    # Remove characters that FTS5 treats as syntax
+    cleaned = re.sub(r"[,;:!?@#$%^&*()\[\]{}<>=/\\|~`]", " ", query)
+    # Split into words, wrap each in quotes for literal matching
+    words = [w.strip() for w in cleaned.split() if w.strip()]
+    if not words:
+        return None
+    return " ".join(f'"{w}"' for w in words)
+
+
 def search(query, limit=50):
     """Search the FTS index. Returns a list of (record_id, rank) tuples."""
     ensure_fts_table()
     if not query or not query.strip():
+        return []
+
+    sanitized = _sanitize_query(query)
+    if not sanitized:
         return []
 
     with connection.cursor() as cursor:
@@ -76,7 +98,7 @@ def search(query, limit=50):
             ORDER BY rank
             LIMIT %s
             """,
-            [query, limit],
+            [sanitized, limit],
         )
         return cursor.fetchall()
 
