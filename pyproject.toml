@@ -5,5 +5,26 @@ description = "A library catalog for small collections, using python/django"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "anthropic>=0.89.0",
     "django>=6.0.3",
+    "django-tailwind-cli>=4.5.1",
+    "httpx>=0.28.1",
+    "mrrc>=0.7.4",
+    "pillow>=12.2.0",
+    "pymarc>=5.3.1",
+    "python-dotenv>=1.2.2",
+    "qrcode>=8.2",
 ]
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=6.3.0",
+    "pytest>=9.0.2",
+    "pytest-django>=4.12.0",
+    "ruff>=0.15.9",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "otzar.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+pythonpath = ["."]

@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' || (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches) }"
+      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
+      :class="{ 'dark': darkMode }">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}otzar{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
+</head>
+<body class="min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+  <header class="border-b border-gray-200 dark:border-gray-700">
+    <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center gap-6">
+          <a href="/" class="text-lg font-semibold">otzar</a>
+          <div class="hidden sm:flex items-center gap-4 text-sm">
+            <a href="/" class="hover:underline">Home</a>
+            <a href="/browse/" class="hover:underline">Browse</a>
+            <a href="/search/" class="hover:underline">Search</a>
+            {% if user.is_authenticated %}
+            <a href="/ingest/" class="hover:underline">Ingest</a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+          <button @click="darkMode = !darkMode"
+                  class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                  aria-label="Toggle dark mode">
+            <span x-show="!darkMode">&#9790;</span>
+            <span x-show="darkMode">&#9788;</span>
+          </button>
+          {% if user.is_authenticated %}
+          <span>{{ user.username }}</span>
+          <a href="{% url 'logout' %}" class="hover:underline">Log out</a>
+          {% else %}
+          <a href="{% url 'login' %}" class="hover:underline">Log in</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-gray-200 dark:border-gray-700 mt-auto">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 text-sm text-gray-500 dark:text-gray-400">
+      otzar
+    </div>
+  </footer>
+</body>
+</html>
