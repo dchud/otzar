@@ -1,6 +1,18 @@
+import re
+
 from django.db import connection
 
 FTS_TABLE = "catalog_fts"
+
+# Punctuation that FTS5 treats as syntax or that MARC leaves as trailing noise
+_PUNCT_RE = re.compile(r"[,;:!?@#$%^&*()\[\]{}<>=/\\|~`]")
+
+
+def _clean(text):
+    """Strip MARC/FTS punctuation from text for indexing and searching."""
+    if not text:
+        return ""
+    return _PUNCT_RE.sub(" ", text).strip()
 
 
 def ensure_fts_table():
@@ -16,41 +28,57 @@ def ensure_fts_table():
                 subtitle,
                 authors,
                 subjects,
-                notes
+                publishers,
+                place,
+                notes,
+                identifiers
             )
             """
         )
 
 
+def rebuild_fts_table():
+    """Drop and recreate the FTS table (needed when schema changes)."""
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {FTS_TABLE}")
+    ensure_fts_table()
+
+
 def index_record(record):
     """Add or update a record in the FTS index."""
-
     authors = " ".join(
-        f"{a.name} {a.name_romanized}".strip() for a in record.authors.all()
+        _clean(f"{a.name} {a.name_romanized}") for a in record.authors.all()
     )
     subjects = " ".join(
-        f"{s.heading} {s.heading_romanized}".strip() for s in record.subjects.all()
+        _clean(f"{s.heading} {s.heading_romanized}") for s in record.subjects.all()
     )
+    publishers = " ".join(
+        _clean(f"{p.name} {p.name_romanized}") for p in record.publishers.all()
+    )
+    identifiers = " ".join(ei.value for ei in record.external_identifiers.all())
 
     with connection.cursor() as cursor:
-        # Remove old entry if exists
         cursor.execute(
             f"DELETE FROM {FTS_TABLE} WHERE record_id = %s", [record.record_id]
         )
         cursor.execute(
             f"""
             INSERT INTO {FTS_TABLE}
-                (record_id, title, title_romanized, subtitle, authors, subjects, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (record_id, title, title_romanized, subtitle, authors,
+                 subjects, publishers, place, notes, identifiers)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             [
                 record.record_id,
-                record.title,
-                record.title_romanized,
-                record.subtitle,
+                _clean(record.title),
+                _clean(record.title_romanized),
+                _clean(record.subtitle),
                 authors,
                 subjects,
-                record.notes,
+                publishers,
+                _clean(record.place_of_publication),
+                _clean(record.notes),
+                identifiers,
             ],
         )
 
@@ -62,17 +90,8 @@ def remove_from_index(record_id):
 
 
 def _sanitize_query(query):
-    """Sanitize a query string for FTS5.
-
-    FTS5 treats punctuation and certain words as syntax. Strip characters
-    that cause parse errors and wrap each term in double quotes for literal
-    matching.
-    """
-    import re
-
-    # Remove characters that FTS5 treats as syntax
-    cleaned = re.sub(r"[,;:!?@#$%^&*()\[\]{}<>=/\\|~`]", " ", query)
-    # Split into words, wrap each in quotes for literal matching
+    """Sanitize a query string for FTS5."""
+    cleaned = _clean(query)
     words = [w.strip() for w in cleaned.split() if w.strip()]
     if not words:
         return None
@@ -114,7 +133,6 @@ def search_records(query, limit=50):
     record_ids = [r[0] for r in results]
     records = Record.objects.filter(record_id__in=record_ids)
 
-    # Preserve FTS rank ordering
     id_to_rank = {r[0]: r[1] for r in results}
     return sorted(records, key=lambda r: id_to_rank.get(r.record_id, 0))
 
@@ -123,9 +141,9 @@ def reindex_all():
     """Rebuild the entire FTS index from all records."""
     from catalog.models import Record
 
-    ensure_fts_table()
-    with connection.cursor() as cursor:
-        cursor.execute(f"DELETE FROM {FTS_TABLE}")
+    rebuild_fts_table()
 
-    for record in Record.objects.prefetch_related("authors", "subjects").all():
+    for record in Record.objects.prefetch_related(
+        "authors", "subjects", "publishers", "external_identifiers"
+    ).all():
         index_record(record)
