@@ -15,7 +15,7 @@
   {% for author in page_obj %}
   <li class="py-3 flex items-baseline justify-between gap-4">
     <div>
-      <span class="font-medium">{{ author.name|bidi_text }}</span>
+      <a href="/browse/authors/{{ author.pk }}/" class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ author.name|bidi_text }}</a>
       {% if author.name_romanized %}
         <span class="text-gray-500 dark:text-gray-400 text-sm ml-2">{{ author.name_romanized }}</span>
       {% endif %}
