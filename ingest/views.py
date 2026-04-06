@@ -56,7 +56,75 @@ def select_candidate(request):
             request.session["candidate"] = candidate
         except (json.JSONDecodeError, TypeError):
             pass
-    return redirect("manual_entry")
+    return redirect("confirm_candidate")
+
+
+@login_required
+def confirm_candidate(request):
+    """Review and confirm a candidate record from catalog lookup."""
+    candidate = request.session.get("candidate")
+    if not candidate:
+        return redirect("ingest")
+
+    if request.method == "POST":
+        # Create the record from candidate data.
+        date_str = candidate.get("date", "")
+        date_int = None
+        if date_str:
+            try:
+                date_int = int("".join(c for c in str(date_str) if c.isdigit())[:4])
+            except (ValueError, IndexError):
+                pass
+
+        record = Record(
+            title=candidate.get("title", ""),
+            title_romanized=candidate.get("title_alternate", ""),
+            date_of_publication=date_int,
+            date_of_publication_display=str(date_str)
+            if date_str and not date_int
+            else "",
+            place_of_publication=candidate.get("place", ""),
+            language=candidate.get("language", ""),
+            source_marc=candidate.get("source_marc"),
+            source_catalog=candidate.get("source_catalog", ""),
+            notes=request.POST.get("notes", ""),
+            created_by=request.user,
+        )
+        record.save()
+
+        # Primary author
+        author_name = candidate.get("author", "").strip()
+        if author_name:
+            author, _ = Author.objects.get_or_create(name=author_name)
+            record.authors.add(author)
+
+        # Publisher
+        publisher_name = candidate.get("publisher", "").strip()
+        if publisher_name:
+            publisher, _ = Publisher.objects.get_or_create(
+                name=publisher_name,
+                defaults={"place": candidate.get("place", "")},
+            )
+            record.publishers.add(publisher)
+
+        # Location from form
+        location_label = request.POST.get("location_label", "").strip()
+        if location_label:
+            location, _ = Location.objects.get_or_create(label=location_label)
+            record.locations.add(location)
+
+        # Additional data from MARC
+        _attach_from_candidate(record, candidate)
+
+        ensure_fts_table()
+        index_record(record)
+
+        request.session.pop("candidate", None)
+        return redirect(
+            "catalog:record_detail", record_id=record.record_id, slug=record.slug
+        )
+
+    return render(request, "ingest/confirm_candidate.html", {"candidate": candidate})
 
 
 @login_required
@@ -64,6 +132,7 @@ def manual_entry(request):
     """Create a new record via manual entry form."""
     if request.method == "POST":
         form = RecordForm(request.POST)
+        candidate = request.session.get("candidate")
         if form.is_valid():
             record = form.save(commit=False)
             record.created_by = request.user
@@ -113,7 +182,11 @@ def manual_entry(request):
 
         form = RecordForm(initial=initial) if initial else RecordForm()
 
-    return render(request, "ingest/manual_entry.html", {"form": form})
+    return render(
+        request,
+        "ingest/manual_entry.html",
+        {"form": form, "candidate": candidate},
+    )
 
 
 @login_required

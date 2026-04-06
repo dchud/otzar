@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load bidi %}
+
+{% block title %}Confirm record — otzar{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Confirm record</h1>
+
+<div class="max-w-3xl">
+  <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-4 mb-6">
+
+    <div>
+      <h2 class="text-xl font-medium" dir="auto">{{ candidate.title|bidi_text }}</h2>
+      {% if candidate.title_alternate and candidate.title_alternate != candidate.title %}
+      <p class="text-gray-600 dark:text-gray-400 mt-1" dir="auto">{{ candidate.title_alternate }}</p>
+      {% endif %}
+    </div>
+
+    {% if candidate.author %}
+    <div>
+      <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Author{{ candidate.additional_authors|length|yesno:",s," }}</h3>
+      <p dir="auto">{{ candidate.author }}</p>
+      {% for name in candidate.additional_authors %}
+      <p dir="auto" class="text-gray-600 dark:text-gray-400">{{ name }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      {% if candidate.date %}
+      <div>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Date</h3>
+        <p>{{ candidate.date }}</p>
+      </div>
+      {% endif %}
+      {% if candidate.place %}
+      <div>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Place</h3>
+        <p>{{ candidate.place }}</p>
+      </div>
+      {% endif %}
+      {% if candidate.publisher %}
+      <div>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Publisher</h3>
+        <p>{{ candidate.publisher }}</p>
+      </div>
+      {% endif %}
+      {% if candidate.language %}
+      <div>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Language</h3>
+        <p>{{ candidate.language }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if candidate.subjects %}
+    <div>
+      <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Subjects</h3>
+      <ul class="text-sm space-y-0.5">
+        {% for heading in candidate.subjects %}
+        <li>{{ heading }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-wrap gap-3 text-sm">
+      {% if candidate.isbn %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">ISBN: {{ candidate.isbn }}</span>{% endif %}
+      {% if candidate.lccn %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">LCCN: {{ candidate.lccn }}</span>{% endif %}
+      {% if candidate.oclc %}<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">OCLC: {{ candidate.oclc }}</span>{% endif %}
+      {% if candidate.source_catalog %}
+      <span class="px-2 py-0.5 rounded
+                   {% if candidate.source_catalog == 'NLI' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                   {% else %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% endif %}">
+        {{ candidate.source_catalog }}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if candidate.series_title %}
+    <div>
+      <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Series</h3>
+      <p>{{ candidate.series_title }}{% if candidate.series_volume %}, vol. {{ candidate.series_volume }}{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label for="id_location_label" class="block text-sm font-medium mb-1">Physical location</label>
+      <input type="text" name="location_label" id="id_location_label"
+             class="w-full max-w-md rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             placeholder="e.g. Floor 1, Room B, Shelf 4a">
+    </div>
+
+    <div>
+      <label for="id_notes" class="block text-sm font-medium mb-1">Notes</label>
+      <textarea name="notes" id="id_notes" rows="2"
+                class="w-full max-w-md rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+    </div>
+
+    <div class="flex gap-4 pt-2">
+      <button type="submit"
+              class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        Add to catalog
+      </button>
+      <a href="{% url 'ingest' %}"
+         class="px-6 py-2 min-h-[44px] inline-flex items-center border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
