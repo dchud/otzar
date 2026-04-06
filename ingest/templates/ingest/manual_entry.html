@@ -81,10 +81,63 @@
                class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
     </div>
-    <div>
-      <label for="id_language" class="block text-sm font-medium mb-1">Language</label>
+    <div x-data="languageSearch('{{ form.language.value|default:'' }}')" class="relative">
+      <label for="language-search" class="block text-sm font-medium mb-1">Language</label>
       {{ form.language }}
+      <input type="text" id="language-search"
+             x-model="query"
+             @input.debounce.200ms="search()"
+             @focus="open = results.length > 0"
+             @click.away="open = false"
+             @keydown.escape="open = false"
+             @keydown.arrow-down.prevent="highlightNext()"
+             @keydown.arrow-up.prevent="highlightPrev()"
+             @keydown.enter.prevent="selectHighlighted()"
+             :placeholder="selected ? selected : 'Type to search (e.g. heb, Hebrew, Aramaic)'"
+             class="w-full sm:w-64 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             autocomplete="off">
+      <div x-show="open && results.length > 0" x-cloak
+           class="absolute z-10 mt-1 w-full sm:w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-md max-h-48 overflow-y-auto">
+        <template x-for="(result, index) in results" :key="result.code">
+          <button type="button"
+                  @click="selectResult(result)"
+                  @mouseenter="highlight = index"
+                  :class="{'bg-blue-50 dark:bg-blue-900/30': highlight === index}"
+                  class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+            <span class="font-mono text-xs text-gray-500 dark:text-gray-400 mr-2" x-text="result.code"></span>
+            <span x-text="result.name"></span>
+          </button>
+        </template>
+      </div>
     </div>
+
+    <script>
+    function languageSearch(initial) {
+      return {
+        query: '',
+        selected: initial || '',
+        results: [],
+        open: false,
+        highlight: -1,
+        async search() {
+          if (this.query.length < 2) { this.results = []; this.open = false; return; }
+          const resp = await fetch('/api/languages/?q=' + encodeURIComponent(this.query));
+          this.results = await resp.json();
+          this.open = this.results.length > 0;
+          this.highlight = -1;
+        },
+        selectResult(result) {
+          this.selected = result.code + ' — ' + result.name;
+          this.query = '';
+          this.open = false;
+          document.getElementById('id_language').value = result.code;
+        },
+        highlightNext() { this.highlight = Math.min(this.highlight + 1, this.results.length - 1); },
+        highlightPrev() { this.highlight = Math.max(this.highlight - 1, 0); },
+        selectHighlighted() { if (this.highlight >= 0) this.selectResult(this.results[this.highlight]); },
+      }
+    }
+    </script>
   </fieldset>
 
   <fieldset class="space-y-4">

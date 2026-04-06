@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 from catalog.home_views import home
+from catalog.language_views import language_search
 
 
 def health_check(request):
@@ -24,4 +25,5 @@ urlpatterns = [
     path("ingest/", include("ingest.urls")),
     path("", include("catalog.search_urls")),
     path("browse/", include("catalog.browse_urls")),
+    path("api/languages/", language_search, name="language_search"),
 ]

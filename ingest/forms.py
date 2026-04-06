@@ -47,23 +47,6 @@ class RecordForm(forms.ModelForm):
             "place_of_publication": forms.TextInput(
                 attrs={"class": INPUT_CLASSES, "dir": "auto"}
             ),
-            "language": forms.Select(
-                choices=[
-                    ("", "Select language"),
-                    ("heb", "Hebrew"),
-                    ("arc", "Aramaic"),
-                    ("yid", "Yiddish"),
-                    ("eng", "English"),
-                    ("ger", "German"),
-                    ("fre", "French"),
-                    ("spa", "Spanish"),
-                    ("ara", "Arabic"),
-                    ("lat", "Latin"),
-                    ("gre", "Greek"),
-                    ("mul", "Multiple languages"),
-                    ("und", "Undetermined"),
-                ],
-                attrs={"class": INPUT_NARROW},
-            ),
+            "language": forms.HiddenInput(),
             "notes": forms.Textarea(attrs={"class": INPUT_CLASSES, "rows": 3}),
         }
