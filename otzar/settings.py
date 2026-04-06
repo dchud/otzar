@@ -69,7 +69,7 @@ WSGI_APPLICATION = "otzar.wsgi.application"
 
 # When running on Fly.io, /data is a persistent volume.
 # Locally, fall back to the project directory.
-DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR))).resolve()
 
 CACHES = {
     "default": {
@@ -111,7 +111,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
 MEDIA_ROOT = DATA_DIR / "media"
 
-TAILWIND_CLI_CONFIG_FILE = "tailwind.config.js"
+TAILWIND_CLI_SRC_CSS = "static/src/input.css"
+TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"

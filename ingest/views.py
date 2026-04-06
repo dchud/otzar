@@ -25,6 +25,13 @@ from sources.cascade import isbn_lookup, search_lc, search_nli
 
 logger = logging.getLogger(__name__)
 
+
+@login_required
+def ingest_index(request):
+    """Landing page with links to all ingest methods."""
+    return render(request, "ingest/index.html")
+
+
 # Fields that can be pre-filled from ISBN lookup query params.
 _PREFILL_FIELDS = [
     "title",

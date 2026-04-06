@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Log in — otzar{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto">
+  <h1 class="text-2xl font-semibold mb-6">Log in</h1>
+
+  {% if form.errors %}
+  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 text-sm text-red-800 dark:text-red-200 mb-4">
+    Invalid username or password.
+  </div>
+  {% endif %}
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label for="id_username" class="block text-sm font-medium mb-1">Username</label>
+      <input type="text" name="username" id="id_username" autofocus required
+             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label for="id_password" class="block text-sm font-medium mb-1">Password</label>
+      <input type="password" name="password" id="id_password" required
+             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <button type="submit"
+            class="w-full px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      Log in
+    </button>
+
+    <input type="hidden" name="next" value="{{ next }}">
+  </form>
+</div>
+{% endblock %}

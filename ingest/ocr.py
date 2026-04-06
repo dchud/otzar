@@ -85,7 +85,7 @@ def extract_metadata_from_image(image_bytes):
         logger.error("ANTHROPIC_API_KEY not set")
         return None
 
-    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
+    model = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     try:

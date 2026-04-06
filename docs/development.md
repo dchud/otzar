@@ -21,7 +21,7 @@
     At minimum, set `SECRET_KEY`. Generate one with:
 
     ```bash
-    python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+    uv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
     ```
 
     Set `ANTHROPIC_API_KEY` if you need title page OCR. The SRU endpoint URLs have sensible defaults and can be left blank for local development.

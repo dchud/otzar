@@ -1,15 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../../catalog/templates";
+@source "../../sources/templates";
+@source "../../ingest/templates";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", "Noto Sans Hebrew", Arial, sans-serif;
+}
 
 @layer base {
-  /* RTL text gets a slight size bump for readability */
   .text-rtl {
     font-size: 1.1em;
     line-height: 1.6;
   }
 
-  /* Ensure proper text alignment follows direction */
   [dir="rtl"] {
     text-align: right;
   }
@@ -18,7 +26,6 @@
     text-align: left;
   }
 
-  /* Auto-direction elements follow content */
   [dir="auto"] {
     unicode-bidi: plaintext;
   }
