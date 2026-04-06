@@ -1,0 +1,28 @@
+{% if matches %}
+<div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-4 text-sm mt-2">
+  <p class="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+    This looks like the same author as {{ matches|length }} existing record{{ matches|length|pluralize }}.
+    Use existing?
+  </p>
+  <ul class="space-y-2">
+    {% for author, match_type in matches %}
+    <li class="flex items-center justify-between">
+      <span>
+        <strong>{{ author.name }}</strong>
+        {% if author.name_romanized %}<span class="text-gray-500"> / {{ author.name_romanized }}</span>{% endif %}
+        <span class="text-xs text-gray-400 ml-1">({{ match_type }} match)</span>
+        {% if author.records.count %}
+        <span class="text-xs text-gray-500 ml-1">{{ author.records.count }} record{{ author.records.count|pluralize }}</span>
+        {% endif %}
+      </span>
+      <button type="button"
+              class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onclick="document.getElementById('id_author_name').value='{{ author.name|escapejs }}';
+                       document.getElementById('id_author_name_romanized').value='{{ author.name_romanized|escapejs }}';">
+        Use this author
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}

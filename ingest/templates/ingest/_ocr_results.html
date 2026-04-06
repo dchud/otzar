@@ -1,0 +1,85 @@
+<div class="border border-gray-200 dark:border-gray-700 rounded p-4 space-y-4">
+  <h2 class="text-lg font-medium">Extracted metadata</h2>
+  <p class="text-sm text-gray-600 dark:text-gray-400">
+    Review and correct the fields below, then search library catalogs for matching records.
+  </p>
+
+  <form hx-post="{% url 'title_page_upload' %}"
+        hx-target="#ocr-results"
+        hx-indicator="#search-spinner"
+        class="space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="search">
+    {% if staging_file %}
+    <input type="hidden" name="staging_file" value="{{ staging_file }}">
+    {% endif %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label for="ocr-title" class="block text-sm font-medium mb-1">Title</label>
+        <input type="text" id="ocr-title" name="title"
+               value="{{ metadata.title|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+
+      <div>
+        <label for="ocr-title-romanized" class="block text-sm font-medium mb-1">Title (romanized)</label>
+        <input type="text" id="ocr-title-romanized" name="title_romanized"
+               value="{{ metadata.title_romanized|default:'' }}"
+               class="w-full">
+      </div>
+
+      <div>
+        <label for="ocr-subtitle" class="block text-sm font-medium mb-1">Subtitle</label>
+        <input type="text" id="ocr-subtitle" name="subtitle"
+               value="{{ metadata.subtitle|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+
+      <div>
+        <label for="ocr-author" class="block text-sm font-medium mb-1">Author</label>
+        <input type="text" id="ocr-author" name="author"
+               value="{{ metadata.author|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+
+      <div>
+        <label for="ocr-author-romanized" class="block text-sm font-medium mb-1">Author (romanized)</label>
+        <input type="text" id="ocr-author-romanized" name="author_romanized"
+               value="{{ metadata.author_romanized|default:'' }}"
+               class="w-full">
+      </div>
+
+      <div>
+        <label for="ocr-publisher" class="block text-sm font-medium mb-1">Publisher</label>
+        <input type="text" id="ocr-publisher" name="publisher"
+               value="{{ metadata.publisher|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+
+      <div>
+        <label for="ocr-place" class="block text-sm font-medium mb-1">Place</label>
+        <input type="text" id="ocr-place" name="place"
+               value="{{ metadata.place|default:'' }}"
+               class="w-full" dir="auto">
+      </div>
+
+      <div>
+        <label for="ocr-date" class="block text-sm font-medium mb-1">Date</label>
+        <input type="text" id="ocr-date" name="date"
+               value="{{ metadata.date|default:'' }}"
+               class="w-full">
+      </div>
+    </div>
+
+    <div class="flex gap-4 pt-2">
+      <button type="submit"
+              class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        Search catalogs
+      </button>
+      <span id="search-spinner" class="htmx-indicator text-sm text-gray-500 dark:text-gray-400">
+        Searching...
+      </span>
+    </div>
+  </form>
+</div>
