@@ -2,6 +2,14 @@ from django import forms
 
 from catalog.models import Record
 
+INPUT_CLASSES = (
+    "w-full rounded border border-gray-300 dark:border-gray-600 "
+    "bg-white dark:bg-gray-800 px-3 py-2 "
+    "focus:outline-none focus:ring-2 focus:ring-blue-500"
+)
+
+INPUT_NARROW = INPUT_CLASSES.replace("w-full", "w-full sm:w-32")
+
 
 class RecordForm(forms.ModelForm):
     """Form for manual entry and editing of bibliographic records."""
@@ -29,18 +37,18 @@ class RecordForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "w-full", "dir": "auto"}),
-            "title_romanized": forms.TextInput(attrs={"class": "w-full"}),
-            "subtitle": forms.TextInput(attrs={"class": "w-full", "dir": "auto"}),
-            "date_of_publication": forms.NumberInput(attrs={"class": "w-32"}),
+            "title": forms.TextInput(attrs={"class": INPUT_CLASSES, "dir": "auto"}),
+            "title_romanized": forms.TextInput(attrs={"class": INPUT_CLASSES}),
+            "subtitle": forms.TextInput(attrs={"class": INPUT_CLASSES, "dir": "auto"}),
+            "date_of_publication": forms.NumberInput(attrs={"class": INPUT_NARROW}),
             "date_of_publication_display": forms.TextInput(
-                attrs={"class": "w-full", "placeholder": "e.g. ca. 1850"}
+                attrs={"class": INPUT_CLASSES, "placeholder": "e.g. ca. 1850"}
             ),
             "place_of_publication": forms.TextInput(
-                attrs={"class": "w-full", "dir": "auto"}
+                attrs={"class": INPUT_CLASSES, "dir": "auto"}
             ),
             "language": forms.TextInput(
-                attrs={"class": "w-32", "placeholder": "e.g. heb, eng"}
+                attrs={"class": INPUT_NARROW, "placeholder": "e.g. heb, eng"}
             ),
-            "notes": forms.Textarea(attrs={"class": "w-full", "rows": 3}),
+            "notes": forms.Textarea(attrs={"class": INPUT_CLASSES, "rows": 3}),
         }

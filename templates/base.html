@@ -36,6 +36,9 @@
             <span x-show="darkMode">&#9788;</span>
           </button>
           {% if user.is_authenticated %}
+          {% if user.is_staff %}
+          <a href="/admin/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Admin</a>
+          {% endif %}
           <span>{{ user.username }}</span>
           <a href="{% url 'logout' %}" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log out</a>
           {% else %}

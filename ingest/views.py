@@ -45,6 +45,21 @@ _PREFILL_FIELDS = [
 
 
 @login_required
+def select_candidate(request):
+    """Store a selected candidate's full data in session, redirect to manual entry."""
+    if request.method != "POST":
+        return redirect("ingest")
+    candidate_json = request.POST.get("candidate_data", "")
+    if candidate_json:
+        try:
+            candidate = json.loads(candidate_json)
+            request.session["candidate"] = candidate
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return redirect("manual_entry")
+
+
+@login_required
 def manual_entry(request):
     """Create a new record via manual entry form."""
     if request.method == "POST":
@@ -54,15 +69,16 @@ def manual_entry(request):
             record.created_by = request.user
 
             # Attach source MARC/catalog from session if available.
-            source_marc = request.session.pop("source_marc", None)
-            source_catalog = request.session.pop("source_catalog", None)
-            if source_marc:
-                record.source_marc = source_marc
-            if source_catalog:
-                record.source_catalog = source_catalog
+            candidate = request.session.pop("candidate", None)
+            if candidate:
+                record.source_marc = candidate.get("source_marc")
+                record.source_catalog = candidate.get("source_catalog", "")
 
             record.save()
 
+            # If we have candidate data, extract all MARC fields.
+            if candidate:
+                _attach_from_candidate(record, candidate)
             _attach_related(record, form.cleaned_data)
             ensure_fts_table()
             index_record(record)
@@ -71,23 +87,29 @@ def manual_entry(request):
                 "catalog:record_detail", record_id=record.record_id, slug=record.slug
             )
     else:
-        # Pre-fill from GET parameters (ISBN lookup flow).
         initial = {}
+        candidate = request.session.get("candidate")
+        if candidate:
+            initial["title"] = candidate.get("title", "")
+            initial["title_romanized"] = candidate.get("title_alternate", "")
+            initial["author_name"] = candidate.get("author", "")
+            initial["publisher_name"] = candidate.get("publisher", "")
+            initial["place_of_publication"] = candidate.get("place", "")
+            initial["language"] = candidate.get("language", "")
+            date = candidate.get("date", "")
+            if date:
+                try:
+                    initial["date_of_publication"] = int(
+                        "".join(c for c in str(date) if c.isdigit())[:4]
+                    )
+                except (ValueError, IndexError):
+                    initial["date_of_publication_display"] = str(date)
+
+        # Also accept GET params for simple pre-fill.
         for field_name in _PREFILL_FIELDS:
             value = request.GET.get(field_name, "").strip()
             if value:
                 initial[field_name] = value
-
-        # Store source MARC/catalog in session if provided.
-        source_marc_json = request.GET.get("source_marc", "")
-        source_catalog = request.GET.get("source_catalog", "")
-        if source_marc_json:
-            try:
-                request.session["source_marc"] = json.loads(source_marc_json)
-            except (json.JSONDecodeError, TypeError):
-                pass
-        if source_catalog:
-            request.session["source_catalog"] = source_catalog
 
         form = RecordForm(initial=initial) if initial else RecordForm()
 
@@ -136,10 +158,13 @@ def isbn_lookup_view(request):
         scanned_by=request.user,
     )
 
+    # Pair each candidate with its JSON for the select form.
+    candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
+
     return render(
         request,
         "ingest/_candidates.html",
-        {"candidates": candidates, "isbn": isbn},
+        {"candidates": candidates_with_json, "isbn": isbn},
     )
 
 
@@ -293,6 +318,45 @@ def _attach_related(record, cleaned_data):
     if location_label:
         location, _ = Location.objects.get_or_create(label=location_label)
         record.locations.add(location)
+
+
+def _attach_from_candidate(record, candidate):
+    """Extract all MARC fields from a candidate dict and attach to the record."""
+    from catalog.models import ExternalIdentifier, Subject
+
+    # Additional authors from MARC 700 fields
+    for author_name in candidate.get("additional_authors", []):
+        author_name = author_name.strip()
+        if author_name:
+            author, _ = Author.objects.get_or_create(name=author_name)
+            record.authors.add(author)
+
+    # Subjects from MARC 650 fields
+    for heading in candidate.get("subjects", []):
+        heading = heading.strip()
+        if heading:
+            subject, _ = Subject.objects.get_or_create(
+                heading=heading,
+                defaults={"source": candidate.get("source_catalog", "")},
+            )
+            record.subjects.add(subject)
+
+    # External identifiers
+    isbn = candidate.get("isbn", "")
+    if isbn:
+        ExternalIdentifier.objects.get_or_create(
+            record=record, identifier_type="ISBN", value=isbn.strip()
+        )
+    lccn = candidate.get("lccn", "")
+    if lccn:
+        ExternalIdentifier.objects.get_or_create(
+            record=record, identifier_type="LCCN", value=lccn.strip()
+        )
+    oclc = candidate.get("oclc", "")
+    if oclc:
+        ExternalIdentifier.objects.get_or_create(
+            record=record, identifier_type="OCLC", value=oclc.strip()
+        )
 
 
 @login_required

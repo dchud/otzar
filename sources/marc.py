@@ -199,6 +199,14 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     # --- ISBN ---
     result["isbn"] = get_field_value(marc_record, "020", ["a"])
 
+    # --- Additional authors (700 fields) ---
+    additional_authors: list[str] = []
+    for field in marc_record.get_fields("700"):
+        vals = field.get_subfields("a")
+        if vals:
+            additional_authors.append(vals[0])
+    result["additional_authors"] = additional_authors
+
     # --- Subjects ---
     subjects: list[str] = []
     for field in marc_record.get_fields("650"):
@@ -206,6 +214,18 @@ def parse_record(marc_record: mrrc.Record) -> dict:
         if vals:
             subjects.append(vals[0])
     result["subjects"] = subjects
+
+    # --- LCCN (010$a) ---
+    result["lccn"] = get_field_value(marc_record, "010", ["a"])
+
+    # --- OCLC (035$a) ---
+    oclc = None
+    for field in marc_record.get_fields("035"):
+        vals = field.get_subfields("a")
+        if vals and "OCoLC" in vals[0]:
+            oclc = vals[0].replace("(OCoLC)", "").strip()
+            break
+    result["oclc"] = oclc
 
     # --- Series ---
     series_title = get_field_value(marc_record, "490", ["a"])

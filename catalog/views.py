@@ -1,8 +1,10 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Prefetch
 from django.http import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from catalog.models import Record, SeriesVolume
+from catalog.search import remove_from_index
 
 
 def record_detail(request, record_id, slug=None):
@@ -97,3 +99,14 @@ def record_detail(request, record_id, slug=None):
         "marc_fields": marc_fields,
     }
     return render(request, "catalog/record_detail.html", context)
+
+
+@staff_member_required
+def delete_record(request, record_id):
+    """Delete a record (staff only, POST required)."""
+    record = get_object_or_404(Record, record_id=record_id)
+    if request.method == "POST":
+        remove_from_index(record_id)
+        record.delete()
+        return redirect("home")
+    return redirect("catalog:record_detail", record_id=record_id, slug=record.slug)

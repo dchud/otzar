@@ -6,6 +6,11 @@ app_name = "catalog"
 
 urlpatterns = [
     path(
+        "<str:record_id>/delete/",
+        views.delete_record,
+        name="delete_record",
+    ),
+    path(
         "<str:record_id>/<slug:slug>/",
         views.record_detail,
         name="record_detail",
