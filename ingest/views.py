@@ -1,17 +1,24 @@
+import io
 import json
 import logging
 import os
 import uuid
 
+import qrcode
 from django.conf import settings
+from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from catalog.models import Author, Location, Publisher, Record, Series
 from catalog.search import ensure_fts_table, index_record
 from ingest.authority import find_author_matches
 from ingest.forms import RecordForm
+from ingest.models import ScanResult
 from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import create_series_volumes
 from sources.cascade import isbn_lookup, search_lc, search_nli
@@ -113,6 +120,14 @@ def isbn_lookup_view(request):
     for rec in results.get("lc_records", []):
         rec["source_catalog"] = "LC"
         candidates.append(rec)
+
+    # Create a ScanResult so the scan appears in the review queue.
+    ScanResult.objects.create(
+        scan_type="isbn",
+        isbn=isbn,
+        candidate_records=candidates,
+        scanned_by=request.user,
+    )
 
     return render(
         request,
@@ -233,6 +248,13 @@ def title_page_upload(request):
             "</p>"
         )
 
+    # Create a ScanResult so the OCR scan appears in the review queue.
+    ScanResult.objects.create(
+        scan_type="ocr",
+        ocr_output=metadata,
+        scanned_by=request.user,
+    )
+
     return render(
         request,
         "ingest/_ocr_results.html",
@@ -337,3 +359,149 @@ def series_manage(request, series_id):
             "message": message,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Review queue & QR handoff
+# ---------------------------------------------------------------------------
+
+
+@login_required
+def review_queue(request):
+    """Show pending ScanResults for the current user (or all, for staff)."""
+    if request.user.is_staff:
+        scans = ScanResult.objects.filter(status="pending")
+    else:
+        scans = ScanResult.objects.filter(status="pending", scanned_by=request.user)
+
+    return render(request, "ingest/review_queue.html", {"scans": scans})
+
+
+@login_required
+@require_POST
+def confirm_scan(request, scan_id):
+    """Confirm a ScanResult: create a Record from the selected candidate."""
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+
+    # Only the owner or staff can confirm.
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+
+    candidate_index_str = request.POST.get("candidate_index", "0")
+    try:
+        candidate_index = int(candidate_index_str)
+    except (ValueError, TypeError):
+        candidate_index = 0
+
+    candidates = scan.candidate_records or []
+    if not candidates or candidate_index >= len(candidates):
+        return HttpResponseBadRequest("Invalid candidate index.")
+
+    candidate = candidates[candidate_index]
+
+    # Create the Record from candidate data.
+    record = Record(
+        title=candidate.get("title", ""),
+        title_romanized=candidate.get("title_alternate", ""),
+        date_of_publication=_parse_int(candidate.get("date")),
+        place_of_publication=candidate.get("place", ""),
+        language=candidate.get("language", ""),
+        source_catalog=candidate.get("source_catalog", ""),
+        created_by=request.user,
+    )
+    record.save()
+
+    # Attach author if present.
+    author_name = candidate.get("author", "").strip()
+    if author_name:
+        author, _ = Author.objects.get_or_create(name=author_name)
+        record.authors.add(author)
+
+    # Attach publisher if present.
+    publisher_name = candidate.get("publisher", "").strip()
+    if publisher_name:
+        publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
+        record.publishers.add(publisher)
+
+    ensure_fts_table()
+    index_record(record)
+
+    # Mark the ScanResult as confirmed.
+    scan.status = "confirmed"
+    scan.selected_candidate_index = candidate_index
+    scan.created_record = record
+    scan.save()
+
+    return redirect("review_queue")
+
+
+@login_required
+@require_POST
+def discard_scan(request, scan_id):
+    """Mark a ScanResult as discarded."""
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+
+    scan.status = "discarded"
+    scan.save()
+
+    return redirect("review_queue")
+
+
+@login_required
+def qr_code_view(request):
+    """Generate a QR code PNG linking to the phone scanning interface.
+
+    The QR URL contains a signed token (valid for 1 hour) that allows the
+    phone browser to authenticate as the current user.
+    """
+    signer = TimestampSigner()
+    token = signer.sign(str(request.user.pk))
+
+    # Build the full URL for the phone auth endpoint.
+    scheme = "https" if request.is_secure() else "http"
+    host = request.get_host()
+    path = f"/ingest/phone-auth/{token}/"
+    url = f"{scheme}://{host}{path}"
+
+    # Generate QR code image.
+    img = qrcode.make(url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return HttpResponse(buf.getvalue(), content_type="image/png")
+
+
+def phone_scan_auth(request, token):
+    """Validate a signed QR token and log the user in for this session."""
+    signer = TimestampSigner()
+    try:
+        # Token is valid for 1 hour (3600 seconds).
+        user_pk = signer.unsign(token, max_age=3600)
+    except SignatureExpired:
+        return HttpResponse(
+            "This QR code has expired. Please generate a new one.", status=403
+        )
+    except BadSignature:
+        return HttpResponse("Invalid QR code.", status=400)
+
+    try:
+        user = User.objects.get(pk=int(user_pk))
+    except (User.DoesNotExist, ValueError):
+        return HttpResponse("User not found.", status=404)
+
+    auth_login(request, user)
+    return redirect("isbn_scan")
+
+
+def _parse_int(value):
+    """Try to parse an integer from a string, returning None on failure."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
