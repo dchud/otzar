@@ -118,23 +118,33 @@
         selected: initial || '',
         results: [],
         open: false,
-        highlight: -1,
+        highlight: 0,
         async search() {
           if (this.query.length < 2) { this.results = []; this.open = false; return; }
           const resp = await fetch('/api/languages/?q=' + encodeURIComponent(this.query));
           this.results = await resp.json();
           this.open = this.results.length > 0;
-          this.highlight = -1;
+          this.highlight = 0;
         },
         selectResult(result) {
-          this.selected = result.code + ' — ' + result.name;
+          this.selected = result.code + ' \u2014 ' + result.name;
           this.query = '';
           this.open = false;
+          this.results = [];
           document.getElementById('id_language').value = result.code;
         },
-        highlightNext() { this.highlight = Math.min(this.highlight + 1, this.results.length - 1); },
-        highlightPrev() { this.highlight = Math.max(this.highlight - 1, 0); },
-        selectHighlighted() { if (this.highlight >= 0) this.selectResult(this.results[this.highlight]); },
+        highlightNext() {
+          if (!this.open && this.results.length > 0) { this.open = true; }
+          this.highlight = Math.min(this.highlight + 1, this.results.length - 1);
+        },
+        highlightPrev() {
+          this.highlight = Math.max(this.highlight - 1, 0);
+        },
+        selectHighlighted() {
+          if (this.highlight >= 0 && this.highlight < this.results.length) {
+            this.selectResult(this.results[this.highlight]);
+          }
+        },
       }
     }
     </script>

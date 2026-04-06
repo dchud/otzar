@@ -55,7 +55,9 @@ def select_candidate(request):
             candidate = json.loads(candidate_json)
             request.session["candidate"] = candidate
         except (json.JSONDecodeError, TypeError):
-            pass
+            logger.exception("Failed to parse candidate JSON")
+    else:
+        logger.warning("select_candidate called with empty candidate_data")
     return redirect("confirm_candidate")
 
 
