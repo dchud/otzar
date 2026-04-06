@@ -22,7 +22,11 @@ def browse_index(request):
 
 
 def author_browse(request):
-    authors = Author.objects.annotate(record_count=Count("records")).order_by("name")
+    authors = (
+        Author.objects.annotate(record_count=Count("records"))
+        .filter(record_count__gt=0)
+        .order_by("name")
+    )
     page_obj = _paginate(request, authors)
     return render(request, "catalog/browse/authors.html", {"page_obj": page_obj})
 
@@ -58,16 +62,20 @@ def title_browse(request):
 
 
 def subject_browse(request):
-    subjects = Subject.objects.annotate(record_count=Count("records")).order_by(
-        "heading"
+    subjects = (
+        Subject.objects.annotate(record_count=Count("records"))
+        .filter(record_count__gt=0)
+        .order_by("heading")
     )
     page_obj = _paginate(request, subjects)
     return render(request, "catalog/browse/subjects.html", {"page_obj": page_obj})
 
 
 def publisher_browse(request):
-    publishers = Publisher.objects.annotate(record_count=Count("records")).order_by(
-        "name"
+    publishers = (
+        Publisher.objects.annotate(record_count=Count("records"))
+        .filter(record_count__gt=0)
+        .order_by("name")
     )
     page_obj = _paginate(request, publishers)
     return render(request, "catalog/browse/publishers.html", {"page_obj": page_obj})
@@ -91,8 +99,10 @@ def date_browse(request):
 
 
 def location_browse(request):
-    locations = Location.objects.annotate(record_count=Count("records")).order_by(
-        "label"
+    locations = (
+        Location.objects.annotate(record_count=Count("records"))
+        .filter(record_count__gt=0)
+        .order_by("label")
     )
     page_obj = _paginate(request, locations)
     return render(request, "catalog/browse/locations.html", {"page_obj": page_obj})
