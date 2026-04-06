@@ -716,79 +716,74 @@ documented procedures.
 **Dependencies:** Core functionality (Phases 0–4) complete. Can begin setup
 in parallel with Phase 5.
 
-**Hosting decision pending.** Options under consideration include a VPS
-(full control, manual setup) and a PaaS like Fly.io or Railway (managed
-infrastructure, simpler deploys). The choice affects the specifics below but
-not the application code. The hosting decision should be made before starting
-this phase.
+**Platform: Fly.io** (PaaS). App runs as a Docker container on a Firecracker
+microVM in the Ashburn (iad) region. SQLite and media files on an attached
+persistent volume. SSL automatic. Public URL at `<app-name>.fly.dev`.
 
-### 6.1 Requirements (platform-independent)
+### 6.1 Fly.io setup
 
-Regardless of hosting choice, the deployment must provide:
+- `fly launch` to create the app in the iad region
+- Create a 1GB persistent volume: `fly volumes create appdata --region iad --size 1`
+- Configure `fly.toml` with volume mount, health check, and machine size
+- Create `Dockerfile` with Python 3.13, uv, gunicorn
+- Docker entrypoint script: run migrations, collect static files, start gunicorn
+- Set secrets: `fly secrets set SECRET_KEY=... ANTHROPIC_API_KEY=...`
+- First deploy: `fly deploy`, then `fly ssh console -C "python manage.py createsuperuser"`
 
-- **SSL/HTTPS** — automated certificate management
-- **Persistent storage** — for the SQLite database and uploaded media files.
-  Must survive deploys and restarts.
-- **Production Django settings** — `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS`,
-  static file serving
-- **WSGI/ASGI server** — gunicorn or uvicorn (not Django's dev server)
-- **Process management** — the app restarts on crash or reboot
+### 6.2 GitHub Actions CD
 
-### 6.2 Backups
+- `.github/workflows/deploy.yml`: test → deploy pipeline
+- Tests (pytest, ruff check, ruff format --check) run first
+- Deploy only on push to main, only if tests pass
+- `FLY_API_TOKEN` stored as GitHub repository secret
+- `concurrency: deploy` prevents simultaneous deploys
 
-- Nightly backups to an S3 bucket (or equivalent object storage):
-  - SQLite database dump
-  - Media files (title page images)
-  - Application configuration / environment
-- Backup retention policy (e.g. keep 30 daily, 12 monthly)
-- Document and test the restore procedure
+### 6.3 Backups
 
-### 6.3 Safe update procedure
+- Fly.io daily volume snapshots (configure retention up to 60 days)
+- Litestream for continuous SQLite WAL streaming to S3 (near-real-time backup)
+- Media files included in the volume snapshots
+- Document and test restore from both snapshot and Litestream
 
-The app will be in active use while development continues. Catalogers may have
-hundreds of records in the database when an update is deployed. The deploy
-process must protect this data:
+### 6.4 Safe update procedure
 
-- **Pre-deploy backup:** Every deployment runs a database backup before
-  applying any changes.
-- **Non-destructive migrations:** Adding fields and tables is safe. Any
-  migration that renames, removes, or restructures a field containing user
-  data must explicitly preserve existing values.
-- **Media files untouched:** Code deployments never modify or delete uploaded
-  images.
-- **Rollback path:** Document how to restore from the pre-deploy backup if a
-  migration fails or introduces a bug.
+Push to main triggers: tests → build → deploy → entrypoint runs migrations →
+gunicorn starts. Data safety:
 
-### 6.4 Monitoring
+- Volume persists across deploys (DB and media untouched by code changes)
+- Migrations run in the entrypoint before gunicorn starts
+- Non-destructive migrations only — review each migration for data safety
+- Rollback: `fly deploy --image <previous-image>` reverts the code; restore
+  DB from Litestream or volume snapshot if migration was destructive
 
-- A health check endpoint (`/health/`) that returns 200 if the app and
-  database are accessible
-- Log access and rotation
-- Optional: uptime monitoring via an external ping service
+### 6.5 Monitoring
 
-### 6.5 Deployment documentation
+- `/health/` endpoint (already implemented) checked by Fly.io's built-in
+  health checks
+- `fly logs` for log access
+- Optional: external uptime monitoring
+
+### 6.6 Deployment documentation
 
 Write a deployment guide in `/docs` covering:
 
-- Server/platform setup from scratch
-- Application deployment and update procedure
-- Backup configuration and restore procedure
-- SSL management (if manual)
+- Fly.io setup from scratch (fly launch, volumes, secrets)
+- GitHub Actions CD configuration
+- Backup configuration (Litestream + volume snapshots) and restore procedure
+- Management commands (createsuperuser, load_test_data, cleanup_staging)
 - Common maintenance tasks
 
-**Deliverable:** App running on a public server with SSL, nightly backups,
-a tested restore procedure, and a documented safe update process.
+**Deliverable:** App running at `<app-name>.fly.dev` with SSL, CD from
+GitHub, continuous backups, and documented procedures.
 
 ### Review gate: Phase 6
 
-- App is accessible at the production URL over HTTPS
+- App accessible at the Fly.io URL over HTTPS
 - Health check endpoint returns 200
-- Nightly backup runs successfully and uploads to S3
-- Restore tested: can rebuild the app from a backup on a fresh server
-- Safe update tested: deploy a code change with a migration, verify existing
-  data is preserved
-- Pre-deploy backup runs automatically as part of the deploy process
-- Process management: app restarts after simulated crash or reboot
+- GitHub Actions pipeline: push to main runs tests then deploys
+- Litestream backup running, verified restore
+- Safe update tested: push a migration, verify existing data preserved
+- `fly ssh console` works for management commands
 
 ---
 
@@ -858,13 +853,16 @@ MkDocs, covering developer setup, system administration, and basic user help.
 
 ---
 
-## Final review gate
+## Final implementation quality gate
 
-Before considering the project ready for production use:
+This gate verifies the implementation is complete and correct. Deployment
+and documentation are separate concerns that proceed alongside or after.
 
 - [ ] All tests pass (`uv run pytest`)
 - [ ] Linting passes (`uv run ruff check .`)
-- [ ] All phase review gates have been completed
+- [ ] Format clean (`uv run ruff format --check .`)
+- [ ] All implementation phase review gates completed (scaffolding, models,
+      sources, ingest, views, polish)
 - [ ] End-to-end test: scan a barcode, ingest a record, find it via browse
       and search, verify it displays correctly with title page image
 - [ ] End-to-end test: photograph a Hebrew title page, OCR extracts metadata,
@@ -872,15 +870,18 @@ Before considering the project ready for production use:
       and series workflow
 - [ ] End-to-end test: scan on phone via QR handoff, confirm on laptop via
       review queue
+- [ ] WCAG 2.2 AA compliance verified
+- [ ] Mobile tested on real devices (iOS Safari, Android Chrome)
+- [ ] Simplicity review: assess the full codebase for redundant or overly
+      complex code that could be simplified for easier maintenance
+- [ ] Stakeholder walkthrough: demonstrate the system to the community contact
+      and incorporate feedback
+
+## Production readiness (separate from implementation quality)
+
 - [ ] Production deployment is running with SSL, backups verified
 - [ ] Restore procedure tested from production backup
 - [ ] Documentation is complete and accurate (developer, sysadmin, user help)
-- [ ] WCAG 2.2 AA compliance verified
-- [ ] Mobile tested on real devices (iOS Safari, Android Chrome)
-- [ ] Stakeholder walkthrough: demonstrate the system to the community contact
-      and incorporate feedback
-- [ ] Simplicity review: assess the full codebase for redundant or overly
-      complex code that could be simplified for easier maintenance
 
 ---
 

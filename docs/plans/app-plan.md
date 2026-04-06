@@ -285,28 +285,31 @@ match go to a staging area (`media/staging/`) and are cleaned up periodically.
 
 ### Hosting
 
-Hosting platform is TBD. Options include a VPS (e.g. Hetzner, DigitalOcean)
-with manual server management, or a PaaS (e.g. Fly.io, Railway) with managed
-infrastructure. The choice does not affect the application code. Key
-requirements: SSL, persistent storage for the database and media files,
-process management, and the ability to run Django migrations on deploy.
+Fly.io PaaS in the Ashburn (iad) region. The app runs as a Docker container
+on a Firecracker microVM with a persistent NVMe volume for SQLite and media
+files. SSL is automatic. Public URL at `<app-name>.fly.dev`. Estimated cost
+~$3.50–6/month.
+
+Continuous deployment via GitHub Actions: push to main runs tests, then
+deploys automatically.
 
 ### Backups
 
-Nightly backups to S3 or equivalent object storage: database dump, media
-files, and application configuration. Backup retention policy and a tested
-restore procedure documented before production use.
+Fly.io daily volume snapshots (configurable retention up to 60 days) plus
+Litestream for continuous SQLite WAL streaming to S3. Media files are
+included in volume snapshots. Restore procedure documented and tested.
 
 ### Safe updates
 
 The app will be in active use while development continues. Updates must not
 destroy existing data:
 
+- The persistent volume survives deploys — DB and media are not touched by
+  code changes.
+- Migrations run automatically in the Docker entrypoint before gunicorn starts.
 - Database migrations must be non-destructive. Review each migration with
   data safety in mind.
-- Back up the database before every deployment.
-- Code deployments never modify or delete uploaded media files.
-- Document a rollback path for failed migrations.
+- Rollback: redeploy the previous image or restore from Litestream/snapshot.
 
 ### Deployment documentation
 
