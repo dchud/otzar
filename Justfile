@@ -36,9 +36,13 @@ shell:
 createsuperuser:
     uv run python manage.py createsuperuser
 
+# Run end-to-end browser tests
+test-e2e *args:
+    uv run pytest tests/e2e/ {{args}}
+
 # Full CI check: tests, lint, format
 check:
-    uv run pytest
+    uv run pytest --ignore=tests/e2e
     uv run ruff check .
     uv run ruff format --check .
 

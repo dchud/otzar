@@ -40,7 +40,10 @@
           <a href="/admin/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Admin</a>
           {% endif %}
           <span>{{ user.username }}</span>
-          <a href="{% url 'logout' %}" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log out</a>
+          <form method="post" action="{% url 'logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log out</button>
+          </form>
           {% else %}
           <a href="{% url 'login' %}" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log in</a>
           {% endif %}
