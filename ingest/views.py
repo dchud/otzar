@@ -617,7 +617,11 @@ def qr_code_view(request):
     token = signer.sign(str(request.user.pk))
 
     # Build the full URL for the phone auth endpoint.
-    scheme = "https" if request.is_secure() else "http"
+    # request.is_secure() may be False behind runserver_plus with SSL,
+    # so also check CSRF_TRUSTED_ORIGINS for an https:// entry.
+    trusted = getattr(settings, "CSRF_TRUSTED_ORIGINS", [])
+    has_https_origin = any(o.startswith("https://") for o in trusted)
+    scheme = "https" if request.is_secure() or has_https_origin else "http"
     host = request.get_host()
     path = f"/ingest/phone-auth/{token}/"
     url = f"{scheme}://{host}{path}"

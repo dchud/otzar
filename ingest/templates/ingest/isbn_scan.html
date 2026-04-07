@@ -1,53 +1,94 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Scan ISBN — otzar{% endblock %}
 
 {% block content %}
 <h1 class="text-2xl font-semibold mb-6">Scan ISBN / Barcode</h1>
 
-<div class="max-w-2xl space-y-6">
-  <!-- Camera viewfinder placeholder -->
-  <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center text-gray-500 dark:text-gray-400">
-    <p class="text-sm">Camera barcode scanning is not yet available.</p>
-    <p class="text-sm mt-1">Enter an ISBN manually below.</p>
-  </div>
-
-  <!-- Manual ISBN input -->
-  <form hx-post="{% url 'isbn_lookup' %}"
-        hx-target="#results"
-        hx-indicator="#search-status"
-        hx-disabled-elt="button[type='submit']"
-        class="flex gap-3 items-end">
-    {% csrf_token %}
-    <div class="flex-1">
-      <label for="isbn-input" class="block text-sm font-medium mb-1">ISBN</label>
-      <input type="text" name="isbn" id="isbn-input"
-             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-             placeholder="e.g. 978-0-06-093546-7"
-             autocomplete="off"
-             autofocus>
+<div class="flex gap-8 flex-wrap">
+  <!-- Main column: scanning and lookup -->
+  <div class="flex-1 min-w-0 max-w-2xl space-y-6">
+    <!-- Camera controls -->
+    <div class="space-y-3">
+      <button id="start-scan-btn" type="button"
+              class="px-6 py-2 min-h-[44px] bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        Start camera scan
+      </button>
+      <button id="stop-scan-btn" type="button"
+              class="hidden px-6 py-2 min-h-[44px] bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        Stop scanning
+      </button>
+      <button id="torch-btn" type="button" aria-pressed="false"
+              class="hidden px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Toggle flashlight">
+        &#128294; Torch
+      </button>
+      <p id="scan-status" class="text-sm text-gray-600 dark:text-gray-400" aria-live="polite"></p>
     </div>
-    <button type="submit"
-            class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
-      Look up
-    </button>
-  </form>
 
-  <!-- Search status indicator -->
-  <div id="search-status" class="htmx-indicator">
-    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-      <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <div>
-        <p class="font-medium">Searching library catalogs...</p>
-        <p class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Checking NLI and Library of Congress (may take a few seconds)</p>
+    <!-- Camera viewfinder -->
+    <div id="viewfinder"
+         class="hidden relative rounded-lg overflow-hidden bg-black"
+         style="max-width: 640px; aspect-ratio: 4/3;">
+      <video id="barcode-video" autoplay playsinline muted
+             class="w-full h-full object-cover"></video>
+      <style>
+        .scan-success {
+          outline: 4px solid #22c55e;
+          outline-offset: -4px;
+          transition: outline-color 0.3s;
+        }
+      </style>
+    </div>
+
+    <!-- Manual ISBN input -->
+    <form hx-post="{% url 'isbn_lookup' %}"
+          hx-target="#results"
+          hx-indicator="#search-status"
+          hx-disabled-elt="button[type='submit']"
+          class="flex gap-3 items-end">
+      {% csrf_token %}
+      <div class="flex-1">
+        <label for="isbn-input" class="block text-sm font-medium mb-1">ISBN</label>
+        <input type="text" name="isbn" id="isbn-input"
+               class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="e.g. 978-0-06-093546-7"
+               autocomplete="off"
+               autofocus>
+      </div>
+      <button type="submit"
+              class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+        Look up
+      </button>
+    </form>
+
+    <!-- Search status indicator -->
+    <div id="search-status" class="htmx-indicator">
+      <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <div>
+          <p class="font-medium">Searching library catalogs...</p>
+          <p class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Checking NLI and Library of Congress (may take a few seconds)</p>
+        </div>
       </div>
     </div>
+
+    <!-- Results container -->
+    <div id="results" aria-live="polite"></div>
   </div>
 
-  <!-- Results container -->
-  <div id="results" aria-live="polite"></div>
+  <!-- QR code sidebar for phone handoff (hidden on small/mobile screens) -->
+  <div class="shrink-0 text-center hidden md:block">
+    <p class="text-sm font-medium mb-2">Scan on your phone</p>
+    <img src="{% url 'qr_code' %}" alt="QR code to open barcode scanner on your phone"
+         class="bg-white p-2 rounded border border-gray-200 dark:border-gray-700" width="180" height="180">
+    <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Valid for 1 hour</p>
+  </div>
 </div>
+
+<script src="{% static 'js/barcode-scan.js' %}" defer></script>
 {% endblock %}
