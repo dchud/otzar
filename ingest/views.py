@@ -578,7 +578,7 @@ def confirm_scan(request, scan_id):
     # Create the Record from candidate data.
     record = Record(
         title=candidate.get("title", ""),
-        title_romanized=candidate.get("title_alternate", ""),
+        title_romanized=candidate.get("title_alternate") or "",
         date_of_publication=_parse_int(candidate.get("date")),
         place_of_publication=candidate.get("place", ""),
         language=candidate.get("language", ""),
