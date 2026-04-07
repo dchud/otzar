@@ -9,6 +9,7 @@ urlpatterns = [
     path("confirm/", views.confirm_candidate, name="confirm_candidate"),
     path("edit/<str:record_id>/", views.edit_record, name="edit_record"),
     path("scan/", views.isbn_scan, name="isbn_scan"),
+    path("scan/poll/", views.scan_poll, name="scan_poll"),
     path("isbn-lookup/", views.isbn_lookup_view, name="isbn_lookup"),
     path("authority-check/", views.authority_check, name="authority_check"),
     path("series/<int:series_id>/", views.series_manage, name="series_manage"),

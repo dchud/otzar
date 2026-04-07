@@ -4,10 +4,105 @@
 {% block title %}Scan ISBN — otzar{% endblock %}
 
 {% block content %}
+{% if phone_scanner %}
+{# Phone scanner mode: streamlined for rapid scanning #}
+<h1 class="text-2xl font-semibold mb-6">Phone Scanner</h1>
+
+<div class="max-w-2xl space-y-6">
+  <!-- Camera controls -->
+  <div class="space-y-3">
+    <button id="start-scan-btn" type="button"
+            class="px-6 py-2 min-h-[44px] bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      Start camera scan
+    </button>
+    <button id="stop-scan-btn" type="button"
+            class="hidden px-6 py-2 min-h-[44px] bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      Stop scanning
+    </button>
+    <button id="torch-btn" type="button" aria-pressed="false"
+            class="hidden px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Toggle flashlight">
+      &#128294; Torch
+    </button>
+    <p id="scan-status" class="text-sm text-gray-600 dark:text-gray-400" aria-live="polite"></p>
+  </div>
+
+  <!-- Camera viewfinder -->
+  <div id="viewfinder"
+       class="hidden relative rounded-lg overflow-hidden bg-black"
+       style="max-width: 640px; aspect-ratio: 4/3;">
+    <video id="barcode-video" autoplay playsinline muted
+           class="w-full h-full object-cover"></video>
+    <style>
+      .scan-success {
+        outline: 4px solid #22c55e;
+        outline-offset: -4px;
+        transition: outline-color 0.3s;
+      }
+    </style>
+  </div>
+
+  <!-- Manual ISBN input (hidden in phone mode but still functional) -->
+  <form hx-post="{% url 'isbn_lookup' %}"
+        hx-target="#results"
+        hx-indicator="#search-status"
+        hx-disabled-elt="button[type='submit']"
+        class="flex gap-3 items-end">
+    {% csrf_token %}
+    <div class="flex-1">
+      <label for="isbn-input" class="block text-sm font-medium mb-1">ISBN</label>
+      <input type="text" name="isbn" id="isbn-input"
+             class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             placeholder="e.g. 978-0-06-093546-7"
+             autocomplete="off">
+    </div>
+    <button type="submit"
+            class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+      Look up
+    </button>
+  </form>
+
+  <!-- Search status indicator -->
+  <div id="search-status" class="htmx-indicator">
+    <div class="flex items-center gap-3 text-base text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+      <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <div>
+        <p class="font-medium">Searching for <span class="search-isbn-display"></span>...</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Checking NLI and Library of Congress (may take a few seconds)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results (phone gets brief confirmation, not full candidates) -->
+  <div id="results" aria-live="polite"></div>
+</div>
+
+<script src="{% static 'js/barcode-scan.js' %}" defer></script>
+<script>
+  // Auto-restart camera after a scan is sent in phone mode.
+  document.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target.id === 'results' && document.getElementById('phone-scan-result')) {
+      // Clear the ISBN input for the next scan.
+      var input = document.getElementById('isbn-input');
+      if (input) input.value = '';
+      // Re-start scanning after a brief pause.
+      setTimeout(function() {
+        var btn = document.getElementById('start-scan-btn');
+        if (btn && !btn.classList.contains('hidden')) btn.click();
+      }, 1500);
+    }
+  });
+</script>
+
+{% else %}
+{# Laptop mode: QR code + polling for incoming scans #}
 <h1 class="text-2xl font-semibold mb-6">Scan ISBN / Barcode</h1>
 
 <div class="flex gap-8 flex-wrap">
-  <!-- Main column: scanning and lookup -->
+  <!-- Main column: scanning, lookup, and incoming scans -->
   <div class="flex-1 min-w-0 max-w-2xl space-y-6">
     <!-- Camera controls -->
     <div class="space-y-3">
@@ -65,20 +160,46 @@
 
     <!-- Search status indicator -->
     <div id="search-status" class="htmx-indicator">
-      <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-        <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <div class="flex items-center gap-3 text-base text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
         <div>
-          <p class="font-medium">Searching library catalogs...</p>
-          <p class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Checking NLI and Library of Congress (may take a few seconds)</p>
+          <p class="font-medium">Searching for <span class="search-isbn-display"></span>...</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Checking NLI and Library of Congress (may take a few seconds)</p>
         </div>
       </div>
     </div>
 
-    <!-- Results container -->
+    <!-- Results from direct laptop lookups -->
     <div id="results" aria-live="polite"></div>
+
+    <!-- Incoming scans from phone (polls every 3 seconds) -->
+    <div>
+      <h2 class="text-lg font-medium mb-3">Incoming scans</h2>
+      <div id="scan-poll"
+           hx-get="{% url 'scan_poll' %}"
+           hx-trigger="load, every 3s"
+           hx-swap="innerHTML"
+           aria-live="polite">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Waiting for scans from your phone...
+        </p>
+      </div>
+    </div>
+    <script>
+      // Stop re-polling once scans have arrived so the DOM stays stable
+      // while the user reads and acts on results. Polling resumes on page
+      // reload (after confirm/discard redirects back here).
+      document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target.id === 'scan-poll' && e.detail.target.querySelector('[id^="scan-"]')) {
+          e.detail.target.removeAttribute('hx-trigger');
+          e.detail.target.removeAttribute('hx-get');
+          htmx.process(e.detail.target);
+        }
+      });
+    </script>
   </div>
 
   <!-- QR code sidebar for phone handoff (hidden on small/mobile screens) -->
@@ -91,4 +212,16 @@
 </div>
 
 <script src="{% static 'js/barcode-scan.js' %}" defer></script>
+<script>
+  // Show the ISBN being searched in the spinner indicator.
+  document.body.addEventListener('htmx:beforeRequest', function(e) {
+    var input = document.getElementById('isbn-input');
+    if (input && input.value) {
+      document.querySelectorAll('.search-isbn-display').forEach(function(el) {
+        el.textContent = 'ISBN ' + input.value;
+      });
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}
