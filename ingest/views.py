@@ -608,6 +608,10 @@ def confirm_scan(request, scan_id):
     scan.created_record = record
     scan.save()
 
+    # Redirect back to where the user came from (scan page or review queue).
+    referer = request.META.get("HTTP_REFERER", "")
+    if "/ingest/scan/" in referer:
+        return redirect("isbn_scan")
     return redirect("review_queue")
 
 
@@ -623,6 +627,10 @@ def discard_scan(request, scan_id):
     scan.status = "discarded"
     scan.save()
 
+    # Redirect back to where the user came from (scan page or review queue).
+    referer = request.META.get("HTTP_REFERER", "")
+    if "/ingest/scan/" in referer:
+        return redirect("isbn_scan")
     return redirect("review_queue")
 
 

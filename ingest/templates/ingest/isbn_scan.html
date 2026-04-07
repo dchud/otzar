@@ -188,6 +188,18 @@
         </p>
       </div>
     </div>
+    <script>
+      // Stop re-polling once scans have arrived so the DOM stays stable
+      // while the user reads and acts on results. Polling resumes on page
+      // reload (after confirm/discard redirects back here).
+      document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target.id === 'scan-poll' && e.detail.target.querySelector('[id^="scan-"]')) {
+          e.detail.target.removeAttribute('hx-trigger');
+          e.detail.target.removeAttribute('hx-get');
+          htmx.process(e.detail.target);
+        }
+      });
+    </script>
   </div>
 
   <!-- QR code sidebar for phone handoff (hidden on small/mobile screens) -->

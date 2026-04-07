@@ -131,8 +131,11 @@ class TestPhoneScannerMode:
         # Poll should show the pending scan
         page.wait_for_selector("#scan-poll", timeout=5000)
         # Wait for the poll to fetch and render
-        page.wait_for_selector("text=ISBN: 0875847625", timeout=10000)
-        expect(page.locator("text=ISBN: 0875847625")).to_be_visible()
+        # Wait for the poll to render the scan with its title
+        page.wait_for_selector("text=The social life of information", timeout=10000)
+        expect(
+            page.locator("text=The social life of information").first
+        ).to_be_visible()
 
 
 @pytest.mark.django_db(transaction=True)
