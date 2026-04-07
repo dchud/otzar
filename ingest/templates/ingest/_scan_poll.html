@@ -1,0 +1,9 @@
+{% if scans %}
+{% for scan in scans %}
+{% include "ingest/_queue_item.html" with scan=scan %}
+{% endfor %}
+{% else %}
+<p class="text-sm text-gray-500 dark:text-gray-400">
+  Waiting for scans from your phone...
+</p>
+{% endif %}

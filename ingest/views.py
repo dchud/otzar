@@ -194,7 +194,18 @@ def manual_entry(request):
 @login_required
 def isbn_scan(request):
     """Render the ISBN/barcode scanning page."""
-    return render(request, "ingest/isbn_scan.html")
+    return render(
+        request,
+        "ingest/isbn_scan.html",
+        {"phone_scanner": request.session.get("phone_scanner", False)},
+    )
+
+
+@login_required
+def scan_poll(request):
+    """Return pending ScanResults for the current user as an HTMX partial."""
+    scans = ScanResult.objects.filter(status="pending", scanned_by=request.user)
+    return render(request, "ingest/_scan_poll.html", {"scans": scans})
 
 
 @login_required
@@ -232,6 +243,15 @@ def isbn_lookup_view(request):
         candidate_records=candidates,
         scanned_by=request.user,
     )
+
+    # Phone scanner mode: return a brief confirmation instead of candidates.
+    if request.session.get("phone_scanner"):
+        count = len(candidates)
+        return render(
+            request,
+            "ingest/_phone_scan_sent.html",
+            {"isbn": isbn, "count": count},
+        )
 
     # Pair each candidate with its JSON for the select form.
     candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
@@ -654,6 +674,7 @@ def phone_scan_auth(request, token):
         return HttpResponse("User not found.", status=404)
 
     auth_login(request, user)
+    request.session["phone_scanner"] = True
     return redirect("isbn_scan")
 
 
