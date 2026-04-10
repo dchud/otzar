@@ -1,9 +1,9 @@
 {% if not candidates %}
-<p class="text-gray-500 dark:text-gray-400 text-sm">
+<p class="text-gray-500 dark:text-gray-300 text-sm">
   No records found{% if isbn %} for ISBN <strong>{{ isbn }}</strong>{% endif %}.
 </p>
 {% else %}
-<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
   Found {{ candidates|length }} candidate{{ candidates|length|pluralize }}{% if isbn %} for ISBN <strong>{{ isbn }}</strong>{% endif %}.
 </p>
 
@@ -16,14 +16,14 @@
         <h3 class="font-medium text-base" dir="auto">
           {{ item.data.title|default:"[No title]" }}
         </h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
           {% if item.data.author %}{{ item.data.author }}{% endif %}
           {% if item.data.additional_authors %} + {{ item.data.additional_authors|length }} more{% endif %}
           {% if item.data.date %} &middot; {{ item.data.date }}{% endif %}
           {% if item.data.publisher %} &middot; {{ item.data.publisher }}{% endif %}
         </p>
         {% if item.data.subjects %}
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ item.data.subjects|join:", " }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-300 mt-1">{{ item.data.subjects|join:", " }}</p>
         {% endif %}
         <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded
                      {% if item.data.source_catalog == 'NLI' %}
@@ -57,16 +57,16 @@
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         {% for key, value in item.data.items %}
         {% if value and key != 'source_catalog' and key != 'subjects' and key != 'additional_authors' and key != 'source_marc' %}
-        <dt class="text-gray-500 dark:text-gray-400">{{ key }}</dt>
+        <dt class="text-gray-500 dark:text-gray-300">{{ key }}</dt>
         <dd dir="auto">{{ value }}</dd>
         {% endif %}
         {% endfor %}
         {% if item.data.additional_authors %}
-        <dt class="text-gray-500 dark:text-gray-400">additional authors</dt>
+        <dt class="text-gray-500 dark:text-gray-300">additional authors</dt>
         <dd>{{ item.data.additional_authors|join:", " }}</dd>
         {% endif %}
         {% if item.data.subjects %}
-        <dt class="text-gray-500 dark:text-gray-400">subjects</dt>
+        <dt class="text-gray-500 dark:text-gray-300">subjects</dt>
         <dd>{{ item.data.subjects|join:", " }}</dd>
         {% endif %}
       </dl>

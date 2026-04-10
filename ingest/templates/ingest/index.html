@@ -9,7 +9,7 @@
   <a href="{% url 'isbn_scan' %}"
      class="block p-6 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
     <h2 class="text-lg font-medium mb-2">Scan barcode</h2>
-    <p class="text-sm text-gray-600 dark:text-gray-400">
+    <p class="text-sm text-gray-600 dark:text-gray-300">
       Look up a book by ISBN or barcode.
     </p>
   </a>
@@ -17,7 +17,7 @@
   <a href="{% url 'title_page_scan' %}"
      class="block p-6 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
     <h2 class="text-lg font-medium mb-2">Photograph title page</h2>
-    <p class="text-sm text-gray-600 dark:text-gray-400">
+    <p class="text-sm text-gray-600 dark:text-gray-300">
       Take a photo of a title page for OCR.
     </p>
   </a>
@@ -25,7 +25,7 @@
   <a href="{% url 'manual_entry' %}"
      class="block p-6 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
     <h2 class="text-lg font-medium mb-2">Enter manually</h2>
-    <p class="text-sm text-gray-600 dark:text-gray-400">
+    <p class="text-sm text-gray-600 dark:text-gray-300">
       Type in bibliographic details directly.
     </p>
   </a>
@@ -33,7 +33,7 @@
 
 {% url 'review_queue' as queue_url %}
 <div class="mt-8">
-  <a href="{{ queue_url }}" class="text-sm hover:underline text-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
+  <a href="{{ queue_url }}" class="text-sm hover:underline text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
     Review queue &rarr;
   </a>
 </div>

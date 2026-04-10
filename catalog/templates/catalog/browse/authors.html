@@ -17,7 +17,7 @@
     <div>
       <a href="/browse/authors/{{ author.pk }}/" class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ author.name|bidi_text }}</a>
       {% if author.name_romanized %}
-        <span class="text-gray-500 dark:text-gray-400 text-sm ml-2">{{ author.name_romanized }}</span>
+        <span class="text-gray-500 dark:text-gray-300 text-sm ml-2">{{ author.name_romanized }}</span>
       {% endif %}
       {% if author.variant_names %}
         <span class="text-gray-400 dark:text-gray-500 text-xs ml-2">
@@ -25,7 +25,7 @@
         </span>
       {% endif %}
     </div>
-    <span class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+    <span class="text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
       {{ author.record_count }} record{{ author.record_count|pluralize }}
     </span>
   </li>
@@ -35,6 +35,6 @@
 {% include "catalog/browse/_pagination.html" %}
 
 {% else %}
-<p class="text-gray-500 dark:text-gray-400">No authors found.</p>
+<p class="text-gray-500 dark:text-gray-300">No authors found.</p>
 {% endif %}
 {% endblock %}
