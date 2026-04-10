@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load bidi %}
+
+{% block title %}{{ place_name }} — otzar{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="{% url 'browse-places' %}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">&larr; Places of Publication</a>
+</div>
+
+<h1 class="text-2xl font-semibold mb-1" dir="auto">{{ place_name }}</h1>
+
+<p class="text-sm text-gray-500 dark:text-gray-300 mb-6">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</p>
+
+<div class="space-y-3">
+  {% for record in page_obj %}
+  <div class="border-b border-gray-100 dark:border-gray-800 pb-3">
+    <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
+       class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded" dir="auto">{{ record.title|bidi_text }}</a>
+    {% if record.date_of_publication %}
+    <span class="text-sm text-gray-500 dark:text-gray-300">({{ record.get_date_display }})</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% include "catalog/browse/_pagination.html" %}
+{% endblock %}

@@ -6,6 +6,8 @@ from catalog.browse_views import (
     browse_index,
     date_browse,
     location_browse,
+    place_browse,
+    place_detail,
     publisher_browse,
     series_browse,
     subject_browse,
@@ -26,4 +28,6 @@ urlpatterns = [
     path("dates/", date_browse, name="browse-dates"),
     path("locations/", location_browse, name="browse-locations"),
     path("series/", series_browse, name="browse-series"),
+    path("places/", place_browse, name="browse-places"),
+    path("places/<path:place_name>/", place_detail, name="place-detail"),
 ]

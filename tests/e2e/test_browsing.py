@@ -66,6 +66,22 @@ class TestBrowseViews:
         page.goto(f"{live_server.url}/browse/locations/")
         expect(page.locator("text=Floor 1, Shelf A")).to_be_visible()
 
+    def test_place_browse_shows_places(self, page, live_server, sample_record):
+        page.goto(f"{live_server.url}/browse/places/")
+        expect(page.locator("h1")).to_contain_text("Places of Publication")
+        expect(page.locator("text=Boston")).to_be_visible()
+        expect(page.locator("text=1 record")).to_be_visible()
+
+    def test_place_browse_is_clickable(self, page, live_server, sample_record):
+        page.goto(f"{live_server.url}/browse/places/")
+        page.click("text=Boston")
+        expect(page.locator("h1")).to_contain_text("Boston")
+        expect(page.locator("text=The social life of information")).to_be_visible()
+
+    def test_browse_index_has_places_link(self, page, live_server, sample_record):
+        page.goto(f"{live_server.url}/browse/")
+        expect(page.get_by_role("link", name="Places")).to_be_visible()
+
 
 @pytest.mark.django_db(transaction=True)
 class TestRecordDetail:

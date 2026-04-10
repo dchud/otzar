@@ -1,10 +1,12 @@
 import re
+from collections import defaultdict
 
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.shortcuts import render
 
 from catalog.models import Author, Location, Publisher, Record, Series, Subject
+from catalog.utils import strip_marc_punctuation
 
 ITEMS_PER_PAGE = 25
 
@@ -138,3 +140,42 @@ def series_browse(request):
     ).order_by("title")
     page_obj = _paginate(request, series_qs)
     return render(request, "catalog/browse/series.html", {"page_obj": page_obj})
+
+
+def place_browse(request):
+    """Group records by normalized place of publication, showing counts."""
+    raw_places = Record.objects.exclude(place_of_publication="").values_list(
+        "place_of_publication", flat=True
+    )
+
+    place_counts: dict[str, int] = defaultdict(int)
+    for raw in raw_places:
+        normalized = strip_marc_punctuation(raw)
+        if normalized:
+            place_counts[normalized] += 1
+
+    places = sorted(place_counts.items(), key=lambda x: x[0])
+    page_obj = _paginate(request, places)
+    return render(request, "catalog/browse/places.html", {"page_obj": page_obj})
+
+
+def place_detail(request, place_name):
+    """Show records published in a given place.
+
+    Matches records whose place_of_publication normalizes to *place_name*
+    after stripping MARC punctuation.
+    """
+    # Find all records, filter in Python for normalized matching
+    candidates = Record.objects.exclude(place_of_publication="").order_by("title")
+    matching_pks = [
+        r.pk
+        for r in candidates.only("pk", "place_of_publication")
+        if strip_marc_punctuation(r.place_of_publication) == place_name
+    ]
+    records = Record.objects.filter(pk__in=matching_pks).order_by("title")
+    page_obj = _paginate(request, records)
+    return render(
+        request,
+        "catalog/browse/place_detail.html",
+        {"place_name": place_name, "page_obj": page_obj},
+    )
