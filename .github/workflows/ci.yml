@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Create .env file
+        run: |
+          cat <<'EOF' > .env
+          SECRET_KEY=ci-test-secret-key-not-for-production
+          DEBUG=true
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          CSRF_TRUSTED_ORIGINS=
+          DATA_DIR=
+          ANTHROPIC_API_KEY=
+          CLAUDE_MODEL=claude-haiku-4-5-20251001
+          SRU_REQUEST_DELAY=0
+          RECORD_ID_PREFIX=otzar-
+          SITE_PASSWORD=
+          EOF
+
+      - name: Run unit tests
+        run: uv run pytest --ignore=tests/e2e
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Create .env file
+        run: |
+          cat <<'EOF' > .env
+          SECRET_KEY=ci-test-secret-key-not-for-production
+          DEBUG=true
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          CSRF_TRUSTED_ORIGINS=
+          DATA_DIR=
+          ANTHROPIC_API_KEY=
+          CLAUDE_MODEL=claude-haiku-4-5-20251001
+          SRU_REQUEST_DELAY=0
+          RECORD_ID_PREFIX=otzar-
+          SITE_PASSWORD=
+          EOF
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: uv run playwright install chromium --with-deps
+
+      - name: Run e2e tests
+        run: uv run pytest tests/e2e/
