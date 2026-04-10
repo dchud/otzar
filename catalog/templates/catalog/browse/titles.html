@@ -18,17 +18,17 @@
       <div>
         <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/" class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ record.title|bidi_text }}</a>
         {% if record.subtitle %}
-          <span class="text-gray-500 dark:text-gray-400 text-sm ml-1">: {{ record.subtitle|bidi_text }}</span>
+          <span class="text-gray-500 dark:text-gray-300 text-sm ml-1">: {{ record.subtitle|bidi_text }}</span>
         {% endif %}
       </div>
       {% if record.date_of_publication %}
-      <span class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+      <span class="text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
         {{ record.get_date_display }}
       </span>
       {% endif %}
     </div>
     {% if record.title_romanized %}
-    <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ record.title_romanized }}</div>
+    <div class="text-sm text-gray-500 dark:text-gray-300 mt-0.5">{{ record.title_romanized }}</div>
     {% endif %}
   </li>
   {% endfor %}
@@ -37,6 +37,6 @@
 {% include "catalog/browse/_pagination.html" %}
 
 {% else %}
-<p class="text-gray-500 dark:text-gray-400">No titles found.</p>
+<p class="text-gray-500 dark:text-gray-300">No titles found.</p>
 {% endif %}
 {% endblock %}

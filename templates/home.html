@@ -45,7 +45,7 @@
   </nav>
 
   {% if total_records > 0 %}
-  <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+  <div class="text-sm text-gray-500 dark:text-gray-300 mb-4">
     {{ total_records }} record{{ total_records|pluralize }} &middot; {{ total_authors }} author{{ total_authors|pluralize }}
   </div>
   {% endif %}
@@ -59,7 +59,7 @@
         <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
            class="hover:underline" dir="auto">{{ record.title|bidi_text }}</a>
         {% if record.date_of_publication %}
-        <span class="text-sm text-gray-500 dark:text-gray-400">({{ record.get_date_display }})</span>
+        <span class="text-sm text-gray-500 dark:text-gray-300">({{ record.get_date_display }})</span>
         {% endif %}
       </li>
       {% endfor %}

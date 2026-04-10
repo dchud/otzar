@@ -21,7 +21,7 @@
     <div>
       <label for="id_title" class="block text-sm font-medium mb-1">Title</label>
       {{ form.title }}
-      {% if form.title.errors %}<p class="text-red-600 text-sm mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+      {% if form.title.errors %}<p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>{% endif %}
     </div>
     <div>
       <label for="id_title_romanized" class="block text-sm font-medium mb-1">Title (romanized)</label>
@@ -104,7 +104,7 @@
                   @mouseenter="highlight = index"
                   :class="{'bg-blue-50 dark:bg-blue-900/30': highlight === index}"
                   class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-400 mr-2" x-text="result.code"></span>
+            <span class="font-mono text-xs text-gray-500 dark:text-gray-300 mr-2" x-text="result.code"></span>
             <span x-text="result.name"></span>
           </button>
         </template>

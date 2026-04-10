@@ -17,13 +17,13 @@
     <div>
       <a href="/browse/subjects/{{ subject.pk }}/" class="font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ subject.heading|bidi_text }}</a>
       {% if subject.heading_romanized %}
-        <span class="text-gray-500 dark:text-gray-400 text-sm ml-2">{{ subject.heading_romanized }}</span>
+        <span class="text-gray-500 dark:text-gray-300 text-sm ml-2">{{ subject.heading_romanized }}</span>
       {% endif %}
       {% if subject.source %}
         <span class="text-xs text-gray-400 dark:text-gray-500 ml-2">[{{ subject.source }}]</span>
       {% endif %}
     </div>
-    <span class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+    <span class="text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
       {{ subject.record_count }} record{{ subject.record_count|pluralize }}
     </span>
   </li>
@@ -33,6 +33,6 @@
 {% include "catalog/browse/_pagination.html" %}
 
 {% else %}
-<p class="text-gray-500 dark:text-gray-400">No subjects found.</p>
+<p class="text-gray-500 dark:text-gray-300">No subjects found.</p>
 {% endif %}
 {% endblock %}

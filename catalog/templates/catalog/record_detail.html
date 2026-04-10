@@ -34,10 +34,10 @@
   <header class="mb-6">
     <h1 class="text-2xl font-bold" dir="auto">{{ record.title|bidi_text }}</h1>
     {% if record.title_romanized %}
-    <p class="text-lg text-gray-600 dark:text-gray-400 mt-1" dir="ltr">{{ record.title_romanized }}</p>
+    <p class="text-lg text-gray-600 dark:text-gray-300 mt-1" dir="ltr">{{ record.title_romanized }}</p>
     {% endif %}
     {% if record.subtitle %}
-    <p class="text-lg text-gray-500 dark:text-gray-400 mt-1" dir="auto">{{ record.subtitle|bidi_text }}</p>
+    <p class="text-lg text-gray-500 dark:text-gray-300 mt-1" dir="auto">{{ record.subtitle|bidi_text }}</p>
     {% endif %}
   </header>
 
@@ -49,13 +49,13 @@
       {# Authors #}
       {% if record.authors.all %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Author{{ record.authors.count|pluralize }}</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Author{{ record.authors.count|pluralize }}</h2>
         <ul class="mt-1 space-y-1">
           {% for author in record.authors.all %}
           <li dir="auto">
             <a href="/browse/authors/{{ author.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ author.name|bidi_text }}</a>
             {% if author.name_romanized %}
-            <span class="text-gray-500 dark:text-gray-400" dir="ltr">/ {{ author.name_romanized }}</span>
+            <span class="text-gray-500 dark:text-gray-300" dir="ltr">/ {{ author.name_romanized }}</span>
             {% endif %}
           </li>
           {% endfor %}
@@ -65,15 +65,15 @@
 
       {# Publication info #}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Publication</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Publication</h2>
         <div class="mt-1 space-y-1">
           {% if record.publishers.all %}
           {% for publisher in record.publishers.all %}
-          <p dir="auto">{{ publisher.name|bidi_text }}{% if publisher.place %} <span class="text-gray-500 dark:text-gray-400">({{ publisher.place }})</span>{% endif %}</p>
+          <p dir="auto">{{ publisher.name|bidi_text }}{% if publisher.place %} <span class="text-gray-500 dark:text-gray-300">({{ publisher.place }})</span>{% endif %}</p>
           {% endfor %}
           {% endif %}
           {% if record.place_of_publication %}
-          <p class="text-gray-600 dark:text-gray-400">{{ record.place_of_publication }}</p>
+          <p class="text-gray-600 dark:text-gray-300">{{ record.place_of_publication }}</p>
           {% endif %}
           {% if record.get_date_display %}
           <p>{{ record.get_date_display }}</p>
@@ -84,7 +84,7 @@
       {# Language #}
       {% if record.language %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Language</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Language</h2>
         <p class="mt-1">{{ record.language }}</p>
       </div>
       {% endif %}
@@ -92,7 +92,7 @@
       {# Subjects #}
       {% if record.subjects.all %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Subject{{ record.subjects.count|pluralize }}</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Subject{{ record.subjects.count|pluralize }}</h2>
         <ul class="mt-1 space-y-1">
           {% for subject in record.subjects.all %}
           <li>
@@ -106,7 +106,7 @@
       {# Locations #}
       {% if record.locations.all %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Location{{ record.locations.count|pluralize }}</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Location{{ record.locations.count|pluralize }}</h2>
         <ul class="mt-1 space-y-1">
           {% for location in record.locations.all %}
           <li>{{ location.label }}</li>
@@ -118,12 +118,12 @@
       {# Series membership #}
       {% if sibling_volumes %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Series</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Series</h2>
         {% for sv_info in sibling_volumes %}
         <div class="mt-2">
           <p class="font-medium" dir="auto">
             <a href="/browse/series/{{ sv_info.series.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ sv_info.series.title|bidi_text }}</a>
-            <span class="text-gray-500 dark:text-gray-400">— vol. {{ sv_info.current_volume }}</span>
+            <span class="text-gray-500 dark:text-gray-300">— vol. {{ sv_info.current_volume }}</span>
           </p>
           <div class="mt-1 flex flex-wrap gap-1">
             {% for vol in sv_info.volumes %}
@@ -135,7 +135,7 @@
               {% elif not vol.held %}
                 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 border border-dashed border-red-300 dark:border-red-700
               {% else %}
-                bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400
+                bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-300
               {% endif %}
             ">
               {% if vol.record and vol.volume_number != sv_info.current_volume %}
@@ -154,11 +154,11 @@
       {# External identifiers #}
       {% if record.external_identifiers.all %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Identifiers</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Identifiers</h2>
         <dl class="mt-1 space-y-1">
           {% for eid in record.external_identifiers.all %}
           <div class="flex gap-2">
-            <dt class="font-medium text-gray-600 dark:text-gray-400 w-16">{{ eid.identifier_type }}</dt>
+            <dt class="font-medium text-gray-600 dark:text-gray-300 w-16">{{ eid.identifier_type }}</dt>
             <dd>
               {% if eid.identifier_type == "VIAF" %}
               <a href="https://viaf.org/viaf/{{ eid.value }}" class="text-blue-700 dark:text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded" rel="noopener" target="_blank" aria-label="VIAF identifier {{ eid.value }} (opens in new tab)">{{ eid.value }}</a>
@@ -177,7 +177,7 @@
       {# Notes #}
       {% if record.notes %}
       <div>
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Notes</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Notes</h2>
         <p class="mt-1 whitespace-pre-line" dir="auto">{{ record.notes }}</p>
       </div>
       {% endif %}
@@ -185,13 +185,13 @@
       {# Related: other works by same author(s) #}
       {% if other_by_author %}
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
-        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Other works by the same author{{ record.authors.count|pluralize }}</h2>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Other works by the same author{{ record.authors.count|pluralize }}</h2>
         <ul class="mt-2 space-y-1">
           {% for rel in other_by_author %}
           <li dir="auto">
             <a href="/catalog/{{ rel.record_id }}/{{ rel.slug }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ rel.title|bidi_text }}</a>
             {% if rel.get_date_display %}
-            <span class="text-gray-500 dark:text-gray-400">({{ rel.get_date_display }})</span>
+            <span class="text-gray-500 dark:text-gray-300">({{ rel.get_date_display }})</span>
             {% endif %}
           </li>
           {% endfor %}
@@ -204,7 +204,7 @@
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6"
            x-data="{ showMarc: false }">
         <button @click="showMarc = !showMarc"
-                class="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:text-gray-700 dark:hover:text-gray-200 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"
+                class="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide hover:text-gray-700 dark:hover:text-gray-200 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"
                 aria-expanded="false" x-bind:aria-expanded="showMarc.toString()">
           <span x-text="showMarc ? '&#9660;' : '&#9654;'"></span>
           View source MARC
@@ -214,7 +214,7 @@
             <tbody>
               {% for field in marc_fields %}
               <tr class="border-b border-gray-100 dark:border-gray-800 align-top">
-                <td class="pr-2 text-gray-500 dark:text-gray-400 whitespace-nowrap py-1">{{ field.tag }}</td>
+                <td class="pr-2 text-gray-500 dark:text-gray-300 whitespace-nowrap py-1">{{ field.tag }}</td>
                 <td class="pr-1 text-gray-400 dark:text-gray-500 whitespace-nowrap py-1">{{ field.ind1 }}{{ field.ind2 }}</td>
                 <td class="py-1" dir="auto">
                   {% for sf in field.subfields %}
