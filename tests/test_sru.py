@@ -202,6 +202,13 @@ class TestPreConfiguredClients:
         assert "LCDB" in lc_client.base_url
         assert lc_client.auto_quote_alma is False
 
+    def test_dnb_client_defaults(self):
+        from sources.sru import dnb_client
+
+        assert "services.dnb.de" in dnb_client.base_url
+        assert dnb_client.auto_quote_alma is False
+        assert dnb_client.version == "1.1"
+
     def test_viaf_client_defaults(self):
         from sources.sru import viaf_client
 

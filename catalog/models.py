@@ -22,7 +22,7 @@ class Record(models.Model):
     source_marc = models.JSONField(null=True, blank=True)
     source_catalog = models.CharField(
         max_length=10,
-        choices=[("NLI", "NLI"), ("LC", "LC")],
+        choices=[("NLI", "NLI"), ("LC", "LC"), ("DNB", "DNB")],
         blank=True,
     )
     notes = models.TextField(blank=True)

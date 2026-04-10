@@ -75,6 +75,8 @@
           <span class="font-medium px-2.5 py-0.5 rounded
                        {% if candidate.source_catalog == 'NLI' %}
                        bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                       {% elif candidate.source_catalog == 'DNB' %}
+                       bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200
                        {% else %}
                        bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
                        {% endif %}">{{ candidate.source_catalog }}</span>

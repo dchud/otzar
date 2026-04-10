@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 
 from sources.marc import extract_marc_records, has_hebrew, parse_record
-from sources.sru import SRUClient, SRUResult, lc_client, nli_client
+from sources.sru import SRUClient, SRUResult, dnb_client, lc_client, nli_client
 
 logger = logging.getLogger(__name__)
 
@@ -201,13 +201,14 @@ def search_lc(metadata: dict, max_records: int = 20) -> CascadeResult:
 def isbn_lookup(isbn: str) -> dict:
     """Look up an ISBN in both NLI and LC catalogs.
 
-    Queries NLI with ``alma.isbn`` and LC with ``bath.isbn``.  Returns a
-    dict with ``nli_records`` and ``lc_records``, each a list of parsed
-    bibliographic dicts.  If one catalog fails, the other's results are
-    still returned.
+    Queries NLI with ``alma.isbn``, LC with ``bath.isbn``, and DNB with
+    ``dnb.num``.  Returns a dict with ``nli_records``, ``lc_records``,
+    and ``dnb_records``, each a list of parsed bibliographic dicts.
+    If one catalog fails, the others' results are still returned.
     """
     nli_records: list[dict] = []
     lc_records: list[dict] = []
+    dnb_records: list[dict] = []
 
     # NLI
     try:
@@ -227,7 +228,17 @@ def isbn_lookup(isbn: str) -> dict:
     except Exception:
         logger.exception("ISBN lookup failed for LC (isbn=%s)", isbn)
 
+    # DNB
+    try:
+        dnb_result = dnb_client.search(f"dnb.num={isbn}", record_schema="MARC21-xml")
+        if dnb_result.success:
+            _, marc_records = extract_marc_records(dnb_result.data)
+            dnb_records = [parse_record(r) for r in marc_records]
+    except Exception:
+        logger.exception("ISBN lookup failed for DNB (isbn=%s)", isbn)
+
     return {
         "nli_records": nli_records,
         "lc_records": lc_records,
+        "dnb_records": dnb_records,
     }
