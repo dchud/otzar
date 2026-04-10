@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 
 from catalog.models import Author, Location, Publisher, Record, Series
 from catalog.search import ensure_fts_table, index_record
+from catalog.utils import strip_marc_punctuation
 from ingest.authority import find_author_matches
 from ingest.forms import RecordForm
 from ingest.models import ScanResult
@@ -79,13 +80,13 @@ def confirm_candidate(request):
                 pass
 
         record = Record(
-            title=candidate.get("title") or "",
-            title_romanized=candidate.get("title_alternate") or "",
+            title=strip_marc_punctuation(candidate.get("title")),
+            title_romanized=strip_marc_punctuation(candidate.get("title_alternate")),
             date_of_publication=date_int,
-            date_of_publication_display=str(date_str)
+            date_of_publication_display=strip_marc_punctuation(str(date_str))
             if date_str and not date_int
             else "",
-            place_of_publication=candidate.get("place") or "",
+            place_of_publication=strip_marc_punctuation(candidate.get("place")),
             language=candidate.get("language") or "",
             source_marc=candidate.get("source_marc"),
             source_catalog=candidate.get("source_catalog") or "",
@@ -95,17 +96,17 @@ def confirm_candidate(request):
         record.save()
 
         # Primary author
-        author_name = candidate.get("author", "").strip()
+        author_name = strip_marc_punctuation(candidate.get("author"))
         if author_name:
             author, _ = Author.objects.get_or_create(name=author_name)
             record.authors.add(author)
 
         # Publisher
-        publisher_name = candidate.get("publisher", "").strip()
+        publisher_name = strip_marc_punctuation(candidate.get("publisher"))
         if publisher_name:
             publisher, _ = Publisher.objects.get_or_create(
                 name=publisher_name,
-                defaults={"place": candidate.get("place", "")},
+                defaults={"place": strip_marc_punctuation(candidate.get("place"))},
             )
             record.publishers.add(publisher)
 
@@ -421,14 +422,14 @@ def _attach_from_candidate(record, candidate):
 
     # Additional authors from MARC 700 fields
     for author_name in candidate.get("additional_authors", []):
-        author_name = author_name.strip()
+        author_name = strip_marc_punctuation(author_name)
         if author_name:
             author, _ = Author.objects.get_or_create(name=author_name)
             record.authors.add(author)
 
     # Subjects from MARC 650 fields
     for heading in candidate.get("subjects", []):
-        heading = heading.strip()
+        heading = strip_marc_punctuation(heading)
         if heading:
             subject, _ = Subject.objects.get_or_create(
                 heading=heading,
@@ -577,10 +578,10 @@ def confirm_scan(request, scan_id):
 
     # Create the Record from candidate data.
     record = Record(
-        title=candidate.get("title", ""),
-        title_romanized=candidate.get("title_alternate") or "",
+        title=strip_marc_punctuation(candidate.get("title")),
+        title_romanized=strip_marc_punctuation(candidate.get("title_alternate")),
         date_of_publication=_parse_int(candidate.get("date")),
-        place_of_publication=candidate.get("place", ""),
+        place_of_publication=strip_marc_punctuation(candidate.get("place")),
         language=candidate.get("language", ""),
         source_catalog=candidate.get("source_catalog", ""),
         created_by=request.user,
@@ -588,13 +589,13 @@ def confirm_scan(request, scan_id):
     record.save()
 
     # Attach author if present.
-    author_name = candidate.get("author", "").strip()
+    author_name = strip_marc_punctuation(candidate.get("author"))
     if author_name:
         author, _ = Author.objects.get_or_create(name=author_name)
         record.authors.add(author)
 
     # Attach publisher if present.
-    publisher_name = candidate.get("publisher", "").strip()
+    publisher_name = strip_marc_punctuation(candidate.get("publisher"))
     if publisher_name:
         publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
         record.publishers.add(publisher)
