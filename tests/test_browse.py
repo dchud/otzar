@@ -163,3 +163,65 @@ def test_series_browse_shows_held_gap(client, sample_data):
     content = response.content.decode()
     assert "3 held" in content
     assert "2 gaps" in content
+
+
+# --- Place of publication browse ---
+
+
+@pytest.mark.django_db
+def test_place_browse_200(client, db):
+    Record.objects.create(title="Book A", place_of_publication="Boston")
+    response = client.get("/browse/places/")
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_place_browse_groups_by_normalized_name(client, db):
+    """Records with trailing MARC punctuation should be grouped together."""
+    Record.objects.create(title="Book A", place_of_publication="Boston")
+    Record.objects.create(title="Book B", place_of_publication="Boston :")
+    Record.objects.create(title="Book C", place_of_publication="New York ;")
+    Record.objects.create(title="Book D", place_of_publication="New York")
+
+    response = client.get("/browse/places/")
+    content = response.content.decode()
+    # Both Boston variants should be grouped into one entry with count 2
+    assert "Boston" in content
+    assert "2 records" in content
+    # Both New York variants grouped
+    assert "New York" in content
+
+
+@pytest.mark.django_db
+def test_place_browse_skips_empty(client, db):
+    """Records with empty place_of_publication should not appear."""
+    Record.objects.create(title="Book A", place_of_publication="")
+    Record.objects.create(title="Book B", place_of_publication="London")
+
+    response = client.get("/browse/places/")
+    content = response.content.decode()
+    assert "London" in content
+    assert "1 record" in content
+
+
+@pytest.mark.django_db
+def test_place_detail_200(client, db):
+    Record.objects.create(title="Book A", place_of_publication="Boston")
+    response = client.get("/browse/places/Boston/")
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Book A" in content
+
+
+@pytest.mark.django_db
+def test_place_detail_matches_normalized(client, db):
+    """Detail view should find records even if stored with MARC punctuation."""
+    Record.objects.create(title="Book A", place_of_publication="Boston :")
+    Record.objects.create(title="Book B", place_of_publication="Boston")
+
+    response = client.get("/browse/places/Boston/")
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Book A" in content
+    assert "Book B" in content
+    assert "2 record" in content
