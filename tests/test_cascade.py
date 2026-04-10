@@ -258,63 +258,96 @@ class TestLCKeywordQuery:
 
 
 class TestISBNLookup:
+    @patch("sources.cascade.dnb_client")
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
-    def test_isbn_both_catalogs(self, mock_nli, mock_lc):
+    def test_isbn_all_catalogs(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
         mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
 
         result = isbn_lookup("9780123456789")
 
         assert len(result["nli_records"]) == 1
         assert len(result["lc_records"]) == 1
+        assert len(result["dnb_records"]) == 1
         assert result["nli_records"][0]["title"] == "Test Title"
         assert result["lc_records"][0]["title"] == "Test Title"
+        assert result["dnb_records"][0]["title"] == "Test Title"
 
         # Verify correct ISBN query syntax per catalog.
         mock_nli.search.assert_called_once_with("alma.isbn=9780123456789")
         mock_lc.search.assert_called_once_with("bath.isbn=9780123456789")
+        mock_dnb.search.assert_called_once_with(
+            "dnb.num=9780123456789", record_schema="MARC21-xml"
+        )
 
+    @patch("sources.cascade.dnb_client")
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
-    def test_isbn_nli_fails_lc_succeeds(self, mock_nli, mock_lc):
+    def test_isbn_nli_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.side_effect = Exception("NLI down")
         mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
 
         result = isbn_lookup("9780123456789")
 
         assert result["nli_records"] == []
         assert len(result["lc_records"]) == 1
+        assert len(result["dnb_records"]) == 1
 
+    @patch("sources.cascade.dnb_client")
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
-    def test_isbn_lc_fails_nli_succeeds(self, mock_nli, mock_lc):
+    def test_isbn_lc_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
         mock_lc.search.side_effect = Exception("LC down")
+        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
 
         result = isbn_lookup("9780123456789")
 
         assert len(result["nli_records"]) == 1
         assert result["lc_records"] == []
+        assert len(result["dnb_records"]) == 1
 
+    @patch("sources.cascade.dnb_client")
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
-    def test_isbn_both_fail(self, mock_nli, mock_lc):
+    def test_isbn_dnb_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
+        mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_dnb.search.side_effect = Exception("DNB down")
+
+        result = isbn_lookup("9780123456789")
+
+        assert len(result["nli_records"]) == 1
+        assert len(result["lc_records"]) == 1
+        assert result["dnb_records"] == []
+
+    @patch("sources.cascade.dnb_client")
+    @patch("sources.cascade.lc_client")
+    @patch("sources.cascade.nli_client")
+    def test_isbn_all_fail(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.side_effect = Exception("NLI down")
         mock_lc.search.side_effect = Exception("LC down")
+        mock_dnb.search.side_effect = Exception("DNB down")
 
         result = isbn_lookup("9780123456789")
 
         assert result["nli_records"] == []
         assert result["lc_records"] == []
+        assert result["dnb_records"] == []
 
+    @patch("sources.cascade.dnb_client")
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
-    def test_isbn_empty_results(self, mock_nli, mock_lc):
+    def test_isbn_empty_results(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
         mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
+        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
 
         result = isbn_lookup("0000000000")
 
         assert result["nli_records"] == []
         assert result["lc_records"] == []
+        assert result["dnb_records"] == []

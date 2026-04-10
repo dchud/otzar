@@ -236,6 +236,9 @@ def isbn_lookup_view(request):
     for rec in results.get("lc_records", []):
         rec["source_catalog"] = "LC"
         candidates.append(rec)
+    for rec in results.get("dnb_records", []):
+        rec["source_catalog"] = "DNB"
+        candidates.append(rec)
 
     # Create a ScanResult so the scan appears in the review queue.
     ScanResult.objects.create(

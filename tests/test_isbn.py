@@ -50,6 +50,22 @@ MOCK_RESULTS = {
             "series_volume": None,
         }
     ],
+    "dnb_records": [
+        {
+            "title": "Test Book (DNB)",
+            "title_alternate": None,
+            "author": "Test Author",
+            "author_alternate": None,
+            "publisher": "DNB Verlag",
+            "place": "Frankfurt",
+            "date": "2020",
+            "language": "ger",
+            "isbn": "9781234567890",
+            "subjects": [],
+            "series_title": None,
+            "series_volume": None,
+        }
+    ],
 }
 
 
@@ -92,14 +108,20 @@ class TestIsbnLookup:
         assert response.status_code == 200
         assert b"Test Book" in response.content
         assert b"Test Book (LC)" in response.content
+        assert b"Test Book (DNB)" in response.content
         assert b"NLI" in response.content
         assert b"LC" in response.content
+        assert b"DNB" in response.content
         assert b"Use this record" in response.content
         mock_lookup.assert_called_once_with("9781234567890")
 
     @patch("ingest.views.isbn_lookup")
     def test_no_results(self, mock_lookup, client_logged_in):
-        mock_lookup.return_value = {"nli_records": [], "lc_records": []}
+        mock_lookup.return_value = {
+            "nli_records": [],
+            "lc_records": [],
+            "dnb_records": [],
+        }
         response = client_logged_in.post("/ingest/isbn-lookup/", {"isbn": "0000000000"})
         assert response.status_code == 200
         assert b"No records found" in response.content

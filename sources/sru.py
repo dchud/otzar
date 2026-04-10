@@ -188,6 +188,11 @@ def _lc_client() -> SRUClient:
     return SRUClient(base_url=base, version="1.1")
 
 
+def _dnb_client() -> SRUClient:
+    base = os.environ.get("SRU_DNB_URL", "https://services.dnb.de/sru/dnb")
+    return SRUClient(base_url=base, version="1.1")
+
+
 def _viaf_client() -> SRUClient:
     base = os.environ.get("SRU_VIAF_URL", "https://viaf.org/viaf/search")
     return SRUClient(base_url=base, version="1.1")
@@ -195,4 +200,5 @@ def _viaf_client() -> SRUClient:
 
 nli_client = _nli_client()
 lc_client = _lc_client()
+dnb_client = _dnb_client()
 viaf_client = _viaf_client()
