@@ -231,9 +231,15 @@
 
     </div>
 
-    {# Sidebar: title page image #}
+    {# Sidebar: cover image or title page image #}
     <div class="md:col-span-1">
-      {% if record.title_page_images.all %}
+      {% if record.cover_url %}
+      <div class="sticky top-8">
+        <img src="{{ record.cover_url }}"
+             alt="Cover of {{ record.title }}"
+             class="w-full rounded shadow-md border border-gray-200 dark:border-gray-700">
+      </div>
+      {% elif record.title_page_images.all %}
       {% with image=record.title_page_images.all.0 %}
       <div class="sticky top-8">
         <img src="{{ image.image.url }}"
