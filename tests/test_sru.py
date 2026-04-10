@@ -3,6 +3,7 @@
 All tests use mocked HTTP — no live server requests.
 """
 
+import os
 from unittest.mock import patch
 
 import httpx
@@ -180,9 +181,11 @@ class TestDelayConfig:
             assert client._get_delay() == 7.0
 
     def test_default_delay(self):
-        client = SRUClient(base_url="https://example.com")
-        # Without env var, default is 3.
-        assert client._get_delay() == 3.0
+        with patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("SRU_REQUEST_DELAY", None)
+            client = SRUClient(base_url="https://example.com")
+            # Without env var, default is 3.
+            assert client._get_delay() == 3.0
 
 
 # --- Pre-configured instances ---

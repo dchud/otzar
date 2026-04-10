@@ -23,6 +23,7 @@ from ingest.models import ScanResult
 from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import create_series_volumes
 from sources.cascade import isbn_lookup, search_lc, search_nli
+from sources.covers import fetch_cover_url
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,15 @@ def confirm_candidate(request):
 
         # Additional data from MARC
         _attach_from_candidate(record, candidate)
+
+        # Best-effort cover image lookup
+        try:
+            cover_url = fetch_cover_url(record)
+            if cover_url:
+                record.cover_url = cover_url
+                record.save(update_fields=["cover_url"])
+        except Exception:
+            logger.exception("Cover fetch failed for record %s", record.record_id)
 
         ensure_fts_table()
         index_record(record)
@@ -602,6 +612,15 @@ def confirm_scan(request, scan_id):
     if publisher_name:
         publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
         record.publishers.add(publisher)
+
+    # Best-effort cover image lookup
+    try:
+        cover_url = fetch_cover_url(record)
+        if cover_url:
+            record.cover_url = cover_url
+            record.save(update_fields=["cover_url"])
+    except Exception:
+        logger.exception("Cover fetch failed for record %s", record.record_id)
 
     ensure_fts_table()
     index_record(record)
