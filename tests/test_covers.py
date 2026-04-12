@@ -38,67 +38,67 @@ def record_no_ids(db):
     return record
 
 
-def _mock_head_response(content_length):
-    """Create a mock httpx response with a given Content-Length."""
+def _mock_get_response(body_size):
+    """Create a mock httpx response with a given body size."""
     resp = MagicMock()
-    resp.headers = {"content-length": str(content_length)}
+    resp.content = b"\xff" * body_size
     return resp
 
 
 class TestFetchCoverUrl:
-    @patch("sources.covers.httpx.head")
-    def test_isbn_found(self, mock_head, record_with_ids):
-        """ISBN lookup returns a valid cover (Content-Length > threshold)."""
-        mock_head.return_value = _mock_head_response(5000)
+    @patch("sources.covers.httpx.get")
+    def test_isbn_found(self, mock_get, record_with_ids):
+        """ISBN lookup returns a valid cover (body > threshold)."""
+        mock_get.return_value = _mock_get_response(5000)
 
         result = fetch_cover_url(record_with_ids)
 
         assert result == "https://covers.openlibrary.org/b/isbn/9780123456789-M.jpg"
-        assert mock_head.call_count == 1
+        assert mock_get.call_count == 1
 
-    @patch("sources.covers.httpx.head")
-    def test_isbn_placeholder_falls_through_to_oclc(self, mock_head, record_with_ids):
+    @patch("sources.covers.httpx.get")
+    def test_isbn_placeholder_falls_through_to_oclc(self, mock_get, record_with_ids):
         """ISBN returns 1x1 pixel, OCLC returns a real cover."""
-        mock_head.side_effect = [
-            _mock_head_response(43),  # ISBN: placeholder
-            _mock_head_response(8000),  # OCLC: real cover
+        mock_get.side_effect = [
+            _mock_get_response(43),  # ISBN: placeholder
+            _mock_get_response(8000),  # OCLC: real cover
         ]
 
         result = fetch_cover_url(record_with_ids)
 
         assert result == "https://covers.openlibrary.org/b/oclc/12345678-M.jpg"
-        assert mock_head.call_count == 2
+        assert mock_get.call_count == 2
 
-    @patch("sources.covers.httpx.head")
-    def test_all_placeholders_returns_empty(self, mock_head, record_with_ids):
+    @patch("sources.covers.httpx.get")
+    def test_all_placeholders_returns_empty(self, mock_get, record_with_ids):
         """All identifiers return 1x1 pixel placeholder."""
-        mock_head.return_value = _mock_head_response(43)
+        mock_get.return_value = _mock_get_response(43)
 
         result = fetch_cover_url(record_with_ids)
 
         assert result == ""
-        assert mock_head.call_count == 3  # ISBN, OCLC, LCCN
+        assert mock_get.call_count == 3  # ISBN, OCLC, LCCN
 
     def test_no_identifiers_returns_empty(self, record_no_ids):
         """Record with no identifiers returns empty string immediately."""
         result = fetch_cover_url(record_no_ids)
         assert result == ""
 
-    @patch("sources.covers.httpx.head")
-    def test_timeout_returns_empty(self, mock_head, record_with_ids):
+    @patch("sources.covers.httpx.get")
+    def test_timeout_returns_empty(self, mock_get, record_with_ids):
         """HTTP timeout is handled gracefully, returns empty string."""
-        mock_head.side_effect = httpx.TimeoutException("timed out")
+        mock_get.side_effect = httpx.TimeoutException("timed out")
 
         result = fetch_cover_url(record_with_ids)
 
         assert result == ""
 
-    @patch("sources.covers.httpx.head")
-    def test_timeout_on_isbn_tries_oclc(self, mock_head, record_with_ids):
+    @patch("sources.covers.httpx.get")
+    def test_timeout_on_isbn_tries_oclc(self, mock_get, record_with_ids):
         """Timeout on ISBN still tries OCLC."""
-        mock_head.side_effect = [
+        mock_get.side_effect = [
             httpx.TimeoutException("timed out"),  # ISBN
-            _mock_head_response(5000),  # OCLC
+            _mock_get_response(5000),  # OCLC
         ]
 
         result = fetch_cover_url(record_with_ids)
@@ -107,9 +107,9 @@ class TestFetchCoverUrl:
 
 
 class TestFetchCoversCommand:
-    @patch("sources.covers.httpx.head")
-    def test_dry_run(self, mock_head, record_with_ids):
-        """Dry run lists records without making HTTP requests."""
+    @patch("sources.covers.httpx.get")
+    def test_dry_run(self, mock_get, record_with_ids):
+        """Dry run lists records without fetching covers."""
         from django.core.management import call_command
 
         out = StringIO()
@@ -118,15 +118,15 @@ class TestFetchCoversCommand:
         output = out.getvalue()
         assert "Dry run" in output
         assert record_with_ids.record_id in output
-        mock_head.assert_not_called()
+        mock_get.assert_not_called()
 
-    @patch("sources.covers.httpx.head")
+    @patch("sources.covers.httpx.get")
     @patch("sources.covers.time.sleep")
-    def test_fetches_and_saves(self, mock_sleep, mock_head, record_with_ids):
+    def test_fetches_and_saves(self, mock_sleep, mock_get, record_with_ids):
         """Command fetches covers and saves them to records."""
         from django.core.management import call_command
 
-        mock_head.return_value = _mock_head_response(5000)
+        mock_get.return_value = _mock_get_response(5000)
 
         out = StringIO()
         call_command("fetch_covers", stdout=out)
@@ -135,9 +135,9 @@ class TestFetchCoversCommand:
         assert record_with_ids.cover_url != ""
         assert "1 covers found" in out.getvalue()
 
-    @patch("sources.covers.httpx.head")
+    @patch("sources.covers.httpx.get")
     @patch("sources.covers.time.sleep")
-    def test_skips_records_with_covers(self, mock_sleep, mock_head, record_with_ids):
+    def test_skips_records_with_covers(self, mock_sleep, mock_get, record_with_ids):
         """Records that already have cover_url are skipped."""
         from django.core.management import call_command
 
@@ -148,4 +148,4 @@ class TestFetchCoversCommand:
         call_command("fetch_covers", stdout=out)
 
         assert "0 records checked" in out.getvalue()
-        mock_head.assert_not_called()
+        mock_get.assert_not_called()

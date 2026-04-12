@@ -2,7 +2,8 @@
 
 Looks up book cover images using ISBN, OCLC, or LCCN identifiers.
 Open Library returns a 1x1 transparent pixel (~43 bytes) when no cover
-exists, so we check Content-Length to detect missing covers.
+exists. Since the server doesn't always include Content-Length, we do a
+small GET and check actual response body size.
 """
 
 import logging
@@ -35,9 +36,10 @@ def _get_base_url() -> str:
 def fetch_cover_url(record) -> str:
     """Look up a cover image URL for a catalog record.
 
-    Tries identifiers in order: ISBN, OCLC, LCCN. For each, sends a HEAD
-    request to the Open Library Covers API and checks that the response is
-    a real image (Content-Length > MIN_COVER_BYTES).
+    Tries identifiers in order: ISBN, OCLC, LCCN. For each, sends a GET
+    request to the Open Library Covers API and checks that the response
+    body is a real image (> MIN_COVER_BYTES). Open Library doesn't always
+    include Content-Length, so we read the actual body.
 
     Returns the cover URL string if found, or empty string if no cover exists.
     """
@@ -58,22 +60,23 @@ def fetch_cover_url(record) -> str:
 
         cover_url = f"{base_url}/{url_key}/{value}-M.jpg"
         try:
-            response = httpx.head(
+            response = httpx.get(
                 cover_url, timeout=COVER_TIMEOUT, follow_redirects=True
             )
-            content_length = int(response.headers.get("content-length", "0"))
-            if content_length >= MIN_COVER_BYTES:
+            body_size = len(response.content)
+            if body_size >= MIN_COVER_BYTES:
                 logger.info(
-                    "Cover found for record %s via %s=%s",
+                    "Cover found for record %s via %s=%s (%d bytes)",
                     record.record_id,
                     id_type,
                     value,
+                    body_size,
                 )
                 return cover_url
             else:
                 logger.debug(
                     "Cover too small (%d bytes) for %s=%s, skipping",
-                    content_length,
+                    body_size,
                     id_type,
                     value,
                 )
