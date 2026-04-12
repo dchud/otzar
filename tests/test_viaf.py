@@ -285,7 +285,8 @@ class TestBuildAuthorQueries:
 
 
 class TestVIAFClient:
-    def test_default_config(self):
+    def test_default_config(self, monkeypatch):
+        monkeypatch.delenv("SRU_REQUEST_DELAY", raising=False)
         client = VIAFClient()
         assert client.base_url == "https://viaf.org/viaf/search"
         assert client.delay == 3
