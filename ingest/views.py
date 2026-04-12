@@ -613,6 +613,9 @@ def confirm_scan(request, scan_id):
         publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
         record.publishers.add(publisher)
 
+    # Additional data from MARC (subjects, identifiers, additional authors)
+    _attach_from_candidate(record, candidate)
+
     # Best-effort cover image lookup
     try:
         cover_url = fetch_cover_url(record)
