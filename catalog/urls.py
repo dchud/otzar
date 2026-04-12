@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from catalog import views
 
@@ -10,8 +10,8 @@ urlpatterns = [
         views.delete_record,
         name="delete_record",
     ),
-    path(
-        "<str:record_id>/<slug:slug>/",
+    re_path(
+        r"^(?P<record_id>[^/]+)/(?P<slug>[\w-]+)/$",
         views.record_detail,
         name="record_detail",
     ),
