@@ -3,107 +3,66 @@
 {% block title %}Scan title page — otzar{% endblock %}
 
 {% block content %}
+{% if phone_mode %}
+{# ---------- Phone capture view ---------- #}
+<h1 class="text-2xl font-semibold mb-6">Title page capture</h1>
+
+<div class="max-w-2xl space-y-6">
+  <p class="text-sm text-gray-600 dark:text-gray-300">
+    Photograph the title page. The image will appear on your laptop for
+    review before OCR runs.
+  </p>
+
+  {% include "ingest/_title_page_form.html" %}
+
+  <section aria-live="polite">
+    <h2 class="text-lg font-medium mb-3">Photos awaiting review</h2>
+    <div id="title-page-results"
+         hx-get="{% url 'title_page_poll' %}"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+      <p class="text-base text-gray-600 dark:text-gray-300">
+        Take a photo to get started.
+      </p>
+    </div>
+  </section>
+</div>
+
+{% else %}
+{# ---------- Desktop view: form + QR + poll ---------- #}
 <h1 class="text-2xl font-semibold mb-6">Scan title page</h1>
 
-<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-  Photograph a Hebrew book's title page. The image will be sent to Claude Vision
-  for OCR, then you can review and correct the extracted metadata before searching
-  library catalogs.
-</p>
+<div class="flex gap-8 flex-wrap">
+  <div class="flex-1 min-w-0 max-w-2xl space-y-6">
+    <p class="text-sm text-gray-600 dark:text-gray-300">
+      Upload a title page image directly, or scan the QR code with a phone
+      to take a photo there. Either way, the image shows up below for
+      review before OCR runs.
+    </p>
 
-<form id="title-page-form"
-      hx-post="{% url 'title_page_upload' %}"
-      hx-target="#ocr-results"
-      hx-encoding="multipart/form-data"
-      hx-indicator="#upload-spinner"
-      class="max-w-2xl space-y-4">
-  {% csrf_token %}
+    {% include "ingest/_title_page_form.html" %}
 
-  <div>
-    <label for="image-input" class="block text-sm font-medium mb-1">Title page image</label>
-    <input type="file"
-           id="image-input"
-           name="image"
-           accept="image/*"
-           capture="environment"
-           class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200">
-  </div>
-
-  <div id="preview-container" class="hidden">
-    <img id="preview-image" class="max-w-sm rounded border border-gray-200 dark:border-gray-700" alt="Preview of selected title page image">
-  </div>
-
-  <button type="submit"
-          id="upload-btn"
-          disabled
-          class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-    Upload &amp; OCR
-  </button>
-
-  <div id="upload-spinner" class="htmx-indicator mt-4">
-    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-      <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <div>
-        <p class="font-medium">Processing image...</p>
-        <p class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Running OCR with Claude Vision (may take a few seconds)</p>
+    <section aria-live="polite">
+      <h2 class="text-lg font-medium mb-3">Incoming photos</h2>
+      <div id="title-page-results"
+           hx-get="{% url 'title_page_poll' %}"
+           hx-trigger="load, every 3s"
+           hx-swap="innerHTML">
+        <p class="text-base text-gray-600 dark:text-gray-300">
+          Waiting for photos from your phone...
+        </p>
       </div>
-    </div>
+    </section>
   </div>
-</form>
 
-<div id="ocr-results" class="mt-6 max-w-2xl" aria-live="polite"></div>
-
-<script>
-(function () {
-  const input = document.getElementById("image-input");
-  const preview = document.getElementById("preview-image");
-  const previewContainer = document.getElementById("preview-container");
-  const uploadBtn = document.getElementById("upload-btn");
-  const MAX_DIM = 1500;
-
-  input.addEventListener("change", function () {
-    const file = this.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const img = new Image();
-      img.onload = function () {
-        // Resize if needed
-        let w = img.width;
-        let h = img.height;
-        if (w > MAX_DIM || h > MAX_DIM) {
-          const scale = MAX_DIM / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-
-        canvas.toBlob(function (blob) {
-          // Replace the file input with the resized blob
-          const resizedFile = new File([blob], file.name, { type: "image/jpeg" });
-          const dt = new DataTransfer();
-          dt.items.add(resizedFile);
-          input.files = dt.files;
-
-          // Show preview
-          preview.src = URL.createObjectURL(blob);
-          previewContainer.classList.remove("hidden");
-          uploadBtn.disabled = false;
-        }, "image/jpeg", 0.85);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-})();
-</script>
+  <div class="shrink-0 text-center hidden md:block">
+    <p class="text-sm font-medium mb-2">Capture on your phone</p>
+    <img src="{% url 'qr_code' %}?target=title"
+         alt="QR code to open title page capture on your phone"
+         class="bg-white p-2 rounded border border-gray-200 dark:border-gray-700"
+         width="180" height="180">
+    <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Valid for 1 hour</p>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

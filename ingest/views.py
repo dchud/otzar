@@ -314,8 +314,20 @@ def edit_record(request, record_id):
 
 @login_required
 def title_page_scan(request):
-    """Render the title page camera/upload page."""
-    return render(request, "ingest/title_page_scan.html")
+    """Render the title page capture/upload page.
+
+    Two render modes:
+    - Desktop (default): direct upload form, QR sidebar to hand off to a
+      phone, and a poll pane showing photos arriving from the phone.
+    - Phone (when ``phone_scan_target`` session key is "title"): a
+      streamlined capture-only view that polls for shared review state.
+    """
+    phone_mode = request.session.get("phone_scan_target") == "title"
+    return render(
+        request,
+        "ingest/title_page_scan.html",
+        {"phone_mode": phone_mode},
+    )
 
 
 @login_required
@@ -373,14 +385,20 @@ def title_page_upload(request):
     if not image_file:
         return HttpResponse('<p class="text-red-600 text-sm">No image uploaded.</p>')
 
-    scan = ScanResult.objects.create(
+    ScanResult.objects.create(
         scan_type="ocr",
         status="awaiting_ocr",
         image=image_file,
         scanned_by=request.user,
     )
 
-    return render(request, "ingest/_title_page_card.html", {"scan": scan})
+    # Return the full poll partial so both upload and poll responses are
+    # interchangeable. This avoids a race where the poll cycle would
+    # overwrite a single just-uploaded card with the full list.
+    qs = ScanResult.objects.filter(
+        scan_type="ocr", status="awaiting_ocr", scanned_by=request.user
+    )
+    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
 
 
 @login_required

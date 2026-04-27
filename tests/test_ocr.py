@@ -120,11 +120,32 @@ class TestTitlePageScanView:
         assert response.status_code == 302
         assert "/accounts/login/" in response.url
 
-    def test_page_loads(self, client_logged_in):
+    def test_desktop_view(self, client_logged_in):
         response = client_logged_in.get("/ingest/scan-title/")
         assert response.status_code == 200
         assert b"Scan title page" in response.content
         assert b'accept="image/*"' in response.content
+        # Desktop view shows the QR handoff sidebar.
+        assert b"Capture on your phone" in response.content
+        assert b"target=title" in response.content
+        # Polling pane is wired up.
+        assert b'id="title-page-results"' in response.content
+        assert b"Waiting for photos" in response.content
+
+    def test_phone_view(self, user, client_logged_in):
+        # Switch the session to phone-mode.
+        session = client_logged_in.session
+        session["phone_scan_target"] = "title"
+        session.save()
+
+        response = client_logged_in.get("/ingest/scan-title/")
+        assert response.status_code == 200
+        assert b"Title page capture" in response.content
+        # No QR sidebar in phone mode.
+        assert b"Capture on your phone" not in response.content
+        # Capture form and poll pane are present.
+        assert b'accept="image/*"' in response.content
+        assert b'id="title-page-results"' in response.content
 
 
 @pytest.mark.django_db
