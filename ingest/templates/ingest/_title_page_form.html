@@ -1,0 +1,98 @@
+{# Title-page image upload form. The image is resized client-side to
+   keep mobile uploads small, posted via HTMX, and replaces the polling
+   pane content with the latest awaiting-OCR cards. #}
+<form id="title-page-form"
+      hx-post="{% url 'title_page_upload' %}"
+      hx-target="#title-page-results"
+      hx-encoding="multipart/form-data"
+      hx-indicator="#upload-spinner"
+      class="space-y-4">
+  {% csrf_token %}
+
+  <div>
+    <label for="image-input" class="block text-sm font-medium mb-1">Title page image</label>
+    <input type="file"
+           id="image-input"
+           name="image"
+           accept="image/*"
+           capture="environment"
+           class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200">
+  </div>
+
+  <div id="preview-container" class="hidden">
+    <img id="preview-image" class="max-w-sm rounded border border-gray-200 dark:border-gray-700" alt="Preview of selected title page image">
+  </div>
+
+  <button type="submit"
+          id="upload-btn"
+          disabled
+          class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+    Upload
+  </button>
+
+  <div id="upload-spinner" class="htmx-indicator mt-2">
+    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+      <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p>Uploading...</p>
+    </div>
+  </div>
+</form>
+
+<script>
+(function () {
+  const input = document.getElementById("image-input");
+  const preview = document.getElementById("preview-image");
+  const previewContainer = document.getElementById("preview-container");
+  const uploadBtn = document.getElementById("upload-btn");
+  const form = document.getElementById("title-page-form");
+  const MAX_DIM = 1500;
+
+  input.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = new Image();
+      img.onload = function () {
+        let w = img.width;
+        let h = img.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          const scale = MAX_DIM / Math.max(w, h);
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function (blob) {
+          const resizedFile = new File([blob], file.name, { type: "image/jpeg" });
+          const dt = new DataTransfer();
+          dt.items.add(resizedFile);
+          input.files = dt.files;
+          preview.src = URL.createObjectURL(blob);
+          previewContainer.classList.remove("hidden");
+          uploadBtn.disabled = false;
+        }, "image/jpeg", 0.85);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Reset the form once the upload is complete so the user can take
+  // another photo immediately (especially useful on phone).
+  form.addEventListener("htmx:afterRequest", function (e) {
+    if (!e.detail.successful) return;
+    input.value = "";
+    preview.src = "";
+    previewContainer.classList.add("hidden");
+    uploadBtn.disabled = true;
+  });
+})();
+</script>
