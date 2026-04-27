@@ -415,6 +415,19 @@ def run_ocr(request, scan_id):
 
 
 @login_required
+def title_page_poll(request):
+    """Return image cards for the user's awaiting_ocr title-page scans.
+
+    Polled by both desktop and phone so each device sees the same shared
+    state. Staff users see all awaiting scans, matching review_queue.
+    """
+    qs = ScanResult.objects.filter(scan_type="ocr", status="awaiting_ocr")
+    if not request.user.is_staff:
+        qs = qs.filter(scanned_by=request.user)
+    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
+
+
+@login_required
 @require_POST
 def discard_title_scan(request, scan_id):
     """Discard a title-page scan: remove the image file and mark the row.

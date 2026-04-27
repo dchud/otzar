@@ -300,6 +300,86 @@ class TestTitlePageUploadView:
         response = client_logged_in.get(f"/ingest/scan-title/{scan.pk}/discard/")
         assert response.status_code == 405
 
+
+@pytest.mark.django_db
+class TestTitlePagePoll:
+    def _upload(self, c, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "p.jpg"
+        c.post("/ingest/upload-title/", {"image": image}, format="multipart")
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    def test_requires_login(self, client):
+        response = client.get("/ingest/scan-title/poll/")
+        assert response.status_code == 302
+
+    def test_empty_state(self, client_logged_in):
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+        assert response.status_code == 200
+        assert b"Waiting for photos" in response.content
+
+    def test_returns_owner_awaiting_scans(
+        self, client_logged_in, user, tmp_path, settings
+    ):
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+        assert response.status_code == 200
+        assert f"title-page-card-{scan.pk}".encode() in response.content
+
+    def test_excludes_other_users_scans(self, user, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        # Other user uploads a scan.
+        other = User.objects.create_user(username="other", password="testpass123")
+        c_other = Client()
+        c_other.login(username="other", password="testpass123")
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "x.jpg"
+        c_other.post("/ingest/upload-title/", {"image": image}, format="multipart")
+        other_scan = ScanResult.objects.filter(scanned_by=other).first()
+
+        # Owner sees only their own scans (none in this case).
+        c = Client()
+        c.login(username="cataloger", password="testpass123")
+        response = c.get("/ingest/scan-title/poll/")
+        assert response.status_code == 200
+        assert f"title-page-card-{other_scan.pk}".encode() not in response.content
+        assert b"Waiting for photos" in response.content
+
+    def test_excludes_non_awaiting_scans(self, client_logged_in, tmp_path, settings):
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        scan.status = "pending"
+        scan.save(update_fields=["status"])
+
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+        assert f"title-page-card-{scan.pk}".encode() not in response.content
+        assert b"Waiting for photos" in response.content
+
+    def test_staff_sees_all_awaiting(self, user, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        # Non-staff user uploads.
+        c_user = Client()
+        c_user.login(username="cataloger", password="testpass123")
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "p.jpg"
+        c_user.post("/ingest/upload-title/", {"image": image}, format="multipart")
+        scan = ScanResult.objects.filter(scanned_by=user).first()
+
+        # Staff user sees the user's scan in their poll.
+        User.objects.create_user(
+            username="admin", password="testpass123", is_staff=True
+        )
+        c_staff = Client()
+        c_staff.login(username="admin", password="testpass123")
+        response = c_staff.get("/ingest/scan-title/poll/")
+        assert f"title-page-card-{scan.pk}".encode() in response.content
+
     @patch("ingest.views.search_lc")
     @patch("ingest.views.search_nli")
     def test_search_cascade(self, mock_nli, mock_lc, client_logged_in):
