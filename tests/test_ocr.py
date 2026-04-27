@@ -137,50 +137,115 @@ class TestTitlePageUploadView:
         response = client_logged_in.get("/ingest/upload-title/")
         assert response.status_code == 405
 
-    def test_no_image_error(self, client_logged_in):
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_upload_defers_ocr(self, mock_ocr, client_logged_in, tmp_path, settings):
+        settings.MEDIA_ROOT = str(tmp_path)
+
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+
+        response = client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+
+        assert response.status_code == 200
+        # Card is rendered so the user can preview and trigger OCR.
+        assert b"Run OCR" in response.content
+        # OCR is NOT invoked at upload time.
+        mock_ocr.assert_not_called()
+
+        from ingest.models import ScanResult
+
+        scans = ScanResult.objects.filter(scan_type="ocr")
+        assert scans.count() == 1
+        scan = scans.first()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_output is None
+        assert scan.image  # ImageField populated
+
+    def test_upload_no_image_keeps_no_scan(self, client_logged_in):
         response = client_logged_in.post("/ingest/upload-title/")
         assert response.status_code == 200
         assert b"No image uploaded" in response.content
+        from ingest.models import ScanResult
 
-    @patch("ingest.views.extract_metadata_from_image")
-    def test_successful_upload(self, mock_ocr, client_logged_in, tmp_path, settings):
-        settings.BASE_DIR = tmp_path
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        assert not ScanResult.objects.filter(scan_type="ocr").exists()
 
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        """Helper: upload a fake image and return the resulting ScanResult."""
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
         image = io.BytesIO(b"fake jpeg data")
         image.name = "test.jpg"
-
-        response = client_logged_in.post(
+        client_logged_in.post(
             "/ingest/upload-title/",
             {"image": image},
             format="multipart",
         )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_happy_path(self, mock_ocr, client_logged_in, tmp_path, settings):
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
 
         assert response.status_code == 200
         assert b"Extracted metadata" in response.content
-        assert (
-            "\u05de\u05e9\u05e0\u05d4 \u05ea\u05d5\u05e8\u05d4".encode()
-            in response.content
-        )
+        assert "משנה תורה".encode() in response.content
         assert b"Mishneh Torah" in response.content
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output == SAMPLE_OCR_RESPONSE
         mock_ocr.assert_called_once()
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_ocr_failure(self, mock_ocr, client_logged_in, tmp_path, settings):
-        settings.BASE_DIR = tmp_path
+    def test_run_ocr_returns_409_when_not_awaiting(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.status = "pending"
+        scan.save(update_fields=["status"])
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert response.status_code == 409
+        mock_ocr.assert_not_called()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_handles_extraction_failure(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
         mock_ocr.return_value = None
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
-        image = io.BytesIO(b"fake jpeg data")
-        image.name = "test.jpg"
-
-        response = client_logged_in.post(
-            "/ingest/upload-title/",
-            {"image": image},
-            format="multipart",
-        )
-
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
         assert response.status_code == 200
         assert b"OCR could not extract metadata" in response.content
+
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_output is None
+
+    def test_run_ocr_rejects_non_owner(self, client_logged_in, tmp_path, settings):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        User.objects.create_user(username="other", password="testpass123")
+        c = Client()
+        c.login(username="other", password="testpass123")
+
+        response = c.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert response.status_code == 403
+
+    def test_run_ocr_requires_post(self, client_logged_in, tmp_path, settings):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        response = client_logged_in.get(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert response.status_code == 405
 
     @patch("ingest.views.search_lc")
     @patch("ingest.views.search_nli")

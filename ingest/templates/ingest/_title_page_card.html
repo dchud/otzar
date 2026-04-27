@@ -1,0 +1,26 @@
+{# One title-page scan awaiting human review.
+   Shows the uploaded image with controls to run OCR or (in 52c) discard. #}
+<div id="title-page-card-{{ scan.id }}"
+     class="border border-gray-200 dark:border-gray-700 rounded p-4 space-y-3">
+  {% if ocr_error %}
+  <p class="text-red-600 text-sm" role="alert">
+    OCR could not extract metadata from this image. Try again or take a sharper photo.
+  </p>
+  {% endif %}
+
+  {% if scan.image %}
+  <img src="{{ scan.image.url }}" alt="Uploaded title page"
+       class="max-w-full sm:max-w-md rounded border border-gray-200 dark:border-gray-700">
+  {% endif %}
+
+  <div class="flex gap-3">
+    <button type="button"
+            hx-post="{% url 'run_ocr' scan.id %}"
+            hx-target="#title-page-card-{{ scan.id }}"
+            hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            class="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      {% if ocr_error %}Try OCR again{% else %}Run OCR{% endif %}
+    </button>
+  </div>
+</div>

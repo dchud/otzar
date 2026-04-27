@@ -1,8 +1,6 @@
 import io
 import json
 import logging
-import os
-import uuid
 
 import qrcode
 from django.conf import settings
@@ -322,11 +320,16 @@ def title_page_scan(request):
 
 @login_required
 def title_page_upload(request):
-    """Receive a title page image, run OCR, return metadata for review.
+    """Receive a title page image; defer OCR until the user confirms.
 
-    HTMX POST endpoint. On initial upload, runs Claude Vision OCR and
-    returns editable metadata fields. When the user clicks 'Search catalogs',
-    runs the search cascade and returns candidates.
+    HTMX POST endpoint with two phases:
+
+    - Image upload: saves the photo to ``ScanResult.image`` with
+      ``status=awaiting_ocr`` and returns a card partial showing the
+      uploaded image. OCR is NOT run here; the user (or a peer device)
+      triggers it via ``run_ocr`` after reviewing the photo.
+    - Cascade search (``action=search``): runs the catalog search using
+      the edited metadata fields and returns candidates.
     """
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
@@ -365,42 +368,50 @@ def title_page_upload(request):
             {"candidates": candidates, "metadata": metadata},
         )
 
-    # --- OCR phase (image upload) ---
+    # --- Image upload phase (OCR deferred) ---
     image_file = request.FILES.get("image")
     if not image_file:
         return HttpResponse('<p class="text-red-600 text-sm">No image uploaded.</p>')
 
-    image_bytes = image_file.read()
-
-    # Save to staging directory for debugging / reprocessing.
-    staging_dir = os.path.join(settings.BASE_DIR, "tmp", "title_pages")
-    os.makedirs(staging_dir, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    staging_path = os.path.join(staging_dir, filename)
-    with open(staging_path, "wb") as f:
-        f.write(image_bytes)
-
-    metadata = extract_metadata_from_image(image_bytes)
-    if metadata is None:
-        return HttpResponse(
-            '<p class="text-red-600 text-sm">'
-            "OCR could not extract metadata from this image. "
-            "Please try again with a clearer photo."
-            "</p>"
-        )
-
-    # Create a ScanResult so the OCR scan appears in the review queue.
-    ScanResult.objects.create(
+    scan = ScanResult.objects.create(
         scan_type="ocr",
-        ocr_output=metadata,
+        status="awaiting_ocr",
+        image=image_file,
         scanned_by=request.user,
     )
 
-    return render(
-        request,
-        "ingest/_ocr_results.html",
-        {"metadata": metadata, "staging_file": filename},
-    )
+    return render(request, "ingest/_title_page_card.html", {"scan": scan})
+
+
+@login_required
+@require_POST
+def run_ocr(request, scan_id):
+    """Run OCR on a previously-uploaded title-page image.
+
+    Called from the image card on either device. Reads the saved image,
+    runs Claude Vision, persists the extracted metadata, and returns the
+    edit-metadata partial so the user can review and trigger the catalog
+    cascade. Returns 409 if the scan is no longer in ``awaiting_ocr``.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if scan.status != "awaiting_ocr":
+        return HttpResponse("Scan no longer awaiting OCR.", status=409)
+
+    with scan.image.open("rb") as fh:
+        image_bytes = fh.read()
+    metadata = extract_metadata_from_image(image_bytes)
+    if metadata is None:
+        return render(
+            request, "ingest/_title_page_card.html", {"scan": scan, "ocr_error": True}
+        )
+
+    scan.status = "pending"
+    scan.ocr_output = metadata
+    scan.save(update_fields=["status", "ocr_output", "updated_at"])
+
+    return render(request, "ingest/_ocr_results.html", {"metadata": metadata})
 
 
 def _attach_related(record, cleaned_data):
