@@ -175,6 +175,15 @@ class TestQRCode:
         # PNG magic bytes
         assert response.content[:4] == b"\x89PNG"
 
+    def test_target_title_generates_png(self, client_logged_in):
+        response = client_logged_in.get("/ingest/qr/?target=title")
+        assert response.status_code == 200
+        assert response["Content-Type"] == "image/png"
+
+    def test_unknown_target_rejected(self, client_logged_in):
+        response = client_logged_in.get("/ingest/qr/?target=bogus")
+        assert response.status_code == 400
+
     def test_requires_login(self, client):
         response = client.get("/ingest/qr/")
         assert response.status_code == 302
@@ -182,19 +191,48 @@ class TestQRCode:
 
 @pytest.mark.django_db
 class TestPhoneScanAuth:
-    def test_valid_token_logs_in(self, user):
+    def test_legacy_token_defaults_to_isbn(self, user):
+        # A legacy token (just user_pk, no target) should still work and
+        # redirect to the ISBN scanner for backwards compatibility.
         signer = TimestampSigner()
         token = signer.sign(str(user.pk))
 
         c = Client()
         response = c.get(f"/ingest/phone-auth/{token}/")
         assert response.status_code == 302
-        # Should redirect to scanning page.
         assert response.url == "/ingest/scan/"
+        assert c.session.get("phone_scan_target") == "isbn"
 
-        # Verify user is logged in by accessing a login_required page.
         queue_resp = c.get("/ingest/queue/")
         assert queue_resp.status_code == 200
+
+    def test_isbn_target_redirects_to_isbn_scan(self, user):
+        signer = TimestampSigner()
+        token = signer.sign(f"{user.pk}:isbn")
+
+        c = Client()
+        response = c.get(f"/ingest/phone-auth/{token}/")
+        assert response.status_code == 302
+        assert response.url == "/ingest/scan/"
+        assert c.session.get("phone_scan_target") == "isbn"
+
+    def test_title_target_redirects_to_title_page_scan(self, user):
+        signer = TimestampSigner()
+        token = signer.sign(f"{user.pk}:title")
+
+        c = Client()
+        response = c.get(f"/ingest/phone-auth/{token}/")
+        assert response.status_code == 302
+        assert response.url == "/ingest/scan-title/"
+        assert c.session.get("phone_scan_target") == "title"
+
+    def test_unknown_target_rejected(self, user):
+        signer = TimestampSigner()
+        token = signer.sign(f"{user.pk}:bogus")
+
+        c = Client()
+        response = c.get(f"/ingest/phone-auth/{token}/")
+        assert response.status_code == 400
 
     def test_expired_token_fails(self, user):
         c = Client()

@@ -660,15 +660,25 @@ def discard_scan(request, scan_id):
     return redirect("review_queue")
 
 
+_QR_TARGETS = ("isbn", "title")
+
+
 @login_required
 def qr_code_view(request):
     """Generate a QR code PNG linking to the phone scanning interface.
 
     The QR URL contains a signed token (valid for 1 hour) that allows the
     phone browser to authenticate as the current user.
+
+    The optional ``target`` query param ("isbn" or "title", default "isbn")
+    selects which scan workflow the phone lands on after authentication.
     """
+    target = request.GET.get("target", "isbn")
+    if target not in _QR_TARGETS:
+        return HttpResponseBadRequest("Unknown target.")
+
     signer = TimestampSigner()
-    token = signer.sign(str(request.user.pk))
+    token = signer.sign(f"{request.user.pk}:{target}")
 
     # Build the full URL for the phone auth endpoint.
     # request.is_secure() may be False behind runserver_plus with SSL,
@@ -690,16 +700,28 @@ def qr_code_view(request):
 
 
 def phone_scan_auth(request, token):
-    """Validate a signed QR token and log the user in for this session."""
+    """Validate a signed QR token and log the user in for this session.
+
+    The token payload is ``"<user_pk>:<target>"``. Legacy tokens carrying
+    only the user_pk default to the isbn target so previously-rendered QR
+    codes keep working.
+    """
     signer = TimestampSigner()
     try:
         # Token is valid for 1 hour (3600 seconds).
-        user_pk = signer.unsign(token, max_age=3600)
+        payload = signer.unsign(token, max_age=3600)
     except SignatureExpired:
         return HttpResponse(
             "This QR code has expired. Please generate a new one.", status=403
         )
     except BadSignature:
+        return HttpResponse("Invalid QR code.", status=400)
+
+    if ":" in payload:
+        user_pk, target = payload.split(":", 1)
+    else:
+        user_pk, target = payload, "isbn"
+    if target not in _QR_TARGETS:
         return HttpResponse("Invalid QR code.", status=400)
 
     try:
@@ -709,7 +731,8 @@ def phone_scan_auth(request, token):
 
     auth_login(request, user)
     request.session["phone_scanner"] = True
-    return redirect("isbn_scan")
+    request.session["phone_scan_target"] = target
+    return redirect("title_page_scan" if target == "title" else "isbn_scan")
 
 
 def _parse_int(value):
