@@ -22,5 +22,14 @@
             class="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
       {% if ocr_error %}Try OCR again{% else %}Run OCR{% endif %}
     </button>
+    <button type="button"
+            hx-post="{% url 'discard_title_scan' scan.id %}"
+            hx-target="#title-page-card-{{ scan.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Discard this photo?"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            class="px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      Discard
+    </button>
   </div>
 </div>

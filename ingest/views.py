@@ -414,6 +414,28 @@ def run_ocr(request, scan_id):
     return render(request, "ingest/_ocr_results.html", {"metadata": metadata})
 
 
+@login_required
+@require_POST
+def discard_title_scan(request, scan_id):
+    """Discard a title-page scan: remove the image file and mark the row.
+
+    Idempotent — calling on an already-discarded scan returns an empty
+    200 so the caller can rely on the card disappearing either way.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+
+    if scan.status != "discarded":
+        if scan.image:
+            scan.image.delete(save=False)
+            scan.image = None
+        scan.status = "discarded"
+        scan.save(update_fields=["status", "image", "updated_at"])
+
+    return HttpResponse("")
+
+
 def _attach_related(record, cleaned_data):
     """Create or link Author, Publisher, and Location from form data."""
     author_name = cleaned_data.get("author_name", "").strip()

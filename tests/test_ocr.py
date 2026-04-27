@@ -247,6 +247,59 @@ class TestTitlePageUploadView:
         response = client_logged_in.get(f"/ingest/scan-title/{scan.pk}/ocr/")
         assert response.status_code == 405
 
+    def test_discard_removes_image_and_marks_row(
+        self, client_logged_in, tmp_path, settings
+    ):
+        import os
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        image_path = scan.image.path
+        assert os.path.exists(image_path)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        assert response.status_code == 200
+        assert response.content == b""
+
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
+        assert not scan.image
+        assert not os.path.exists(image_path)
+
+    def test_discard_is_idempotent(self, client_logged_in, tmp_path, settings):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+
+        # Second call should still return 200, not raise.
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        assert response.status_code == 200
+
+    def test_discard_tolerates_missing_file(self, client_logged_in, tmp_path, settings):
+        import os
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        # Manually remove the file from disk while leaving the DB row alone.
+        os.remove(scan.image.path)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        assert response.status_code == 200
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
+
+    def test_discard_rejects_non_owner(self, client_logged_in, tmp_path, settings):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        User.objects.create_user(username="other", password="testpass123")
+        c = Client()
+        c.login(username="other", password="testpass123")
+
+        response = c.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        assert response.status_code == 403
+
+    def test_discard_requires_post(self, client_logged_in, tmp_path, settings):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        response = client_logged_in.get(f"/ingest/scan-title/{scan.pk}/discard/")
+        assert response.status_code == 405
+
     @patch("ingest.views.search_lc")
     @patch("ingest.views.search_nli")
     def test_search_cascade(self, mock_nli, mock_lc, client_logged_in):
