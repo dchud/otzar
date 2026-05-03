@@ -1,6 +1,3 @@
-{# Title-page image upload form. The image is resized client-side to
-   keep mobile uploads small, posted via HTMX, and replaces the polling
-   pane content with the latest awaiting-OCR cards. #}
 <form id="title-page-form"
       hx-post="{% url 'title_page_upload' %}"
       hx-target="#title-page-results"

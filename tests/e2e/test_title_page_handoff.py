@@ -43,6 +43,21 @@ class TestTitlePageHandoff:
         expect(page.locator("text=Capture on your phone")).to_have_count(0)
         # Capture form is present.
         expect(page.locator("#image-input")).to_have_count(1)
+        # Guard against multi-line {# ... #} comment leaks: Django's
+        # short-comment syntax is single-line only and silently leaks
+        # multi-line comments as visible text.
+        body = page.locator("body").inner_text()
+        assert "{#" not in body
+        assert "#}" not in body
+
+    def test_desktop_view_has_no_template_comment_leaks(
+        self, page, live_server, staff_user
+    ):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        body = page.locator("body").inner_text()
+        assert "{#" not in body
+        assert "#}" not in body
 
     def test_desktop_view_shows_qr_sidebar(self, page, live_server, staff_user):
         """Desktop view renders the QR handoff sidebar with target=title."""
