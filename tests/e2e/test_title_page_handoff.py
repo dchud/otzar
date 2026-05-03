@@ -158,9 +158,17 @@ class TestTitlePageHandoff:
         # Card appears via poll.
         expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
 
-        # Click Run OCR; the card swaps with the metadata edit partial.
+        # Click Run OCR; the metadata edit partial appears.
         page.click('button:text("Run OCR")')
         expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+        expect(page.locator('input[name="title_romanized"]')).to_have_value(
+            "Mishneh Torah"
+        )
+
+        # The metadata form must survive a poll cycle (>3s) without being
+        # wiped by the polling div.
+        page.wait_for_timeout(4000)
+        expect(page.locator("text=Extracted metadata")).to_be_visible()
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "Mishneh Torah"
         )

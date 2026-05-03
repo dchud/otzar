@@ -5,7 +5,7 @@
   </p>
 
   <form hx-post="{% url 'title_page_upload' %}"
-        hx-target="#ocr-results"
+        hx-target="#title-page-metadata"
         hx-indicator="#search-spinner"
         class="space-y-4">
     {% csrf_token %}
