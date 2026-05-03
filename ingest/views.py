@@ -441,15 +441,44 @@ def run_ocr(request, scan_id):
 
 @login_required
 def title_page_poll(request):
-    """Return image cards for the user's awaiting_ocr title-page scans.
+    """Return image cards for the user's in-progress title-page scans.
 
-    Polled by both desktop and phone so each device sees the same shared
-    state. Staff users see all awaiting scans, matching review_queue.
+    Includes both freshly-uploaded scans (``awaiting_ocr``) and scans
+    that have OCR output but haven't been confirmed into a Record yet
+    (``pending`` with ``ocr_output``). Without the latter, scans where
+    OCR succeeded but the user navigated away would silently disappear
+    from the UI even though their image and metadata are still saved.
+
+    Staff users see all in-progress scans, matching review_queue.
     """
-    qs = ScanResult.objects.filter(scan_type="ocr", status="awaiting_ocr")
+    from django.db.models import Q
+
+    qs = ScanResult.objects.filter(scan_type="ocr").filter(
+        Q(status="awaiting_ocr") | Q(status="pending", ocr_output__isnull=False)
+    )
     if not request.user.is_staff:
         qs = qs.filter(scanned_by=request.user)
     return render(request, "ingest/_title_page_poll.html", {"scans": qs})
+
+
+@login_required
+@require_POST
+def edit_title_metadata(request, scan_id):
+    """Re-render the metadata edit form for a pending scan.
+
+    Lets the user resume editing OCR output after navigating away. The
+    scan must already have ocr_output (status=pending); otherwise 409.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if scan.status != "pending" or not scan.ocr_output:
+        return HttpResponse("Scan has no metadata to edit.", status=409)
+    return render(
+        request,
+        "ingest/_ocr_results.html",
+        {"metadata": scan.ocr_output, "scan": scan},
+    )
 
 
 @login_required

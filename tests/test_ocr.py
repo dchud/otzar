@@ -421,7 +421,12 @@ class TestTitlePagePoll:
         assert f"title-page-card-{other_scan.pk}".encode() not in response.content
         assert b"Waiting for photos" in response.content
 
-    def test_excludes_non_awaiting_scans(self, client_logged_in, tmp_path, settings):
+    def test_excludes_pending_without_ocr_output(
+        self, client_logged_in, tmp_path, settings
+    ):
+        # A scan in 'pending' state with no ocr_output is a degenerate
+        # state, but defend against it: only pending+ocr_output cards
+        # should appear in the title-page poll.
         scan = self._upload(client_logged_in, tmp_path, settings)
         scan.status = "pending"
         scan.save(update_fields=["status"])
@@ -429,6 +434,59 @@ class TestTitlePagePoll:
         response = client_logged_in.get("/ingest/scan-title/poll/")
         assert f"title-page-card-{scan.pk}".encode() not in response.content
         assert b"Waiting for photos" in response.content
+
+    def test_includes_pending_with_ocr_output(
+        self, client_logged_in, tmp_path, settings
+    ):
+        # Scans where OCR has succeeded but the user hasn't confirmed a
+        # candidate yet must still appear so they can be resumed or
+        # discarded. The card has a "Continue editing" affordance instead
+        # of "Run OCR".
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        scan.status = "pending"
+        scan.ocr_output = {"title": "Some title"}
+        scan.save(update_fields=["status", "ocr_output"])
+
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+        assert f"title-page-card-{scan.pk}".encode() in response.content
+        assert b"Continue editing" in response.content
+        assert b"Run OCR" not in response.content
+
+    def test_edit_metadata_endpoint_returns_form(
+        self, client_logged_in, tmp_path, settings
+    ):
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        scan.status = "pending"
+        scan.ocr_output = {"title": "Some title", "title_romanized": "Some Title"}
+        scan.save(update_fields=["status", "ocr_output"])
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/edit/")
+        assert response.status_code == 200
+        assert b"Extracted metadata" in response.content
+        assert b"Some Title" in response.content
+        # Form has the retry/discard buttons too.
+        assert b"Re-run OCR" in response.content
+        assert b"Discard" in response.content
+
+    def test_edit_metadata_409_when_no_ocr(self, client_logged_in, tmp_path, settings):
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        # awaiting_ocr (no ocr_output yet)
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/edit/")
+        assert response.status_code == 409
+
+    def test_edit_metadata_rejects_non_owner(
+        self, client_logged_in, tmp_path, settings
+    ):
+        scan = self._upload(client_logged_in, tmp_path, settings)
+        scan.status = "pending"
+        scan.ocr_output = {"title": "x"}
+        scan.save(update_fields=["status", "ocr_output"])
+
+        User.objects.create_user(username="other", password="testpass123")
+        c = Client()
+        c.login(username="other", password="testpass123")
+        response = c.post(f"/ingest/scan-title/{scan.pk}/edit/")
+        assert response.status_code == 403
 
     def test_staff_sees_all_awaiting(self, user, tmp_path, settings):
         from ingest.models import ScanResult

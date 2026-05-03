@@ -18,6 +18,11 @@ urlpatterns = [
     path("scan-title/poll/", views.title_page_poll, name="title_page_poll"),
     path("scan-title/<int:scan_id>/ocr/", views.run_ocr, name="run_ocr"),
     path(
+        "scan-title/<int:scan_id>/edit/",
+        views.edit_title_metadata,
+        name="edit_title_metadata",
+    ),
+    path(
         "scan-title/<int:scan_id>/discard/",
         views.discard_title_scan,
         name="discard_title_scan",
