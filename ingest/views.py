@@ -404,23 +404,28 @@ def title_page_upload(request):
 @login_required
 @require_POST
 def run_ocr(request, scan_id):
-    """Run OCR on a previously-uploaded title-page image.
+    """Run (or re-run) OCR on a previously-uploaded title-page image.
 
-    Called from the image card on either device. Reads the saved image,
-    runs Claude Vision, persists the extracted metadata, and returns the
-    edit-metadata partial so the user can review and trigger the catalog
-    cascade. Returns 409 if the scan is no longer in ``awaiting_ocr``.
+    Accepts both ``awaiting_ocr`` (first run) and ``pending`` (re-run
+    after the user found the previous extraction unusable). The image
+    must still be present — the gate is image presence, not status.
+    Returns 409 only if the image has been discarded.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
     if not request.user.is_staff and scan.scanned_by != request.user:
         return HttpResponse("Forbidden", status=403)
-    if scan.status != "awaiting_ocr":
-        return HttpResponse("Scan no longer awaiting OCR.", status=409)
+    if not scan.image or scan.status == "discarded":
+        return HttpResponse("Image is no longer available.", status=409)
 
     with scan.image.open("rb") as fh:
         image_bytes = fh.read()
     metadata = extract_metadata_from_image(image_bytes)
     if metadata is None:
+        # Reset to awaiting state so the card surfaces in the queue
+        # poll again with a "Try OCR again" affordance.
+        scan.status = "awaiting_ocr"
+        scan.ocr_output = None
+        scan.save(update_fields=["status", "ocr_output", "updated_at"])
         return render(
             request, "ingest/_title_page_card.html", {"scan": scan, "ocr_error": True}
         )
@@ -429,7 +434,9 @@ def run_ocr(request, scan_id):
     scan.ocr_output = metadata
     scan.save(update_fields=["status", "ocr_output", "updated_at"])
 
-    return render(request, "ingest/_ocr_results.html", {"metadata": metadata})
+    return render(
+        request, "ingest/_ocr_results.html", {"metadata": metadata, "scan": scan}
+    )
 
 
 @login_required

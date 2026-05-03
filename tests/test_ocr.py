@@ -226,13 +226,36 @@ class TestTitlePageUploadView:
         mock_ocr.assert_called_once()
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_run_ocr_returns_409_when_not_awaiting(
+    def test_run_ocr_can_be_re_run_on_pending(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        """Re-running OCR on a scan whose status moved to pending (because
+        an earlier run produced unusable metadata) re-extracts and replaces."""
+        first = {**SAMPLE_OCR_RESPONSE, "title": "first attempt"}
+        second = {**SAMPLE_OCR_RESPONSE, "title": "second attempt"}
+        mock_ocr.side_effect = [first, second]
+
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
-        scan.status = "pending"
-        scan.save(update_fields=["status"])
+
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        scan.refresh_from_db()
+        assert scan.ocr_output["title"] == "first attempt"
+
+        # Same endpoint, scan now in 'pending' — re-runs cleanly.
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert response.status_code == 200
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output["title"] == "second attempt"
+        assert mock_ocr.call_count == 2
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_returns_409_when_image_discarded(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
         assert response.status_code == 409
@@ -252,6 +275,33 @@ class TestTitlePageUploadView:
         scan.refresh_from_db()
         assert scan.status == "awaiting_ocr"
         assert scan.ocr_output is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_failure_after_success_resets_to_awaiting(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """If a re-run produces no metadata, the scan returns to
+        awaiting_ocr so the queue card surfaces it again."""
+        mock_ocr.side_effect = [SAMPLE_OCR_RESPONSE, None]
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_output is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_response_includes_retry_and_discard_buttons(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert b"Re-run OCR" in response.content
+        assert b"Discard" in response.content
 
     def test_run_ocr_rejects_non_owner(self, client_logged_in, tmp_path, settings):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)

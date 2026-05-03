@@ -177,6 +177,78 @@ class TestTitlePageHandoff:
         assert scan.status == "pending"
         assert scan.ocr_output == SAMPLE_OCR_RESPONSE
 
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_re_run_ocr_from_metadata_form(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """The Re-run OCR button on the metadata form re-extracts and
+        replaces the metadata."""
+        mock_ocr.side_effect = [
+            {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
+            {**SAMPLE_OCR_RESPONSE, "title_romanized": "Second Title"},
+        ]
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+
+        page.click('button:text("Run OCR")')
+        expect(page.locator('input[name="title_romanized"]')).to_have_value(
+            "First Title", timeout=10000
+        )
+
+        page.click('button:text("Re-run OCR")')
+        expect(page.locator('input[name="title_romanized"]')).to_have_value(
+            "Second Title", timeout=10000
+        )
+        assert mock_ocr.call_count == 2
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_discard_from_metadata_form(self, mock_ocr, page, live_server, staff_user):
+        """The Discard button on the metadata form removes the scan and
+        the metadata form."""
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+        image_path = scan.image.path
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+
+        page.click('button:text("Run OCR")')
+        expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+
+        page.on("dialog", lambda dialog: dialog.accept())
+        # Use the Discard button inside the metadata form (avoid card-level Discard).
+        page.locator('#title-page-metadata button:text("Discard")').click()
+
+        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
+        assert not scan.image
+        import os as _os
+
+        assert not _os.path.exists(image_path)
+
     def test_discard_removes_card_and_image(self, page, live_server, staff_user):
         """Discarding from the desktop card removes the row's image and the
         card disappears."""
