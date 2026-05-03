@@ -109,7 +109,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = DATA_DIR / "media"
 
 TAILWIND_CLI_SRC_CSS = "static/src/input.css"

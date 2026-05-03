@@ -110,6 +110,21 @@ class TestTitlePageHandoff:
         expect(desktop_page.locator('button:text("Run OCR")')).to_be_visible()
         expect(desktop_page.locator('button:text("Discard")')).to_be_visible()
 
+        # The card must actually display the uploaded image, not a broken
+        # img tag. Fetch the src and verify it 200s.
+        card_img = desktop_page.locator(
+            "[id^='title-page-card-'] img[alt='Uploaded title page']"
+        )
+        expect(card_img).to_be_visible()
+        img_src = card_img.get_attribute("src")
+        assert img_src and img_src.startswith("/media/"), (
+            f"image src looks wrong: {img_src!r}"
+        )
+        img_response = desktop_page.request.get(f"{live_server.url}{img_src}")
+        assert img_response.status == 200, (
+            f"image url {img_src} returned {img_response.status}"
+        )
+
         # ScanResult was created and is awaiting OCR.
         scan = ScanResult.objects.get(scan_type="ocr")
         assert scan.status == "awaiting_ocr"
