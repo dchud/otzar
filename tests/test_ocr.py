@@ -517,7 +517,17 @@ class TestTitlePagePoll:
         mock_nli.return_value = CascadeResult(
             query_used="test",
             step="title",
-            records=[{"title": "Test Book", "source_catalog": "NLI"}],
+            records=[
+                {
+                    "title": "Test Book",
+                    "author": "Some Author",
+                    "date": "1900",
+                    "publisher": "Some Press",
+                    "place": "Jerusalem",
+                    "isbn": "123",
+                    "source_catalog": "NLI",
+                }
+            ],
             total_hits=1,
         )
         mock_lc.return_value = CascadeResult()
@@ -540,3 +550,14 @@ class TestTitlePagePoll:
         assert response.status_code == 200
         mock_nli.assert_called_once()
         mock_lc.assert_called_once()
+        # Candidates render fully \u2014 title, author, date, publisher, ISBN
+        # all visible. Guards against the bug where the OCR cascade-search
+        # path passed raw candidates instead of {"data": ..., "json": ...}
+        # so every cell rendered empty.
+        assert b"Test Book" in response.content
+        assert b"Some Author" in response.content
+        assert b"1900" in response.content
+        assert b"Some Press" in response.content
+        assert b"Jerusalem" in response.content
+        assert b"ISBN 123" in response.content
+        assert b"NLI" in response.content

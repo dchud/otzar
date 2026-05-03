@@ -374,10 +374,11 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
+        candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
         return render(
             request,
             "ingest/_candidates.html",
-            {"candidates": candidates, "metadata": metadata},
+            {"candidates": candidates_with_json, "metadata": metadata},
         )
 
     # --- Image upload phase (OCR deferred) ---

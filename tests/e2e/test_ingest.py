@@ -74,8 +74,8 @@ class TestISBNIngestFlow:
         # Wait for candidates to appear
         page.wait_for_selector("text=The social life of information", timeout=10000)
 
-        # Click "Use this record"
-        page.click('button:text("Use this record")')
+        # Click the candidate's "Use" button
+        page.click('button:text-is("Use")')
 
         # Should be on confirm page
         page.wait_for_url("**/ingest/confirm/", timeout=5000)
