@@ -1,8 +1,6 @@
 import io
 import json
 import logging
-import os
-import uuid
 
 import qrcode
 from django.conf import settings
@@ -316,17 +314,34 @@ def edit_record(request, record_id):
 
 @login_required
 def title_page_scan(request):
-    """Render the title page camera/upload page."""
-    return render(request, "ingest/title_page_scan.html")
+    """Render the title page capture/upload page.
+
+    Two render modes:
+    - Desktop (default): direct upload form, QR sidebar to hand off to a
+      phone, and a poll pane showing photos arriving from the phone.
+    - Phone (when ``phone_scan_target`` session key is "title"): a
+      streamlined capture-only view that polls for shared review state.
+    """
+    phone_mode = request.session.get("phone_scan_target") == "title"
+    return render(
+        request,
+        "ingest/title_page_scan.html",
+        {"phone_mode": phone_mode},
+    )
 
 
 @login_required
 def title_page_upload(request):
-    """Receive a title page image, run OCR, return metadata for review.
+    """Receive a title page image; defer OCR until the user confirms.
 
-    HTMX POST endpoint. On initial upload, runs Claude Vision OCR and
-    returns editable metadata fields. When the user clicks 'Search catalogs',
-    runs the search cascade and returns candidates.
+    HTMX POST endpoint with two phases:
+
+    - Image upload: saves the photo to ``ScanResult.image`` with
+      ``status=awaiting_ocr`` and returns a card partial showing the
+      uploaded image. OCR is NOT run here; the user (or a peer device)
+      triggers it via ``run_ocr`` after reviewing the photo.
+    - Cascade search (``action=search``): runs the catalog search using
+      the edited metadata fields and returns candidates.
     """
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
@@ -359,48 +374,134 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
+        candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
         return render(
             request,
             "ingest/_candidates.html",
-            {"candidates": candidates, "metadata": metadata},
+            {"candidates": candidates_with_json, "metadata": metadata},
         )
 
-    # --- OCR phase (image upload) ---
+    # --- Image upload phase (OCR deferred) ---
     image_file = request.FILES.get("image")
     if not image_file:
         return HttpResponse('<p class="text-red-600 text-sm">No image uploaded.</p>')
 
-    image_bytes = image_file.read()
-
-    # Save to staging directory for debugging / reprocessing.
-    staging_dir = os.path.join(settings.BASE_DIR, "tmp", "title_pages")
-    os.makedirs(staging_dir, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    staging_path = os.path.join(staging_dir, filename)
-    with open(staging_path, "wb") as f:
-        f.write(image_bytes)
-
-    metadata = extract_metadata_from_image(image_bytes)
-    if metadata is None:
-        return HttpResponse(
-            '<p class="text-red-600 text-sm">'
-            "OCR could not extract metadata from this image. "
-            "Please try again with a clearer photo."
-            "</p>"
-        )
-
-    # Create a ScanResult so the OCR scan appears in the review queue.
     ScanResult.objects.create(
         scan_type="ocr",
-        ocr_output=metadata,
+        status="awaiting_ocr",
+        image=image_file,
         scanned_by=request.user,
     )
 
+    # Return the full poll partial so both upload and poll responses are
+    # interchangeable. This avoids a race where the poll cycle would
+    # overwrite a single just-uploaded card with the full list.
+    qs = ScanResult.objects.filter(
+        scan_type="ocr", status="awaiting_ocr", scanned_by=request.user
+    )
+    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
+
+
+@login_required
+@require_POST
+def run_ocr(request, scan_id):
+    """Run (or re-run) OCR on a previously-uploaded title-page image.
+
+    Accepts both ``awaiting_ocr`` (first run) and ``pending`` (re-run
+    after the user found the previous extraction unusable). The image
+    must still be present — the gate is image presence, not status.
+    Returns 409 only if the image has been discarded.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if not scan.image or scan.status == "discarded":
+        return HttpResponse("Image is no longer available.", status=409)
+
+    with scan.image.open("rb") as fh:
+        image_bytes = fh.read()
+    metadata = extract_metadata_from_image(image_bytes)
+    if metadata is None:
+        # Reset to awaiting state so the card surfaces in the queue
+        # poll again with a "Try OCR again" affordance.
+        scan.status = "awaiting_ocr"
+        scan.ocr_output = None
+        scan.save(update_fields=["status", "ocr_output", "updated_at"])
+        return render(
+            request, "ingest/_title_page_card.html", {"scan": scan, "ocr_error": True}
+        )
+
+    scan.status = "pending"
+    scan.ocr_output = metadata
+    scan.save(update_fields=["status", "ocr_output", "updated_at"])
+
+    return render(
+        request, "ingest/_ocr_results.html", {"metadata": metadata, "scan": scan}
+    )
+
+
+@login_required
+def title_page_poll(request):
+    """Return image cards for the user's in-progress title-page scans.
+
+    Includes both freshly-uploaded scans (``awaiting_ocr``) and scans
+    that have OCR output but haven't been confirmed into a Record yet
+    (``pending`` with ``ocr_output``). Without the latter, scans where
+    OCR succeeded but the user navigated away would silently disappear
+    from the UI even though their image and metadata are still saved.
+
+    Staff users see all in-progress scans, matching review_queue.
+    """
+    from django.db.models import Q
+
+    qs = ScanResult.objects.filter(scan_type="ocr").filter(
+        Q(status="awaiting_ocr") | Q(status="pending", ocr_output__isnull=False)
+    )
+    if not request.user.is_staff:
+        qs = qs.filter(scanned_by=request.user)
+    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
+
+
+@login_required
+@require_POST
+def edit_title_metadata(request, scan_id):
+    """Re-render the metadata edit form for a pending scan.
+
+    Lets the user resume editing OCR output after navigating away. The
+    scan must already have ocr_output (status=pending); otherwise 409.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if scan.status != "pending" or not scan.ocr_output:
+        return HttpResponse("Scan has no metadata to edit.", status=409)
     return render(
         request,
         "ingest/_ocr_results.html",
-        {"metadata": metadata, "staging_file": filename},
+        {"metadata": scan.ocr_output, "scan": scan},
     )
+
+
+@login_required
+@require_POST
+def discard_title_scan(request, scan_id):
+    """Discard a title-page scan: remove the image file and mark the row.
+
+    Idempotent — calling on an already-discarded scan returns an empty
+    200 so the caller can rely on the card disappearing either way.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+
+    if scan.status != "discarded":
+        if scan.image:
+            scan.image.delete(save=False)
+            scan.image = None
+        scan.status = "discarded"
+        scan.save(update_fields=["status", "image", "updated_at"])
+
+    return HttpResponse("")
 
 
 def _attach_related(record, cleaned_data):
@@ -660,15 +761,25 @@ def discard_scan(request, scan_id):
     return redirect("review_queue")
 
 
+_QR_TARGETS = ("isbn", "title")
+
+
 @login_required
 def qr_code_view(request):
     """Generate a QR code PNG linking to the phone scanning interface.
 
     The QR URL contains a signed token (valid for 1 hour) that allows the
     phone browser to authenticate as the current user.
+
+    The optional ``target`` query param ("isbn" or "title", default "isbn")
+    selects which scan workflow the phone lands on after authentication.
     """
+    target = request.GET.get("target", "isbn")
+    if target not in _QR_TARGETS:
+        return HttpResponseBadRequest("Unknown target.")
+
     signer = TimestampSigner()
-    token = signer.sign(str(request.user.pk))
+    token = signer.sign(f"{request.user.pk}:{target}")
 
     # Build the full URL for the phone auth endpoint.
     # request.is_secure() may be False behind runserver_plus with SSL,
@@ -690,16 +801,28 @@ def qr_code_view(request):
 
 
 def phone_scan_auth(request, token):
-    """Validate a signed QR token and log the user in for this session."""
+    """Validate a signed QR token and log the user in for this session.
+
+    The token payload is ``"<user_pk>:<target>"``. Legacy tokens carrying
+    only the user_pk default to the isbn target so previously-rendered QR
+    codes keep working.
+    """
     signer = TimestampSigner()
     try:
         # Token is valid for 1 hour (3600 seconds).
-        user_pk = signer.unsign(token, max_age=3600)
+        payload = signer.unsign(token, max_age=3600)
     except SignatureExpired:
         return HttpResponse(
             "This QR code has expired. Please generate a new one.", status=403
         )
     except BadSignature:
+        return HttpResponse("Invalid QR code.", status=400)
+
+    if ":" in payload:
+        user_pk, target = payload.split(":", 1)
+    else:
+        user_pk, target = payload, "isbn"
+    if target not in _QR_TARGETS:
         return HttpResponse("Invalid QR code.", status=400)
 
     try:
@@ -709,7 +832,8 @@ def phone_scan_auth(request, token):
 
     auth_login(request, user)
     request.session["phone_scanner"] = True
-    return redirect("isbn_scan")
+    request.session["phone_scan_target"] = target
+    return redirect("title_page_scan" if target == "title" else "isbn_scan")
 
 
 def _parse_int(value):

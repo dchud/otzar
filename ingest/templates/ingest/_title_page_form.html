@@ -1,0 +1,104 @@
+<form id="title-page-form"
+      hx-post="{% url 'title_page_upload' %}"
+      hx-target="#title-page-results"
+      hx-encoding="multipart/form-data"
+      hx-indicator="#upload-spinner"
+      class="space-y-4">
+  {% csrf_token %}
+
+  <div>
+    <label for="image-input"
+           class="inline-flex items-center gap-2 px-6 py-2 min-h-[44px] bg-green-600 text-white rounded cursor-pointer hover:bg-green-700 focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-900">
+      <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l2-2h6l2 2h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <circle cx="12" cy="13" r="3.5"/>
+      </svg>
+      <span>Take title page photo</span>
+    </label>
+    <input type="file"
+           id="image-input"
+           name="image"
+           accept="image/*"
+           capture="environment"
+           class="sr-only">
+  </div>
+
+  <div id="preview-container" class="hidden">
+    <img id="preview-image" class="max-w-sm rounded border border-gray-200 dark:border-gray-700" alt="Preview of selected title page image">
+  </div>
+
+  <button type="submit"
+          id="upload-btn"
+          disabled
+          class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+    Upload
+  </button>
+
+  <div id="upload-spinner" class="htmx-indicator mt-2">
+    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+      <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p>Uploading...</p>
+    </div>
+  </div>
+</form>
+
+<script>
+(function () {
+  const input = document.getElementById("image-input");
+  const preview = document.getElementById("preview-image");
+  const previewContainer = document.getElementById("preview-container");
+  const uploadBtn = document.getElementById("upload-btn");
+  const form = document.getElementById("title-page-form");
+  const MAX_DIM = 1500;
+
+  // imageOrientation: 'from-image' applies any EXIF rotation tag while
+  // decoding, so a landscape phone shot lands as actual landscape pixels
+  // instead of a sideways portrait blob.
+  input.addEventListener("change", async function () {
+    const file = this.files[0];
+    if (!file) return;
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch (err) {
+      console.error("Image decode failed:", err);
+      return;
+    }
+    let w = bitmap.width;
+    let h = bitmap.height;
+    if (w > MAX_DIM || h > MAX_DIM) {
+      const scale = MAX_DIM / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    canvas.toBlob(function (blob) {
+      const resizedFile = new File([blob], file.name, { type: "image/jpeg" });
+      const dt = new DataTransfer();
+      dt.items.add(resizedFile);
+      input.files = dt.files;
+      preview.src = URL.createObjectURL(blob);
+      previewContainer.classList.remove("hidden");
+      uploadBtn.disabled = false;
+    }, "image/jpeg", 0.85);
+  });
+
+  // Reset the form once the upload is complete so the user can take
+  // another photo immediately (especially useful on phone).
+  form.addEventListener("htmx:afterRequest", function (e) {
+    if (!e.detail.successful) return;
+    input.value = "";
+    preview.src = "";
+    previewContainer.classList.add("hidden");
+    uploadBtn.disabled = true;
+  });
+})();
+</script>

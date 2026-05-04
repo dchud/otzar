@@ -9,6 +9,7 @@ from catalog.models import (
     Series,
     SeriesVolume,
 )
+from ingest.models import ScanResult
 
 
 @pytest.mark.django_db
@@ -140,6 +141,25 @@ class TestLocationModel:
         record = Record.objects.create(title="Test")
         record.locations.add(loc)
         assert loc in record.locations.all()
+
+
+@pytest.mark.django_db
+class TestScanResultStatus:
+    def test_awaiting_ocr_status_is_valid(self):
+        scan = ScanResult.objects.create(scan_type="ocr", status="awaiting_ocr")
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+
+    def test_default_status_unchanged(self):
+        scan = ScanResult.objects.create(scan_type="isbn", isbn="978-0-13-110362-7")
+        assert scan.status == "pending"
+
+    def test_existing_pending_query_excludes_awaiting_ocr(self):
+        ScanResult.objects.create(scan_type="ocr", status="awaiting_ocr")
+        ScanResult.objects.create(scan_type="isbn", isbn="123", status="pending")
+        pending = ScanResult.objects.filter(status="pending")
+        assert pending.count() == 1
+        assert pending.first().scan_type == "isbn"
 
 
 class TestBase62:

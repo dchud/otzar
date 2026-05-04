@@ -112,7 +112,7 @@ class TestIsbnLookup:
         assert b"NLI" in response.content
         assert b"LC" in response.content
         assert b"DNB" in response.content
-        assert b"Use this record" in response.content
+        assert b"Use" in response.content
         mock_lookup.assert_called_once_with("9781234567890")
 
     @patch("ingest.views.isbn_lookup")

@@ -1,0 +1,58 @@
+<div id="title-page-card-{{ scan.id }}"
+     class="border border-gray-200 dark:border-gray-700 rounded p-4 space-y-3">
+  {% if ocr_error %}
+  <p class="text-red-600 text-sm" role="alert">
+    OCR could not extract metadata from this image. Try again or take a sharper photo.
+  </p>
+  {% endif %}
+
+  {% if scan.status == "pending" and scan.ocr_output %}
+  <div class="space-y-1">
+    <p class="text-sm font-medium" dir="auto">
+      {{ scan.ocr_output.title|default:"[OCR result]"|truncatewords:12 }}
+    </p>
+    {% if scan.ocr_output.title_romanized %}
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ scan.ocr_output.title_romanized }}</p>
+    {% endif %}
+    <p class="text-xs text-gray-500 dark:text-gray-400">OCR done — pending review</p>
+  </div>
+  {% endif %}
+
+  {% if scan.image %}
+  <img src="{{ scan.image.url }}" alt="Uploaded title page"
+       class="max-h-48 rounded border border-gray-200 dark:border-gray-700">
+  {% endif %}
+
+  <div class="flex gap-3">
+    {% if scan.status == "pending" %}
+    <button type="button"
+            hx-post="{% url 'edit_title_metadata' scan.id %}"
+            hx-target="#title-page-metadata"
+            hx-swap="innerHTML"
+            hx-disabled-elt="this"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            class="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+      Continue editing
+    </button>
+    {% else %}
+    <button type="button"
+            hx-post="{% url 'run_ocr' scan.id %}"
+            hx-target="#title-page-metadata"
+            hx-swap="innerHTML"
+            hx-disabled-elt="this"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            class="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+      {% if ocr_error %}Try OCR again{% else %}Run OCR{% endif %}
+    </button>
+    {% endif %}
+    <button type="button"
+            hx-post="{% url 'discard_title_scan' scan.id %}"
+            hx-target="#title-page-card-{{ scan.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Discard this photo?"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            class="px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      Discard
+    </button>
+  </div>
+</div>

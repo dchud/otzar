@@ -3,9 +3,17 @@ from django.db import models
 
 
 class ScanResult(models.Model):
-    """A pending scan result awaiting review."""
+    """A pending scan result awaiting review.
+
+    Status lifecycle:
+      awaiting_ocr  Image saved, OCR not yet run (OCR scans only).
+      pending       Candidates ready, awaiting record selection.
+      confirmed     Record created from a selected candidate.
+      discarded     Rejected by user; image file removed on transition.
+    """
 
     STATUS_CHOICES = [
+        ("awaiting_ocr", "Awaiting OCR"),
         ("pending", "Pending"),
         ("confirmed", "Confirmed"),
         ("discarded", "Discarded"),
@@ -17,7 +25,7 @@ class ScanResult(models.Model):
     ]
 
     scan_type = models.CharField(max_length=10, choices=SCAN_TYPE_CHOICES)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     isbn = models.CharField(max_length=20, blank=True)
     image = models.ImageField(upload_to="staging/%Y/%m/%d/", blank=True)
     ocr_output = models.JSONField(null=True, blank=True)
