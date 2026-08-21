@@ -7,7 +7,9 @@ from django.test import Client
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(username="cataloger", password="testpass123")
+    return User.objects.create_user(
+        username="cataloger", password="testpass123"
+    )
 
 
 @pytest.fixture
@@ -86,7 +88,9 @@ class TestIsbnScan:
 @pytest.mark.django_db
 class TestIsbnLookup:
     def test_requires_login(self, client):
-        response = client.post("/ingest/isbn-lookup/", {"isbn": "9781234567890"})
+        response = client.post(
+            "/ingest/isbn-lookup/", {"isbn": "9781234567890"}
+        )
         assert response.status_code == 302
         assert "/accounts/login/" in response.url
 
@@ -122,7 +126,9 @@ class TestIsbnLookup:
             "lc_records": [],
             "dnb_records": [],
         }
-        response = client_logged_in.post("/ingest/isbn-lookup/", {"isbn": "0000000000"})
+        response = client_logged_in.post(
+            "/ingest/isbn-lookup/", {"isbn": "0000000000"}
+        )
         assert response.status_code == 200
         assert b"No records found" in response.content
 

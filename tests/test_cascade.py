@@ -165,7 +165,12 @@ class TestCascadeEmptyResult:
         client = _make_client()
         client.search = MagicMock()
 
-        cascade = [("needs_date", 'alma.title="{title}" AND alma.main_pub_date={date}')]
+        cascade = [
+            (
+                "needs_date",
+                'alma.title="{title}" AND alma.main_pub_date={date}',
+            )
+        ]
         metadata = {"title": "Talmud"}  # no date
 
         result = run_cascade(client, cascade, metadata)
@@ -262,9 +267,15 @@ class TestISBNLookup:
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
     def test_isbn_all_catalogs(self, mock_nli, mock_lc, mock_dnb):
-        mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
-        mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
-        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_nli.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
+        mock_lc.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
+        mock_dnb.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
 
         result = isbn_lookup("9780123456789")
 
@@ -287,8 +298,12 @@ class TestISBNLookup:
     @patch("sources.cascade.nli_client")
     def test_isbn_nli_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
         mock_nli.search.side_effect = Exception("NLI down")
-        mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
-        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_lc.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
+        mock_dnb.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
 
         result = isbn_lookup("9780123456789")
 
@@ -300,9 +315,13 @@ class TestISBNLookup:
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
     def test_isbn_lc_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
-        mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_nli.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
         mock_lc.search.side_effect = Exception("LC down")
-        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_dnb.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
 
         result = isbn_lookup("9780123456789")
 
@@ -314,8 +333,12 @@ class TestISBNLookup:
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
     def test_isbn_dnb_fails_others_succeed(self, mock_nli, mock_lc, mock_dnb):
-        mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
-        mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        mock_nli.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
+        mock_lc.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_ONE_RECORD
+        )
         mock_dnb.search.side_effect = Exception("DNB down")
 
         result = isbn_lookup("9780123456789")
@@ -342,9 +365,15 @@ class TestISBNLookup:
     @patch("sources.cascade.lc_client")
     @patch("sources.cascade.nli_client")
     def test_isbn_empty_results(self, mock_nli, mock_lc, mock_dnb):
-        mock_nli.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
-        mock_lc.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
-        mock_dnb.search.return_value = SRUResult(success=True, data=_SRU_XML_EMPTY)
+        mock_nli.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_EMPTY
+        )
+        mock_lc.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_EMPTY
+        )
+        mock_dnb.search.return_value = SRUResult(
+            success=True, data=_SRU_XML_EMPTY
+        )
 
         result = isbn_lookup("0000000000")
 

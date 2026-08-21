@@ -12,7 +12,9 @@ from ingest.models import ScanResult
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(username="cataloger", password="testpass123")
+    return User.objects.create_user(
+        username="cataloger", password="testpass123"
+    )
 
 
 @pytest.fixture
@@ -128,7 +130,9 @@ class TestConfirmScan:
         assert record.title == "The C Programming Language"
         assert record.authors.filter(name="Kernighan, Brian W.").exists()
 
-    def test_confirm_second_candidate(self, client_logged_in, pending_isbn_scan):
+    def test_confirm_second_candidate(
+        self, client_logged_in, pending_isbn_scan
+    ):
         response = client_logged_in.post(
             f"/ingest/confirm/{pending_isbn_scan.pk}/",
             {"candidate_index": "1"},
@@ -141,7 +145,9 @@ class TestConfirmScan:
         assert "2nd ed." in record.title
 
     def test_confirm_requires_post(self, client_logged_in, pending_isbn_scan):
-        response = client_logged_in.get(f"/ingest/confirm/{pending_isbn_scan.pk}/")
+        response = client_logged_in.get(
+            f"/ingest/confirm/{pending_isbn_scan.pk}/"
+        )
         assert response.status_code == 405
 
     def test_confirm_invalid_index(self, client_logged_in, pending_isbn_scan):
@@ -154,15 +160,21 @@ class TestConfirmScan:
 
 @pytest.mark.django_db
 class TestDiscardScan:
-    def test_discard_marks_as_discarded(self, client_logged_in, pending_isbn_scan):
-        response = client_logged_in.post(f"/ingest/discard/{pending_isbn_scan.pk}/")
+    def test_discard_marks_as_discarded(
+        self, client_logged_in, pending_isbn_scan
+    ):
+        response = client_logged_in.post(
+            f"/ingest/discard/{pending_isbn_scan.pk}/"
+        )
         assert response.status_code == 302
 
         pending_isbn_scan.refresh_from_db()
         assert pending_isbn_scan.status == "discarded"
 
     def test_discard_requires_post(self, client_logged_in, pending_isbn_scan):
-        response = client_logged_in.get(f"/ingest/discard/{pending_isbn_scan.pk}/")
+        response = client_logged_in.get(
+            f"/ingest/discard/{pending_isbn_scan.pk}/"
+        )
         assert response.status_code == 405
 
 

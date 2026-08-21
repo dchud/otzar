@@ -50,12 +50,15 @@ def index_record(record):
         _clean(f"{a.name} {a.name_romanized}") for a in record.authors.all()
     )
     subjects = " ".join(
-        _clean(f"{s.heading} {s.heading_romanized}") for s in record.subjects.all()
+        _clean(f"{s.heading} {s.heading_romanized}")
+        for s in record.subjects.all()
     )
     publishers = " ".join(
         _clean(f"{p.name} {p.name_romanized}") for p in record.publishers.all()
     )
-    identifiers = " ".join(ei.value for ei in record.external_identifiers.all())
+    identifiers = " ".join(
+        ei.value for ei in record.external_identifiers.all()
+    )
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -86,7 +89,9 @@ def index_record(record):
 def remove_from_index(record_id):
     """Remove a record from the FTS index."""
     with connection.cursor() as cursor:
-        cursor.execute(f"DELETE FROM {FTS_TABLE} WHERE record_id = %s", [record_id])
+        cursor.execute(
+            f"DELETE FROM {FTS_TABLE} WHERE record_id = %s", [record_id]
+        )
 
 
 def _sanitize_query(query):

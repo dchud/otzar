@@ -24,7 +24,9 @@ def delete_orphans(modeladmin, request, queryset):
     modeladmin.message_user(request, f"Deleted {deleted} orphaned item(s).")
 
 
-delete_orphans.short_description = "Delete selected items with no linked records"
+delete_orphans.short_description = (
+    "Delete selected items with no linked records"
+)
 
 
 class OrphanFilter(admin.SimpleListFilter):
@@ -32,7 +34,10 @@ class OrphanFilter(admin.SimpleListFilter):
     parameter_name = "orphan"
 
     def lookups(self, request, model_admin):
-        return [("orphan", "No linked records"), ("linked", "Has linked records")]
+        return [
+            ("orphan", "No linked records"),
+            ("linked", "Has linked records"),
+        ]
 
     def queryset(self, request, queryset):
         qs = queryset.annotate(_record_count=Count("records"))
@@ -82,7 +87,11 @@ class AuthorAdmin(admin.ModelAdmin):
     actions = [delete_orphans]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(_record_count=Count("records"))
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_record_count=Count("records"))
+        )
 
     @admin.display(ordering="_record_count", description="Records")
     def record_count(self, obj):
@@ -97,7 +106,11 @@ class SubjectAdmin(admin.ModelAdmin):
     actions = [delete_orphans]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(_record_count=Count("records"))
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_record_count=Count("records"))
+        )
 
     @admin.display(ordering="_record_count", description="Records")
     def record_count(self, obj):
@@ -112,7 +125,11 @@ class PublisherAdmin(admin.ModelAdmin):
     actions = [delete_orphans]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(_record_count=Count("records"))
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_record_count=Count("records"))
+        )
 
     @admin.display(ordering="_record_count", description="Records")
     def record_count(self, obj):
@@ -134,7 +151,11 @@ class LocationAdmin(admin.ModelAdmin):
     actions = [delete_orphans]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(_record_count=Count("records"))
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_record_count=Count("records"))
+        )
 
     @admin.display(ordering="_record_count", description="Records")
     def record_count(self, obj):

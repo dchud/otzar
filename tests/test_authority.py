@@ -101,12 +101,20 @@ class TestDetectSeriesFromMarc:
         assert result["series_volume"] == "vol. 3"
 
     def test_without_series_info(self):
-        parsed = {"title": "Book Title", "series_title": None, "series_volume": None}
+        parsed = {
+            "title": "Book Title",
+            "series_title": None,
+            "series_volume": None,
+        }
         result = detect_series_from_marc(parsed)
         assert result is None
 
     def test_empty_series_title(self):
-        parsed = {"title": "Book", "series_title": "", "series_volume": "vol. 1"}
+        parsed = {
+            "title": "Book",
+            "series_title": "",
+            "series_volume": "vol. 1",
+        }
         assert detect_series_from_marc(parsed) is None
 
     def test_missing_keys(self):

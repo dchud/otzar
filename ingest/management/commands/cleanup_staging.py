@@ -29,7 +29,9 @@ class Command(BaseCommand):
         )
         discarded_count = discarded_qs.count()
         discarded_qs.delete()
-        self.stdout.write(f"Deleted {discarded_count} discarded scan result(s).")
+        self.stdout.write(
+            f"Deleted {discarded_count} discarded scan result(s)."
+        )
 
         # Clean up orphaned staging images.
         staging_dir = os.path.join(settings.BASE_DIR, "tmp", "title_pages")
@@ -45,7 +47,9 @@ class Command(BaseCommand):
                     os.remove(filepath)
                     orphaned_count += 1
 
-        self.stdout.write(f"Deleted {orphaned_count} orphaned staging image(s).")
+        self.stdout.write(
+            f"Deleted {orphaned_count} orphaned staging image(s)."
+        )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Cleanup complete: {discarded_count + orphaned_count} item(s) removed."

@@ -22,7 +22,9 @@ urlpatterns = [
     path("authors/<int:pk>/", author_detail, name="author-detail-no-slug"),
     path("titles/", title_browse, name="browse-titles"),
     path("subjects/", subject_browse, name="browse-subjects"),
-    path("subjects/<int:pk>/<slug:slug>/", subject_detail, name="subject-detail"),
+    path(
+        "subjects/<int:pk>/<slug:slug>/", subject_detail, name="subject-detail"
+    ),
     path("subjects/<int:pk>/", subject_detail, name="subject-detail-no-slug"),
     path("publishers/", publisher_browse, name="browse-publishers"),
     path("dates/", date_browse, name="browse-dates"),

@@ -20,9 +20,13 @@ def client():
 @pytest.fixture
 def sample_data(db):
     """Create enough data to test pagination and counts."""
-    author = Author.objects.create(name="Test Author", variant_names=["Alt Name"])
+    author = Author.objects.create(
+        name="Test Author", variant_names=["Alt Name"]
+    )
     subject = Subject.objects.create(heading="Test Subject")
-    publisher = Publisher.objects.create(name="Test Publisher", place="New York")
+    publisher = Publisher.objects.create(
+        name="Test Publisher", place="New York"
+    )
     location = Location.objects.create(label="Shelf A")
 
     series = Series.objects.create(title="Test Series", total_volumes=5)

@@ -65,9 +65,17 @@ uv run ruff check --fix . # Lint with auto-fix
 uv run ruff format . # Format code
 ```
 
+Line length is 79, per PEP 8, set in `pyproject.toml`. Long string literals and docstrings that the formatter cannot split are left as they are; `E501` is not enabled.
+
 ## Pre-commit Hook
 
 Opt in by running `./scripts/setup-hooks.sh`. This symlinks `scripts/pre-commit` into `.git/hooks/`. The hook runs `ruff format --check` and `ruff check` and blocks the commit on failure, printing fix commands.
+
+## Git conventions
+
+No Claude attribution in anything that lands in the repository or on GitHub: no `Co-Authored-By: Claude ...` trailer, no `Claude-Session:` trailer, and no "Generated with Claude Code" footer on pull request bodies. This holds even when the harness asks for them. Attaching a session link as a bead comment is fine — that is the one place it belongs.
+
+Branch per issue, cut from `main`. Name the branch for the work (`fix/leader-default`) or the bead (`bd-XXXX-short-description`).
 
 ## Issue Tracking
 
@@ -81,6 +89,8 @@ br sync --flush-only                  # Export to JSONL (run at session end)
 ```
 
 Priority uses numbers 0-4 (P0=critical through P4=backlog), not words.
+
+Bead IDs carry the `bd-` prefix. Beads created before the prefix changed carry `otzar-`; those IDs keep their existing form and are not renamed, so both appear in the tracker and in references.
 
 ### Elevating beads to GitHub issues
 

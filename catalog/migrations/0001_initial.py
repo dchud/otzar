@@ -26,8 +26,14 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(max_length=500)),
-                ("name_romanized", models.CharField(blank=True, max_length=500)),
-                ("viaf_id", models.CharField(blank=True, db_index=True, max_length=50)),
+                (
+                    "name_romanized",
+                    models.CharField(blank=True, max_length=500),
+                ),
+                (
+                    "viaf_id",
+                    models.CharField(blank=True, db_index=True, max_length=50),
+                ),
                 ("variant_names", models.JSONField(blank=True, default=list)),
             ],
             options={
@@ -65,7 +71,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(max_length=500)),
-                ("name_romanized", models.CharField(blank=True, max_length=500)),
+                (
+                    "name_romanized",
+                    models.CharField(blank=True, max_length=500),
+                ),
                 ("place", models.CharField(blank=True, max_length=255)),
             ],
             options={
@@ -85,12 +94,19 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("heading", models.CharField(max_length=500)),
-                ("heading_romanized", models.CharField(blank=True, max_length=500)),
+                (
+                    "heading_romanized",
+                    models.CharField(blank=True, max_length=500),
+                ),
                 (
                     "source",
                     models.CharField(
                         blank=True,
-                        choices=[("LC", "LC"), ("NLI", "NLI"), ("local", "Local")],
+                        choices=[
+                            ("LC", "LC"),
+                            ("NLI", "NLI"),
+                            ("local", "Local"),
+                        ],
                         max_length=10,
                     ),
                 ),
@@ -114,15 +130,23 @@ class Migration(migrations.Migration):
                 (
                     "record_id",
                     models.CharField(
-                        db_index=True, editable=False, max_length=50, unique=True
+                        db_index=True,
+                        editable=False,
+                        max_length=50,
+                        unique=True,
                     ),
                 ),
                 (
                     "slug",
-                    models.SlugField(allow_unicode=True, blank=True, max_length=255),
+                    models.SlugField(
+                        allow_unicode=True, blank=True, max_length=255
+                    ),
                 ),
                 ("title", models.CharField(max_length=500)),
-                ("title_romanized", models.CharField(blank=True, max_length=500)),
+                (
+                    "title_romanized",
+                    models.CharField(blank=True, max_length=500),
+                ),
                 ("subtitle", models.CharField(blank=True, max_length=500)),
                 (
                     "date_of_publication",
@@ -132,7 +156,10 @@ class Migration(migrations.Migration):
                     "date_of_publication_display",
                     models.CharField(blank=True, max_length=100),
                 ),
-                ("place_of_publication", models.CharField(blank=True, max_length=255)),
+                (
+                    "place_of_publication",
+                    models.CharField(blank=True, max_length=255),
+                ),
                 ("language", models.CharField(blank=True, max_length=50)),
                 ("source_marc", models.JSONField(blank=True, null=True)),
                 (
@@ -165,19 +192,25 @@ class Migration(migrations.Migration):
                 (
                     "locations",
                     models.ManyToManyField(
-                        blank=True, related_name="records", to="catalog.location"
+                        blank=True,
+                        related_name="records",
+                        to="catalog.location",
                     ),
                 ),
                 (
                     "publishers",
                     models.ManyToManyField(
-                        blank=True, related_name="records", to="catalog.publisher"
+                        blank=True,
+                        related_name="records",
+                        to="catalog.publisher",
                     ),
                 ),
                 (
                     "subjects",
                     models.ManyToManyField(
-                        blank=True, related_name="records", to="catalog.subject"
+                        blank=True,
+                        related_name="records",
+                        to="catalog.subject",
                     ),
                 ),
             ],
@@ -198,7 +231,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("title", models.CharField(max_length=500)),
-                ("title_romanized", models.CharField(blank=True, max_length=500)),
+                (
+                    "title_romanized",
+                    models.CharField(blank=True, max_length=500),
+                ),
                 ("total_volumes", models.IntegerField(blank=True, null=True)),
                 (
                     "publisher",
@@ -228,7 +264,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("image", models.ImageField(upload_to="title-pages/%Y/%m/%d/")),
+                (
+                    "image",
+                    models.ImageField(upload_to="title-pages/%Y/%m/%d/"),
+                ),
                 ("uploaded_at", models.DateTimeField(auto_now_add=True)),
                 ("staged", models.BooleanField(default=True)),
                 (

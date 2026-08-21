@@ -10,7 +10,9 @@ from ingest.ocr import _parse_vision_json, extract_metadata_from_image
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(username="cataloger", password="testpass123")
+    return User.objects.create_user(
+        username="cataloger", password="testpass123"
+    )
 
 
 @pytest.fixture
@@ -62,7 +64,8 @@ class TestExtractMetadataFromImage:
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict(
-        "os.environ", {"ANTHROPIC_API_KEY": "test-key", "CLAUDE_MODEL": "test-model"}
+        "os.environ",
+        {"ANTHROPIC_API_KEY": "test-key", "CLAUDE_MODEL": "test-model"},
     )
     def test_successful_extraction(self, mock_anthropic_cls):
         import json
@@ -70,13 +73,18 @@ class TestExtractMetadataFromImage:
         mock_client = MagicMock()
         mock_anthropic_cls.return_value = mock_client
         mock_message = MagicMock()
-        mock_message.content = [MagicMock(text=json.dumps(SAMPLE_OCR_RESPONSE))]
+        mock_message.content = [
+            MagicMock(text=json.dumps(SAMPLE_OCR_RESPONSE))
+        ]
         mock_client.messages.create.return_value = mock_message
 
         result = extract_metadata_from_image(b"fake image bytes")
 
         assert result is not None
-        assert result["title"] == "\u05de\u05e9\u05e0\u05d4 \u05ea\u05d5\u05e8\u05d4"
+        assert (
+            result["title"]
+            == "\u05de\u05e9\u05e0\u05d4 \u05ea\u05d5\u05e8\u05d4"
+        )
         assert result["date"] == "1862"
         assert result["title_romanized"] == "Mishneh Torah"
 

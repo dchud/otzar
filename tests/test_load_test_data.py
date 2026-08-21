@@ -35,7 +35,9 @@ class TestLoadTestData:
 
     def test_multiple_languages_present(self):
         call_command("load_test_data")
-        languages = set(Record.objects.values_list("language", flat=True).distinct())
+        languages = set(
+            Record.objects.values_list("language", flat=True).distinct()
+        )
         assert "heb" in languages
         assert "eng" in languages
         assert "ger" in languages

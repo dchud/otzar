@@ -11,7 +11,9 @@ class TestAuth:
     def test_ingest_requires_login(self, page, live_server):
         page.goto(f"{live_server.url}/ingest/")
         # Should redirect to login
-        expect(page).to_have_url(f"{live_server.url}/accounts/login/?next=/ingest/")
+        expect(page).to_have_url(
+            f"{live_server.url}/accounts/login/?next=/ingest/"
+        )
 
     def test_login_works(self, page, live_server, staff_user):
         login(page, live_server)
@@ -23,7 +25,9 @@ class TestAuth:
         login(page, live_server)
         expect(page.locator('a[href="/admin/"]')).to_be_visible()
 
-    def test_ingest_accessible_after_login(self, page, live_server, staff_user):
+    def test_ingest_accessible_after_login(
+        self, page, live_server, staff_user
+    ):
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/")
         expect(page.locator("h1")).to_contain_text("Add to catalog")

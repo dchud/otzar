@@ -72,7 +72,9 @@ class TestISBNIngestFlow:
         page.click('button:text("Look up")')
 
         # Wait for candidates to appear
-        page.wait_for_selector("text=The social life of information", timeout=10000)
+        page.wait_for_selector(
+            "text=The social life of information", timeout=10000
+        )
 
         # Click the candidate's "Use" button
         page.click('button:text-is("Use")')
@@ -80,7 +82,9 @@ class TestISBNIngestFlow:
         # Should be on confirm page
         page.wait_for_url("**/ingest/confirm/", timeout=5000)
         expect(page.locator("h1")).to_contain_text("Confirm record")
-        expect(page.locator("text=The social life of information")).to_be_visible()
+        expect(
+            page.locator("text=The social life of information")
+        ).to_be_visible()
         expect(page.locator("text=Brown, John Seely")).to_be_visible()
         expect(page.locator("text=Duguid, Paul")).to_be_visible()
         expect(page.locator("text=Information society")).to_be_visible()
@@ -92,7 +96,9 @@ class TestISBNIngestFlow:
 
         # Should redirect to record detail
         page.wait_for_url("**/catalog/**", timeout=5000)
-        expect(page.locator("h1")).to_contain_text("The social life of information")
+        expect(page.locator("h1")).to_contain_text(
+            "The social life of information"
+        )
 
         # Verify the record was created with all data
         record = Record.objects.get(title__contains="social life")
@@ -101,8 +107,12 @@ class TestISBNIngestFlow:
         assert record.publishers.count() == 1
         assert record.locations.count() == 1
         assert record.locations.first().label == "Floor 2, Room A"
-        assert record.external_identifiers.filter(identifier_type="ISBN").exists()
-        assert record.external_identifiers.filter(identifier_type="LCCN").exists()
+        assert record.external_identifiers.filter(
+            identifier_type="ISBN"
+        ).exists()
+        assert record.external_identifiers.filter(
+            identifier_type="LCCN"
+        ).exists()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -171,7 +181,9 @@ class TestRecordManagement:
         login(page, live_server)
         record_id = sample_record.record_id
 
-        page.goto(f"{live_server.url}/catalog/{record_id}/{sample_record.slug}/")
+        page.goto(
+            f"{live_server.url}/catalog/{record_id}/{sample_record.slug}/"
+        )
 
         # Handle the confirm dialog
         page.on("dialog", lambda dialog: dialog.accept())

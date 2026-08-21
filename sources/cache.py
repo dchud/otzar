@@ -19,7 +19,11 @@ def _make_key(base_url: str, params: dict) -> str:
     The key is the MD5 hex digest of the base URL joined with
     sorted key=value parameter pairs, separated by pipe characters.
     """
-    raw = base_url + "|" + "|".join(f"{k}={v}" for k, v in sorted(params.items()))
+    raw = (
+        base_url
+        + "|"
+        + "|".join(f"{k}={v}" for k, v in sorted(params.items()))
+    )
     return hashlib.md5(raw.encode()).hexdigest()
 
 
@@ -45,7 +49,9 @@ class ResponseCache:
 
         *ttl* is the time-to-live in seconds; defaults to 30 days.
         """
-        cache.set(self._key(base_url, params), response_text, ttl or DEFAULT_TTL)
+        cache.set(
+            self._key(base_url, params), response_text, ttl or DEFAULT_TTL
+        )
 
     def invalidate(self, base_url: str, params: dict) -> None:
         """Remove a specific entry from the cache."""

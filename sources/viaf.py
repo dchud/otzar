@@ -48,8 +48,12 @@ class VIAFCluster:
 class VIAFClient:
     """HTTP client for VIAF SRU searches."""
 
-    def __init__(self, base_url: str | None = None, delay: float | None = None):
-        self.base_url = base_url or os.environ.get("SRU_VIAF_URL", DEFAULT_VIAF_URL)
+    def __init__(
+        self, base_url: str | None = None, delay: float | None = None
+    ):
+        self.base_url = base_url or os.environ.get(
+            "SRU_VIAF_URL", DEFAULT_VIAF_URL
+        )
         if delay is not None:
             self.delay = delay
         else:
@@ -83,7 +87,9 @@ class VIAFClient:
         }
         self._throttle()
         try:
-            resp = httpx.get(url, headers=headers, follow_redirects=True, timeout=30)
+            resp = httpx.get(
+                url, headers=headers, follow_redirects=True, timeout=30
+            )
             resp.raise_for_status()
             self._last_request_time = time.monotonic()
             return resp.text
@@ -119,7 +125,9 @@ class VIAFClient:
         return []
 
 
-def _build_author_queries(name: str, name_romanized: str | None = None) -> list[str]:
+def _build_author_queries(
+    name: str, name_romanized: str | None = None
+) -> list[str]:
     """Build a cascade of SRU queries for author name search."""
     queries = []
 
@@ -166,7 +174,9 @@ def parse_clusters(xml_text: str) -> list[VIAFCluster]:
             try:
                 root = ET.fromstring(xml_text)
             except ET.ParseError:
-                logger.warning("Failed to parse VIAF XML even after truncation")
+                logger.warning(
+                    "Failed to parse VIAF XML even after truncation"
+                )
                 return []
         else:
             logger.warning("Failed to parse VIAF XML response")
@@ -196,7 +206,9 @@ def _parse_single_cluster(el: ET.Element) -> VIAFCluster | None:
         if text:
             heading_sources = [
                 s.text
-                for s in data.findall(f".//{{{VIAF_NS}}}sources/{{{VIAF_NS}}}s")
+                for s in data.findall(
+                    f".//{{{VIAF_NS}}}sources/{{{VIAF_NS}}}s"
+                )
                 if s.text
             ]
             main_headings.append({"text": text, "sources": heading_sources})
@@ -313,7 +325,9 @@ def viaf_enrich(
 
     if best is not None and best_score >= 2:
         logger.info(
-            "VIAF enrichment match: VIAF %s (score=%d)", best.viaf_id, best_score
+            "VIAF enrichment match: VIAF %s (score=%d)",
+            best.viaf_id,
+            best_score,
         )
         return best
 
