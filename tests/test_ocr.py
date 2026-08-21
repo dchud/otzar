@@ -167,7 +167,9 @@ class TestTitlePageUploadView:
         assert response.status_code == 405
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_upload_defers_ocr(self, mock_ocr, client_logged_in, tmp_path, settings):
+    def test_upload_defers_ocr(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
         settings.MEDIA_ROOT = str(tmp_path)
 
         image = io.BytesIO(b"fake jpeg data")
@@ -217,7 +219,9 @@ class TestTitlePageUploadView:
         return ScanResult.objects.filter(scan_type="ocr").first()
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_run_ocr_happy_path(self, mock_ocr, client_logged_in, tmp_path, settings):
+    def test_run_ocr_happy_path(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
         mock_ocr.return_value = SAMPLE_OCR_RESPONSE
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
@@ -311,7 +315,9 @@ class TestTitlePageUploadView:
         assert b"Re-run OCR" in response.content
         assert b"Discard" in response.content
 
-    def test_run_ocr_rejects_non_owner(self, client_logged_in, tmp_path, settings):
+    def test_run_ocr_rejects_non_owner(
+        self, client_logged_in, tmp_path, settings
+    ):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         User.objects.create_user(username="other", password="testpass123")
@@ -335,7 +341,9 @@ class TestTitlePageUploadView:
         image_path = scan.image.path
         assert os.path.exists(image_path)
 
-        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        response = client_logged_in.post(
+            f"/ingest/scan-title/{scan.pk}/discard/"
+        )
         assert response.status_code == 200
         assert response.content == b""
 
@@ -349,22 +357,30 @@ class TestTitlePageUploadView:
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
 
         # Second call should still return 200, not raise.
-        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        response = client_logged_in.post(
+            f"/ingest/scan-title/{scan.pk}/discard/"
+        )
         assert response.status_code == 200
 
-    def test_discard_tolerates_missing_file(self, client_logged_in, tmp_path, settings):
+    def test_discard_tolerates_missing_file(
+        self, client_logged_in, tmp_path, settings
+    ):
         import os
 
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
         # Manually remove the file from disk while leaving the DB row alone.
         os.remove(scan.image.path)
 
-        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/discard/")
+        response = client_logged_in.post(
+            f"/ingest/scan-title/{scan.pk}/discard/"
+        )
         assert response.status_code == 200
         scan.refresh_from_db()
         assert scan.status == "discarded"
 
-    def test_discard_rejects_non_owner(self, client_logged_in, tmp_path, settings):
+    def test_discard_rejects_non_owner(
+        self, client_logged_in, tmp_path, settings
+    ):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         User.objects.create_user(username="other", password="testpass123")
@@ -376,7 +392,9 @@ class TestTitlePageUploadView:
 
     def test_discard_requires_post(self, client_logged_in, tmp_path, settings):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
-        response = client_logged_in.get(f"/ingest/scan-title/{scan.pk}/discard/")
+        response = client_logged_in.get(
+            f"/ingest/scan-title/{scan.pk}/discard/"
+        )
         assert response.status_code == 405
 
 
@@ -413,12 +431,16 @@ class TestTitlePagePoll:
 
         settings.MEDIA_ROOT = str(tmp_path)
         # Other user uploads a scan.
-        other = User.objects.create_user(username="other", password="testpass123")
+        other = User.objects.create_user(
+            username="other", password="testpass123"
+        )
         c_other = Client()
         c_other.login(username="other", password="testpass123")
         image = io.BytesIO(b"fake jpeg data")
         image.name = "x.jpg"
-        c_other.post("/ingest/upload-title/", {"image": image}, format="multipart")
+        c_other.post(
+            "/ingest/upload-title/", {"image": image}, format="multipart"
+        )
         other_scan = ScanResult.objects.filter(scanned_by=other).first()
 
         # Owner sees only their own scans (none in this case).
@@ -426,7 +448,9 @@ class TestTitlePagePoll:
         c.login(username="cataloger", password="testpass123")
         response = c.get("/ingest/scan-title/poll/")
         assert response.status_code == 200
-        assert f"title-page-card-{other_scan.pk}".encode() not in response.content
+        assert (
+            f"title-page-card-{other_scan.pk}".encode() not in response.content
+        )
         assert b"Waiting for photos" in response.content
 
     def test_excludes_pending_without_ocr_output(
@@ -465,7 +489,10 @@ class TestTitlePagePoll:
     ):
         scan = self._upload(client_logged_in, tmp_path, settings)
         scan.status = "pending"
-        scan.ocr_output = {"title": "Some title", "title_romanized": "Some Title"}
+        scan.ocr_output = {
+            "title": "Some title",
+            "title_romanized": "Some Title",
+        }
         scan.save(update_fields=["status", "ocr_output"])
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/edit/")
@@ -476,7 +503,9 @@ class TestTitlePagePoll:
         assert b"Re-run OCR" in response.content
         assert b"Discard" in response.content
 
-    def test_edit_metadata_409_when_no_ocr(self, client_logged_in, tmp_path, settings):
+    def test_edit_metadata_409_when_no_ocr(
+        self, client_logged_in, tmp_path, settings
+    ):
         scan = self._upload(client_logged_in, tmp_path, settings)
         # awaiting_ocr (no ocr_output yet)
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/edit/")
@@ -505,7 +534,9 @@ class TestTitlePagePoll:
         c_user.login(username="cataloger", password="testpass123")
         image = io.BytesIO(b"fake jpeg data")
         image.name = "p.jpg"
-        c_user.post("/ingest/upload-title/", {"image": image}, format="multipart")
+        c_user.post(
+            "/ingest/upload-title/", {"image": image}, format="multipart"
+        )
         scan = ScanResult.objects.filter(scanned_by=user).first()
 
         # Staff user sees the user's scan in their poll.

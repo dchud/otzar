@@ -402,7 +402,9 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
-        candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
+        candidates_with_json = [
+            {"data": c, "json": json.dumps(c)} for c in candidates
+        ]
         return render(
             request,
             "ingest/_candidates.html",
@@ -458,7 +460,9 @@ def run_ocr(request, scan_id):
         scan.ocr_output = None
         scan.save(update_fields=["status", "ocr_output", "updated_at"])
         return render(
-            request, "ingest/_title_page_card.html", {"scan": scan, "ocr_error": True}
+            request,
+            "ingest/_title_page_card.html",
+            {"scan": scan, "ocr_error": True},
         )
 
     scan.status = "pending"
@@ -466,7 +470,9 @@ def run_ocr(request, scan_id):
     scan.save(update_fields=["status", "ocr_output", "updated_at"])
 
     return render(
-        request, "ingest/_ocr_results.html", {"metadata": metadata, "scan": scan}
+        request,
+        "ingest/_ocr_results.html",
+        {"metadata": metadata, "scan": scan},
     )
 
 
@@ -485,7 +491,8 @@ def title_page_poll(request):
     from django.db.models import Q
 
     qs = ScanResult.objects.filter(scan_type="ocr").filter(
-        Q(status="awaiting_ocr") | Q(status="pending", ocr_output__isnull=False)
+        Q(status="awaiting_ocr")
+        | Q(status="pending", ocr_output__isnull=False)
     )
     if not request.user.is_staff:
         qs = qs.filter(scanned_by=request.user)

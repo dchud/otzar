@@ -67,9 +67,13 @@ def _phone_token(user):
 
 @pytest.mark.django_db(transaction=True)
 class TestTitlePageHandoff:
-    def test_phone_auth_lands_on_title_capture(self, page, live_server, staff_user):
+    def test_phone_auth_lands_on_title_capture(
+        self, page, live_server, staff_user
+    ):
         """Scanning a title-target QR drops the phone on the capture page."""
-        page.goto(f"{live_server.url}/ingest/phone-auth/{_phone_token(staff_user)}/")
+        page.goto(
+            f"{live_server.url}/ingest/phone-auth/{_phone_token(staff_user)}/"
+        )
         page.wait_for_url("**/ingest/scan-title/", timeout=5000)
 
         expect(page.locator("h1")).to_contain_text("Title page capture")
@@ -93,7 +97,9 @@ class TestTitlePageHandoff:
         assert "{#" not in body
         assert "#}" not in body
 
-    def test_desktop_view_shows_qr_sidebar(self, page, live_server, staff_user):
+    def test_desktop_view_shows_qr_sidebar(
+        self, page, live_server, staff_user
+    ):
         """Desktop view renders the QR handoff sidebar with target=title."""
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/scan-title/")
@@ -190,11 +196,15 @@ class TestTitlePageHandoff:
         page.goto(f"{live_server.url}/ingest/scan-title/")
 
         # Card appears via poll.
-        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
 
         # Click Run OCR; the metadata edit partial appears.
         page.click('button:text("Run OCR")')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+        expect(page.locator("text=Extracted metadata")).to_be_visible(
+            timeout=10000
+        )
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "Mishneh Torah"
         )
@@ -234,7 +244,9 @@ class TestTitlePageHandoff:
 
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/scan-title/")
-        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
 
         page.click('button:text("Run OCR")')
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
@@ -248,7 +260,9 @@ class TestTitlePageHandoff:
         assert mock_ocr.call_count == 2
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_discard_from_metadata_form(self, mock_ocr, page, live_server, staff_user):
+    def test_discard_from_metadata_form(
+        self, mock_ocr, page, live_server, staff_user
+    ):
         """The Discard button on the metadata form removes the scan and
         the metadata form."""
         mock_ocr.return_value = SAMPLE_OCR_RESPONSE
@@ -266,10 +280,14 @@ class TestTitlePageHandoff:
 
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/scan-title/")
-        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
 
         page.click('button:text("Run OCR")')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+        expect(page.locator("text=Extracted metadata")).to_be_visible(
+            timeout=10000
+        )
 
         page.on("dialog", lambda dialog: dialog.accept())
         # Use the Discard button inside the metadata form (avoid card-level Discard).
@@ -283,7 +301,9 @@ class TestTitlePageHandoff:
 
         assert not _os.path.exists(image_path)
 
-    def test_discard_removes_card_and_image(self, page, live_server, staff_user):
+    def test_discard_removes_card_and_image(
+        self, page, live_server, staff_user
+    ):
         """Discarding from the desktop card removes the row's image and the
         card disappears."""
         with open(FIXTURE_IMAGE, "rb") as fh:
@@ -300,7 +320,9 @@ class TestTitlePageHandoff:
 
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/scan-title/")
-        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(timeout=10000)
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
 
         # hx-confirm pops a JS confirm; auto-accept it.
         page.on("dialog", lambda dialog: dialog.accept())
@@ -349,7 +371,9 @@ class TestTitlePageHandoff:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+            expect(page.locator("text=Extracted metadata")).to_be_visible(
+                timeout=10000
+            )
             page.click('button:text("Search catalogs")')
             expect(page.locator("table")).to_be_visible(timeout=10000)
 
