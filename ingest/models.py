@@ -17,7 +17,9 @@ class ScanResult(models.Model):
     ]
 
     scan_type = models.CharField(max_length=10, choices=SCAN_TYPE_CHOICES)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default="pending"
+    )
     isbn = models.CharField(max_length=20, blank=True)
     image = models.ImageField(upload_to="staging/%Y/%m/%d/", blank=True)
     ocr_output = models.JSONField(null=True, blank=True)

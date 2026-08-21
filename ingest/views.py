@@ -76,18 +76,24 @@ def confirm_candidate(request):
         date_int = None
         if date_str:
             try:
-                date_int = int("".join(c for c in str(date_str) if c.isdigit())[:4])
+                date_int = int(
+                    "".join(c for c in str(date_str) if c.isdigit())[:4]
+                )
             except (ValueError, IndexError):
                 pass
 
         record = Record(
             title=strip_marc_punctuation(candidate.get("title")),
-            title_romanized=strip_marc_punctuation(candidate.get("title_alternate")),
+            title_romanized=strip_marc_punctuation(
+                candidate.get("title_alternate")
+            ),
             date_of_publication=date_int,
             date_of_publication_display=strip_marc_punctuation(str(date_str))
             if date_str and not date_int
             else "",
-            place_of_publication=strip_marc_punctuation(candidate.get("place")),
+            place_of_publication=strip_marc_punctuation(
+                candidate.get("place")
+            ),
             language=candidate.get("language") or "",
             source_marc=candidate.get("source_marc"),
             source_catalog=candidate.get("source_catalog") or "",
@@ -107,7 +113,9 @@ def confirm_candidate(request):
         if publisher_name:
             publisher, _ = Publisher.objects.get_or_create(
                 name=publisher_name,
-                defaults={"place": strip_marc_punctuation(candidate.get("place"))},
+                defaults={
+                    "place": strip_marc_punctuation(candidate.get("place"))
+                },
             )
             record.publishers.add(publisher)
 
@@ -127,17 +135,23 @@ def confirm_candidate(request):
                 record.cover_url = cover_url
                 record.save(update_fields=["cover_url"])
         except Exception:
-            logger.exception("Cover fetch failed for record %s", record.record_id)
+            logger.exception(
+                "Cover fetch failed for record %s", record.record_id
+            )
 
         ensure_fts_table()
         index_record(record)
 
         request.session.pop("candidate", None)
         return redirect(
-            "catalog:record_detail", record_id=record.record_id, slug=record.slug
+            "catalog:record_detail",
+            record_id=record.record_id,
+            slug=record.slug,
         )
 
-    return render(request, "ingest/confirm_candidate.html", {"candidate": candidate})
+    return render(
+        request, "ingest/confirm_candidate.html", {"candidate": candidate}
+    )
 
 
 @login_required
@@ -166,7 +180,9 @@ def manual_entry(request):
             index_record(record)
 
             return redirect(
-                "catalog:record_detail", record_id=record.record_id, slug=record.slug
+                "catalog:record_detail",
+                record_id=record.record_id,
+                slug=record.slug,
             )
     else:
         initial = {}
@@ -215,7 +231,9 @@ def isbn_scan(request):
 @login_required
 def scan_poll(request):
     """Return pending ScanResults for the current user as an HTMX partial."""
-    scans = ScanResult.objects.filter(status="pending", scanned_by=request.user)
+    scans = ScanResult.objects.filter(
+        status="pending", scanned_by=request.user
+    )
     return render(request, "ingest/_scan_poll.html", {"scans": scans})
 
 
@@ -227,7 +245,9 @@ def isbn_lookup_view(request):
 
     isbn = request.POST.get("isbn", "").strip()
     if not isbn:
-        return HttpResponse('<p class="text-red-600 text-sm">Please enter an ISBN.</p>')
+        return HttpResponse(
+            '<p class="text-red-600 text-sm">Please enter an ISBN.</p>'
+        )
 
     try:
         results = isbn_lookup(isbn)
@@ -268,7 +288,9 @@ def isbn_lookup_view(request):
         )
 
     # Pair each candidate with its JSON for the select form.
-    candidates_with_json = [{"data": c, "json": json.dumps(c)} for c in candidates]
+    candidates_with_json = [
+        {"data": c, "json": json.dumps(c)} for c in candidates
+    ]
 
     return render(
         request,
@@ -291,7 +313,9 @@ def edit_record(request, record_id):
             index_record(record)
 
             return redirect(
-                "catalog:record_detail", record_id=record.record_id, slug=record.slug
+                "catalog:record_detail",
+                record_id=record.record_id,
+                slug=record.slug,
             )
     else:
         initial = {}
@@ -311,7 +335,9 @@ def edit_record(request, record_id):
 
         form = RecordForm(instance=record, initial=initial)
 
-    return render(request, "ingest/manual_entry.html", {"form": form, "record": record})
+    return render(
+        request, "ingest/manual_entry.html", {"form": form, "record": record}
+    )
 
 
 @login_required
@@ -341,7 +367,9 @@ def title_page_upload(request):
             "place": request.POST.get("place", "").strip(),
             "date": request.POST.get("date", "").strip(),
             "title_romanized": request.POST.get("title_romanized", "").strip(),
-            "author_romanized": request.POST.get("author_romanized", "").strip(),
+            "author_romanized": request.POST.get(
+                "author_romanized", ""
+            ).strip(),
         }
         candidates = []
         try:
@@ -368,7 +396,9 @@ def title_page_upload(request):
     # --- OCR phase (image upload) ---
     image_file = request.FILES.get("image")
     if not image_file:
-        return HttpResponse('<p class="text-red-600 text-sm">No image uploaded.</p>')
+        return HttpResponse(
+            '<p class="text-red-600 text-sm">No image uploaded.</p>'
+        )
 
     image_bytes = image_file.read()
 
@@ -410,7 +440,9 @@ def _attach_related(record, cleaned_data):
         author, _ = Author.objects.get_or_create(
             name=author_name,
             defaults={
-                "name_romanized": cleaned_data.get("author_name_romanized", "").strip()
+                "name_romanized": cleaned_data.get(
+                    "author_name_romanized", ""
+                ).strip()
             },
         )
         record.authors.add(author)
@@ -419,7 +451,9 @@ def _attach_related(record, cleaned_data):
     if publisher_name:
         publisher, _ = Publisher.objects.get_or_create(
             name=publisher_name,
-            defaults={"place": cleaned_data.get("publisher_place", "").strip()},
+            defaults={
+                "place": cleaned_data.get("publisher_place", "").strip()
+            },
         )
         record.publishers.add(publisher)
 
@@ -490,7 +524,9 @@ def authority_check(request):
         return HttpResponseBadRequest("POST required")
 
     author_name = request.POST.get("author_name", "").strip()
-    author_name_romanized = request.POST.get("author_name_romanized", "").strip()
+    author_name_romanized = request.POST.get(
+        "author_name_romanized", ""
+    ).strip()
 
     if not author_name and not author_name_romanized:
         return HttpResponse("")
@@ -562,7 +598,9 @@ def review_queue(request):
     if request.user.is_staff:
         scans = ScanResult.objects.filter(status="pending")
     else:
-        scans = ScanResult.objects.filter(status="pending", scanned_by=request.user)
+        scans = ScanResult.objects.filter(
+            status="pending", scanned_by=request.user
+        )
 
     return render(request, "ingest/review_queue.html", {"scans": scans})
 
@@ -592,7 +630,9 @@ def confirm_scan(request, scan_id):
     # Create the Record from candidate data.
     record = Record(
         title=strip_marc_punctuation(candidate.get("title")),
-        title_romanized=strip_marc_punctuation(candidate.get("title_alternate")),
+        title_romanized=strip_marc_punctuation(
+            candidate.get("title_alternate")
+        ),
         date_of_publication=_parse_int(candidate.get("date")),
         place_of_publication=strip_marc_punctuation(candidate.get("place")),
         language=candidate.get("language", ""),

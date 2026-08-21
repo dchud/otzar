@@ -1,7 +1,12 @@
 import pytest
 
 from catalog.models import Author, Record, Subject
-from catalog.search import ensure_fts_table, index_record, search, search_records
+from catalog.search import (
+    ensure_fts_table,
+    index_record,
+    search,
+    search_records,
+)
 
 
 @pytest.mark.django_db
@@ -33,7 +38,9 @@ class TestFTS5Search:
 
     def test_search_by_author(self):
         record = Record.objects.create(title="Guide for the Perplexed")
-        author = Author.objects.create(name="רמבם", name_romanized="Maimonides")
+        author = Author.objects.create(
+            name="רמבם", name_romanized="Maimonides"
+        )
         record.authors.add(author)
         index_record(record)
         results = search("Maimonides")

@@ -15,7 +15,9 @@ class Record(models.Model):
     title = models.CharField(max_length=500)
     title_romanized = models.CharField(max_length=500, blank=True)
     subtitle = models.CharField(max_length=500, blank=True)
-    date_of_publication = models.IntegerField(null=True, blank=True, db_index=True)
+    date_of_publication = models.IntegerField(
+        null=True, blank=True, db_index=True
+    )
     date_of_publication_display = models.CharField(max_length=100, blank=True)
     place_of_publication = models.CharField(max_length=255, blank=True)
     language = models.CharField(max_length=50, blank=True)
@@ -37,10 +39,18 @@ class Record(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    authors = models.ManyToManyField("Author", blank=True, related_name="records")
-    subjects = models.ManyToManyField("Subject", blank=True, related_name="records")
-    publishers = models.ManyToManyField("Publisher", blank=True, related_name="records")
-    locations = models.ManyToManyField("Location", blank=True, related_name="records")
+    authors = models.ManyToManyField(
+        "Author", blank=True, related_name="records"
+    )
+    subjects = models.ManyToManyField(
+        "Subject", blank=True, related_name="records"
+    )
+    publishers = models.ManyToManyField(
+        "Publisher", blank=True, related_name="records"
+    )
+    locations = models.ManyToManyField(
+        "Location", blank=True, related_name="records"
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -136,7 +146,9 @@ class Series(models.Model):
 
 
 class SeriesVolume(models.Model):
-    series = models.ForeignKey(Series, on_delete=models.CASCADE, related_name="volumes")
+    series = models.ForeignKey(
+        Series, on_delete=models.CASCADE, related_name="volumes"
+    )
     record = models.ForeignKey(
         Record,
         on_delete=models.CASCADE,

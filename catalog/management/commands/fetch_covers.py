@@ -21,8 +21,12 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
 
         # Records with no cover_url but at least one ExternalIdentifier.
-        has_identifier = ExternalIdentifier.objects.filter(record=OuterRef("pk"))
-        records = Record.objects.filter(cover_url="").filter(Exists(has_identifier))
+        has_identifier = ExternalIdentifier.objects.filter(
+            record=OuterRef("pk")
+        )
+        records = Record.objects.filter(cover_url="").filter(
+            Exists(has_identifier)
+        )
 
         total = records.count()
         already_have = Record.objects.exclude(cover_url="").count()
@@ -35,7 +39,9 @@ class Command(BaseCommand):
             )
             for record in records:
                 ids = list(
-                    record.external_identifiers.values_list("identifier_type", "value")
+                    record.external_identifiers.values_list(
+                        "identifier_type", "value"
+                    )
                 )
                 self.stdout.write(f"  {record.record_id}: {ids}")
             return

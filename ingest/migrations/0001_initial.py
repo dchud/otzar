@@ -60,7 +60,10 @@ class Migration(migrations.Migration):
                 (
                     "scan_type",
                     models.CharField(
-                        choices=[("isbn", "ISBN/Barcode"), ("ocr", "Title Page OCR")],
+                        choices=[
+                            ("isbn", "ISBN/Barcode"),
+                            ("ocr", "Title Page OCR"),
+                        ],
                         max_length=10,
                     ),
                 ),
@@ -77,9 +80,17 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("isbn", models.CharField(blank=True, max_length=20)),
-                ("image", models.ImageField(blank=True, upload_to="staging/%Y/%m/%d/")),
+                (
+                    "image",
+                    models.ImageField(
+                        blank=True, upload_to="staging/%Y/%m/%d/"
+                    ),
+                ),
                 ("ocr_output", models.JSONField(blank=True, null=True)),
-                ("candidate_records", models.JSONField(blank=True, default=list)),
+                (
+                    "candidate_records",
+                    models.JSONField(blank=True, default=list),
+                ),
                 (
                     "selected_candidate_index",
                     models.IntegerField(blank=True, null=True),

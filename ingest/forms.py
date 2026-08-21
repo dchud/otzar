@@ -37,10 +37,16 @@ class RecordForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "title": forms.TextInput(attrs={"class": INPUT_CLASSES, "dir": "auto"}),
+            "title": forms.TextInput(
+                attrs={"class": INPUT_CLASSES, "dir": "auto"}
+            ),
             "title_romanized": forms.TextInput(attrs={"class": INPUT_CLASSES}),
-            "subtitle": forms.TextInput(attrs={"class": INPUT_CLASSES, "dir": "auto"}),
-            "date_of_publication": forms.NumberInput(attrs={"class": INPUT_NARROW}),
+            "subtitle": forms.TextInput(
+                attrs={"class": INPUT_CLASSES, "dir": "auto"}
+            ),
+            "date_of_publication": forms.NumberInput(
+                attrs={"class": INPUT_NARROW}
+            ),
             "date_of_publication_display": forms.TextInput(
                 attrs={"class": INPUT_CLASSES, "placeholder": "e.g. ca. 1850"}
             ),

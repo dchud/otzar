@@ -43,7 +43,9 @@ class TestRecordModel:
         assert record.get_date_display() == "ca. 1850"
 
     def test_date_display_fallback_to_year(self):
-        record = Record.objects.create(title="Dated Book", date_of_publication=1920)
+        record = Record.objects.create(
+            title="Dated Book", date_of_publication=1920
+        )
         assert record.get_date_display() == "1920"
 
     def test_date_display_empty(self):
@@ -56,7 +58,9 @@ class TestRecordModel:
 
     def test_source_marc_json(self):
         marc_data = {"leader": "00000nam a2200000 a 4500", "fields": []}
-        record = Record.objects.create(title="Cataloged Book", source_marc=marc_data)
+        record = Record.objects.create(
+            title="Cataloged Book", source_marc=marc_data
+        )
         record.refresh_from_db()
         assert record.source_marc == marc_data
 
@@ -64,7 +68,9 @@ class TestRecordModel:
 @pytest.mark.django_db
 class TestAuthorModel:
     def test_create_author(self):
-        author = Author.objects.create(name="רמבם", name_romanized="Maimonides")
+        author = Author.objects.create(
+            name="רמבם", name_romanized="Maimonides"
+        )
         assert str(author) == "רמבם / Maimonides"
 
     def test_author_variant_names(self):
@@ -95,9 +101,15 @@ class TestSeriesModel:
 
     def test_series_gap_representation(self):
         series = Series.objects.create(title="Mishneh Torah", total_volumes=14)
-        SeriesVolume.objects.create(series=series, volume_number="1", held=True)
-        SeriesVolume.objects.create(series=series, volume_number="2", held=False)
-        SeriesVolume.objects.create(series=series, volume_number="3", held=True)
+        SeriesVolume.objects.create(
+            series=series, volume_number="1", held=True
+        )
+        SeriesVolume.objects.create(
+            series=series, volume_number="2", held=False
+        )
+        SeriesVolume.objects.create(
+            series=series, volume_number="3", held=True
+        )
         held = series.volumes.filter(held=True).count()
         not_held = series.volumes.filter(held=False).count()
         assert held == 2
@@ -105,7 +117,9 @@ class TestSeriesModel:
 
     def test_volume_number_string(self):
         series = Series.objects.create(title="Test Series")
-        vol = SeriesVolume.objects.create(series=series, volume_number="supplement")
+        vol = SeriesVolume.objects.create(
+            series=series, volume_number="supplement"
+        )
         assert vol.volume_number == "supplement"
 
 

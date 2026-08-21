@@ -36,3 +36,7 @@ dev = [
 DJANGO_SETTINGS_MODULE = "otzar.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 79
+target-version = "py313"

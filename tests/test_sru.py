@@ -50,7 +50,9 @@ class TestQuoteAlmaValues:
         assert result == 'alma.title = "Talmud Bavli"'
 
     def test_with_boolean(self):
-        result = quote_alma_values("alma.title = Talmud Bavli AND alma.creator = Rashi")
+        result = quote_alma_values(
+            "alma.title = Talmud Bavli AND alma.creator = Rashi"
+        )
         assert 'alma.title = "Talmud Bavli"' in result
         assert 'alma.creator = "Rashi"' in result
 
@@ -92,7 +94,9 @@ class TestSRUClientSearch:
 
     @patch("sources.sru.httpx.get")
     def test_successful_search(self, mock_get):
-        mock_response = httpx.Response(200, text=FAKE_XML, request=FAKE_REQUEST)
+        mock_response = httpx.Response(
+            200, text=FAKE_XML, request=FAKE_REQUEST
+        )
         mock_get.return_value = mock_response
 
         client = self._make_client()
@@ -147,7 +151,9 @@ class TestSRUClientSearch:
 
     @patch("sources.sru.httpx.get")
     def test_auto_quote_alma(self, mock_get):
-        mock_response = httpx.Response(200, text=FAKE_XML, request=FAKE_REQUEST)
+        mock_response = httpx.Response(
+            200, text=FAKE_XML, request=FAKE_REQUEST
+        )
         mock_get.return_value = mock_response
 
         client = self._make_client(auto_quote_alma=True)

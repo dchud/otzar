@@ -50,7 +50,9 @@ class TestRecordDetailView:
     def test_correct_template_used(self, client, sample_record):
         url = f"/catalog/{sample_record.record_id}/{sample_record.slug}/"
         response = client.get(url)
-        assert "catalog/record_detail.html" in [t.name for t in response.templates]
+        assert "catalog/record_detail.html" in [
+            t.name for t in response.templates
+        ]
 
     def test_record_data_displayed(self, client, sample_record):
         url = f"/catalog/{sample_record.record_id}/{sample_record.slug}/"

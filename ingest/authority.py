@@ -46,9 +46,9 @@ def find_author_matches(
 
     # 2. Exact romanized match
     if name_romanized:
-        for author in Author.objects.filter(name_romanized=name_romanized).exclude(
-            pk__in=seen_ids
-        ):
+        for author in Author.objects.filter(
+            name_romanized=name_romanized
+        ).exclude(pk__in=seen_ids):
             matches.append((author, "romanized"))
             seen_ids.add(author.pk)
 
@@ -57,7 +57,9 @@ def find_author_matches(
     query_rom_norm = normalize_for_comparison(name_romanized)
 
     if query_norm or query_rom_norm:
-        for author in Author.objects.exclude(pk__in=seen_ids).exclude(variant_names=[]):
+        for author in Author.objects.exclude(pk__in=seen_ids).exclude(
+            variant_names=[]
+        ):
             for variant in author.variant_names:
                 variant_norm = normalize_for_comparison(str(variant))
                 if not variant_norm:

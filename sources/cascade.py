@@ -187,12 +187,16 @@ def run_cascade(
 
 def search_nli(metadata: dict, max_records: int = 20) -> CascadeResult:
     """Search the National Library of Israel using the NLI cascade."""
-    return run_cascade(nli_client, NLI_CASCADE, metadata, max_records=max_records)
+    return run_cascade(
+        nli_client, NLI_CASCADE, metadata, max_records=max_records
+    )
 
 
 def search_lc(metadata: dict, max_records: int = 20) -> CascadeResult:
     """Search the Library of Congress using the LC cascade."""
-    return run_cascade(lc_client, LC_CASCADE, metadata, max_records=max_records)
+    return run_cascade(
+        lc_client, LC_CASCADE, metadata, max_records=max_records
+    )
 
 
 # --- ISBN lookup ---
@@ -230,7 +234,9 @@ def isbn_lookup(isbn: str) -> dict:
 
     # DNB
     try:
-        dnb_result = dnb_client.search(f"dnb.num={isbn}", record_schema="MARC21-xml")
+        dnb_result = dnb_client.search(
+            f"dnb.num={isbn}", record_schema="MARC21-xml"
+        )
         if dnb_result.success:
             _, marc_records = extract_marc_records(dnb_result.data)
             dnb_records = [parse_record(r) for r in marc_records]

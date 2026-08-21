@@ -19,5 +19,9 @@ urlpatterns = [
     path("confirm/<int:scan_id>/", views.confirm_scan, name="confirm_scan"),
     path("discard/<int:scan_id>/", views.discard_scan, name="discard_scan"),
     path("qr/", views.qr_code_view, name="qr_code"),
-    path("phone-auth/<str:token>/", views.phone_scan_auth, name="phone_scan_auth"),
+    path(
+        "phone-auth/<str:token>/",
+        views.phone_scan_auth,
+        name="phone_scan_auth",
+    ),
 ]
