@@ -7,7 +7,9 @@ from catalog.models import Record
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(username="cataloger", password="testpass123")
+    return User.objects.create_user(
+        username="cataloger", password="testpass123"
+    )
 
 
 @pytest.fixture

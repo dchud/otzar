@@ -23,7 +23,9 @@ class TestStripMarcPunctuation:
         )
 
     def test_trailing_period_after_name(self):
-        assert strip_marc_punctuation("Brown, John Seely.") == "Brown, John Seely"
+        assert (
+            strip_marc_punctuation("Brown, John Seely.") == "Brown, John Seely"
+        )
 
     def test_trailing_period_after_name_with_comma(self):
         assert strip_marc_punctuation("Duguid, Paul,") == "Duguid, Paul"

@@ -73,7 +73,9 @@ def record_detail(request, record_id, slug=None):
                         for sf in subfields:
                             if isinstance(sf, dict):
                                 for code, val in sf.items():
-                                    subfield_parts.append({"code": code, "value": val})
+                                    subfield_parts.append(
+                                        {"code": code, "value": val}
+                                    )
                         marc_fields.append(
                             {
                                 "tag": tag,
@@ -88,7 +90,9 @@ def record_detail(request, record_id, slug=None):
                                 "tag": tag,
                                 "ind1": " ",
                                 "ind2": " ",
-                                "subfields": [{"code": "", "value": str(content)}],
+                                "subfields": [
+                                    {"code": "", "value": str(content)}
+                                ],
                             }
                         )
 
@@ -109,4 +113,6 @@ def delete_record(request, record_id):
         remove_from_index(record_id)
         record.delete()
         return redirect("home")
-    return redirect("catalog:record_detail", record_id=record_id, slug=record.slug)
+    return redirect(
+        "catalog:record_detail", record_id=record_id, slug=record.slug
+    )

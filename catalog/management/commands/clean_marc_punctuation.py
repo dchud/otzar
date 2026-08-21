@@ -31,7 +31,12 @@ class Command(BaseCommand):
         self.stdout.write(f"Authors changed:    {author_changes}")
         self.stdout.write(f"Publishers changed: {publisher_changes}")
         self.stdout.write(f"Subjects changed:   {subject_changes}")
-        total = record_changes + author_changes + publisher_changes + subject_changes
+        total = (
+            record_changes
+            + author_changes
+            + publisher_changes
+            + subject_changes
+        )
         self.stdout.write(f"Total changes:      {total}")
 
         if dry_run and total > 0:

@@ -30,7 +30,9 @@ def author_browse(request):
         .order_by("name")
     )
     page_obj = _paginate(request, authors)
-    return render(request, "catalog/browse/authors.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/authors.html", {"page_obj": page_obj}
+    )
 
 
 def title_browse(request):
@@ -60,7 +62,9 @@ def title_browse(request):
         records = Record.objects.none()
 
     page_obj = _paginate(request, records)
-    return render(request, "catalog/browse/titles.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/titles.html", {"page_obj": page_obj}
+    )
 
 
 def subject_browse(request):
@@ -70,7 +74,9 @@ def subject_browse(request):
         .order_by("heading")
     )
     page_obj = _paginate(request, subjects)
-    return render(request, "catalog/browse/subjects.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/subjects.html", {"page_obj": page_obj}
+    )
 
 
 def publisher_browse(request):
@@ -80,7 +86,9 @@ def publisher_browse(request):
         .order_by("name")
     )
     page_obj = _paginate(request, publishers)
-    return render(request, "catalog/browse/publishers.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/publishers.html", {"page_obj": page_obj}
+    )
 
 
 def date_browse(request):
@@ -107,7 +115,9 @@ def location_browse(request):
         .order_by("label")
     )
     page_obj = _paginate(request, locations)
-    return render(request, "catalog/browse/locations.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/locations.html", {"page_obj": page_obj}
+    )
 
 
 def author_detail(request, pk, slug=None):
@@ -139,7 +149,9 @@ def series_browse(request):
         gap_count=Count("volumes", filter=Q(volumes__held=False)),
     ).order_by("title")
     page_obj = _paginate(request, series_qs)
-    return render(request, "catalog/browse/series.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/series.html", {"page_obj": page_obj}
+    )
 
 
 def place_browse(request):
@@ -156,7 +168,9 @@ def place_browse(request):
 
     places = sorted(place_counts.items(), key=lambda x: x[0])
     page_obj = _paginate(request, places)
-    return render(request, "catalog/browse/places.html", {"page_obj": page_obj})
+    return render(
+        request, "catalog/browse/places.html", {"page_obj": page_obj}
+    )
 
 
 def place_detail(request, place_name):
@@ -166,7 +180,9 @@ def place_detail(request, place_name):
     after stripping MARC punctuation.
     """
     # Find all records, filter in Python for normalized matching
-    candidates = Record.objects.exclude(place_of_publication="").order_by("title")
+    candidates = Record.objects.exclude(place_of_publication="").order_by(
+        "title"
+    )
     matching_pks = [
         r.pk
         for r in candidates.only("pk", "place_of_publication")

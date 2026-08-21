@@ -279,16 +279,24 @@ class Command(BaseCommand):
         g = Subject.objects.get_or_create
         return {
             "halacha": g(heading="Jewish law", defaults={"source": "LC"})[0],
-            "philosophy": g(heading="Jewish philosophy", defaults={"source": "LC"})[0],
-            "talmud": g(heading="Talmud -- Commentaries", defaults={"source": "LC"})[0],
-            "history": g(heading="Jews -- History", defaults={"source": "LC"})[0],
-            "literature_heb": g(heading="Hebrew literature", defaults={"source": "LC"})[
+            "philosophy": g(
+                heading="Jewish philosophy", defaults={"source": "LC"}
+            )[0],
+            "talmud": g(
+                heading="Talmud -- Commentaries", defaults={"source": "LC"}
+            )[0],
+            "history": g(heading="Jews -- History", defaults={"source": "LC"})[
                 0
             ],
+            "literature_heb": g(
+                heading="Hebrew literature", defaults={"source": "LC"}
+            )[0],
             "literature_yid": g(
                 heading="Yiddish literature", defaults={"source": "LC"}
             )[0],
-            "bible": g(heading="Bible -- Commentaries", defaults={"source": "LC"})[0],
+            "bible": g(
+                heading="Bible -- Commentaries", defaults={"source": "LC"}
+            )[0],
             "mysticism": g(heading="Cabala", defaults={"source": "LC"})[0],
             "reference": g(
                 heading="Hebrew language -- Dictionaries",
@@ -330,7 +338,9 @@ class Command(BaseCommand):
             )[0],
         }
 
-    def _create_records(self, authors, publishers, subjects, locations, series_map):
+    def _create_records(
+        self, authors, publishers, subjects, locations, series_map
+    ):
         a = authors
         p = publishers
         s = subjects

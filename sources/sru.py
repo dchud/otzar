@@ -143,7 +143,9 @@ class SRUClient:
             time.sleep(delay)
 
         try:
-            response = httpx.get(self.base_url, params=params, timeout=REQUEST_TIMEOUT)
+            response = httpx.get(
+                self.base_url, params=params, timeout=REQUEST_TIMEOUT
+            )
             response.raise_for_status()
         except httpx.TimeoutException:
             return SRUResult(

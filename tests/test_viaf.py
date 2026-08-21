@@ -238,7 +238,8 @@ class TestNormalize:
     def test_hebrew_punctuation(self):
         # geresh and gershayim
         assert (
-            _normalize("\u05e8\u05de\u05d1\u05f4\u05dd") == "\u05e8\u05de\u05d1\u05dd"
+            _normalize("\u05e8\u05de\u05d1\u05f4\u05dd")
+            == "\u05e8\u05de\u05d1\u05dd"
         )
 
 
@@ -257,7 +258,9 @@ class TestBuildAuthorQueries:
         assert "cql.any all" in queries[1]
 
     def test_romanized_name_included(self):
-        queries = _build_author_queries("\u05de\u05e9\u05d4", name_romanized="Moshe")
+        queries = _build_author_queries(
+            "\u05de\u05e9\u05d4", name_romanized="Moshe"
+        )
         assert any("Moshe" in q for q in queries)
 
     def test_no_name_returns_empty(self):

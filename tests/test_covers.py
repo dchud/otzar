@@ -53,11 +53,16 @@ class TestFetchCoverUrl:
 
         result = fetch_cover_url(record_with_ids)
 
-        assert result == "https://covers.openlibrary.org/b/isbn/9780123456789-M.jpg"
+        assert (
+            result
+            == "https://covers.openlibrary.org/b/isbn/9780123456789-M.jpg"
+        )
         assert mock_get.call_count == 1
 
     @patch("sources.covers.httpx.get")
-    def test_isbn_placeholder_falls_through_to_oclc(self, mock_get, record_with_ids):
+    def test_isbn_placeholder_falls_through_to_oclc(
+        self, mock_get, record_with_ids
+    ):
         """ISBN returns 1x1 pixel, OCLC returns a real cover."""
         mock_get.side_effect = [
             _mock_get_response(43),  # ISBN: placeholder
@@ -137,7 +142,9 @@ class TestFetchCoversCommand:
 
     @patch("sources.covers.httpx.get")
     @patch("sources.covers.time.sleep")
-    def test_skips_records_with_covers(self, mock_sleep, mock_get, record_with_ids):
+    def test_skips_records_with_covers(
+        self, mock_sleep, mock_get, record_with_ids
+    ):
         """Records that already have cover_url are skipped."""
         from django.core.management import call_command
 

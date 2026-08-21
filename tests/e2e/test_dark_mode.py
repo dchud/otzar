@@ -47,7 +47,9 @@ class TestDarkMode:
         # Dark mode should still be active
         expect(page.locator("html")).to_have_class(re.compile("dark"))
 
-    def test_dark_mode_no_console_errors(self, page, live_server, sample_record):
+    def test_dark_mode_no_console_errors(
+        self, page, live_server, sample_record
+    ):
         """Dark mode should render key pages without JavaScript errors."""
         errors = []
         page.on("pageerror", lambda err: errors.append(str(err)))
@@ -60,11 +62,15 @@ class TestDarkMode:
         for path in ["/", "/browse/", "/search/"]:
             page.goto(f"{live_server.url}{path}")
             # Page should render with dark background
-            expect(page.locator("body")).to_have_class(re.compile("dark:bg-gray-900"))
+            expect(page.locator("body")).to_have_class(
+                re.compile("dark:bg-gray-900")
+            )
 
         assert errors == [], f"Console errors in dark mode: {errors}"
 
-    def test_dark_mode_contrast_classes(self, page, live_server, sample_record):
+    def test_dark_mode_contrast_classes(
+        self, page, live_server, sample_record
+    ):
         """Verify dark mode text uses gray-300 (not gray-400) for contrast."""
         page.goto(live_server.url)
         page.click('button[aria-label="Toggle dark mode"]')
@@ -76,7 +82,9 @@ class TestDarkMode:
         assert "dark:text-gray-300" in footer_classes
         assert "dark:text-gray-400" not in footer_classes
 
-    def test_dark_mode_record_detail_contrast(self, page, live_server, sample_record):
+    def test_dark_mode_record_detail_contrast(
+        self, page, live_server, sample_record
+    ):
         """Record detail page should use gray-300 text in dark mode."""
         slug = sample_record.slug
         rid = sample_record.record_id

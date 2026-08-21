@@ -38,8 +38,12 @@ def sample_record(db, staff_user):
     publisher = Publisher.objects.create(
         name="Harvard Business School Press", place="Boston"
     )
-    subject = Subject.objects.create(heading="Information society", source="LC")
-    subject2 = Subject.objects.create(heading="Information technology", source="LC")
+    subject = Subject.objects.create(
+        heading="Information society", source="LC"
+    )
+    subject2 = Subject.objects.create(
+        heading="Information technology", source="LC"
+    )
     location = Location.objects.create(label="Floor 1, Shelf A")
 
     record = Record.objects.create(
@@ -65,7 +69,9 @@ def sample_record(db, staff_user):
     return record
 
 
-def login(page: Page, live_server, username="testadmin", password="testpass123"):
+def login(
+    page: Page, live_server, username="testadmin", password="testpass123"
+):
     """Log in via the login page."""
     page.goto(f"{live_server.url}/accounts/login/")
     page.fill("#id_username", username)
