@@ -148,7 +148,9 @@ class TestTitlePageHandoff:
         expect(desktop_page.locator("[id^='title-page-card-']")).to_be_visible(
             timeout=10000
         )
-        expect(desktop_page.locator('button:text("Run OCR")')).to_be_visible()
+        expect(
+            desktop_page.locator('button:has(.btn-idle:text-is("Run OCR"))')
+        ).to_be_visible()
         expect(desktop_page.locator('button:text("Discard")')).to_be_visible()
 
         # The card must actually display the uploaded image, not a broken
@@ -202,7 +204,7 @@ class TestTitlePageHandoff:
         )
 
         # Click Run OCR; the metadata edit partial appears.
-        page.click('button:text("Run OCR")')
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(page.locator("text=Extracted metadata")).to_be_visible(
             timeout=10000
         )
@@ -249,12 +251,12 @@ class TestTitlePageHandoff:
             timeout=10000
         )
 
-        page.click('button:text("Run OCR")')
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "First Title", timeout=10000
         )
 
-        page.click('button:text("Re-run OCR")')
+        page.click('button:has(.btn-idle:text-is("Re-run OCR"))')
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "Second Title", timeout=10000
         )
@@ -285,7 +287,7 @@ class TestTitlePageHandoff:
             timeout=10000
         )
 
-        page.click('button:text("Run OCR")')
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(page.locator("text=Extracted metadata")).to_be_visible(
             timeout=10000
         )
@@ -336,10 +338,10 @@ class TestTitlePageHandoff:
         assert not os.path.exists(image_path)
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_spinner_runs_while_ocr_is_working(
+    def test_ocr_button_shows_progress_while_working(
         self, mock_ocr, page, live_server, staff_user
     ):
-        """The wait for the vision API is visible while it happens."""
+        """The button that starts OCR reports its own progress."""
 
         def slow_ocr(_image_bytes):
             time.sleep(1.5)
@@ -363,16 +365,22 @@ class TestTitlePageHandoff:
             timeout=10000
         )
 
-        spinner = page.locator("#ocr-spinner")
-        expect(spinner).to_be_hidden()
+        run_ocr = page.locator('button:has(.btn-idle:text-is("Run OCR"))')
+        busy = run_ocr.locator(".btn-busy")
+        expect(busy).to_be_hidden()
 
-        page.click('button:text("Run OCR")')
-        expect(spinner).to_be_visible(timeout=2000)
+        run_ocr.click()
+
+        # The button that started the work reports it: the label swaps for
+        # a spinner and the button stops taking clicks.
+        expect(busy).to_be_visible(timeout=2000)
+        expect(run_ocr.locator(".btn-idle")).to_be_hidden()
+        expect(run_ocr).to_be_disabled()
 
         expect(page.locator("text=Extracted metadata")).to_be_visible(
             timeout=15000
         )
-        expect(spinner).to_be_hidden()
+        expect(page.locator(".btn-busy:visible")).to_have_count(0)
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_failed_ocr_shows_the_photo_once(
@@ -397,7 +405,7 @@ class TestTitlePageHandoff:
             timeout=10000
         )
 
-        page.click('button:text("Run OCR")')
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(
             page.locator("text=OCR could not extract metadata")
         ).to_be_visible(timeout=10000)

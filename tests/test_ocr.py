@@ -67,6 +67,28 @@ class TestExtractMetadataFromImage:
         "os.environ",
         {"ANTHROPIC_API_KEY": "test-key", "CLAUDE_MODEL": "test-model"},
     )
+    def test_reads_past_a_leading_thinking_block(self, mock_anthropic_cls):
+        """Thinking models put a reasoning block ahead of the answer."""
+        import json
+
+        mock_client = MagicMock()
+        mock_anthropic_cls.return_value = mock_client
+        mock_message = MagicMock()
+        mock_message.content = [
+            MagicMock(type="thinking", thinking="Reading the page..."),
+            MagicMock(type="text", text=json.dumps(SAMPLE_OCR_RESPONSE)),
+        ]
+        mock_client.messages.create.return_value = mock_message
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result == SAMPLE_OCR_RESPONSE
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict(
+        "os.environ",
+        {"ANTHROPIC_API_KEY": "test-key", "CLAUDE_MODEL": "test-model"},
+    )
     def test_successful_extraction(self, mock_anthropic_cls):
         import json
 
@@ -74,7 +96,7 @@ class TestExtractMetadataFromImage:
         mock_anthropic_cls.return_value = mock_client
         mock_message = MagicMock()
         mock_message.content = [
-            MagicMock(text=json.dumps(SAMPLE_OCR_RESPONSE))
+            MagicMock(type="text", text=json.dumps(SAMPLE_OCR_RESPONSE))
         ]
         mock_client.messages.create.return_value = mock_message
 
@@ -114,7 +136,9 @@ class TestExtractMetadataFromImage:
         mock_client = MagicMock()
         mock_anthropic_cls.return_value = mock_client
         mock_message = MagicMock()
-        mock_message.content = [MagicMock(text="This is not JSON at all")]
+        mock_message.content = [
+            MagicMock(type="text", text="This is not JSON at all")
+        ]
         mock_client.messages.create.return_value = mock_message
 
         result = extract_metadata_from_image(b"fake image bytes")
