@@ -1,5 +1,31 @@
+from pathlib import Path
+from uuid import uuid4
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+JPEG_SUFFIXES = {".jpg", ".jpeg", ".png"}
+
+
+def staging_image_path(instance, filename):
+    """Build a storage path that no other upload can land on.
+
+    Phone captures arrive named image.jpg every time, and discarding a
+    scan deletes the stored file, which frees that name for the next
+    upload. A path derived from the uploaded filename therefore puts a
+    retake on the same URL as the photo it replaced, and any browser
+    holding that URL keeps painting the old image. A random stem gives
+    every upload its own URL for as long as the file exists.
+
+    The suffix is normalized because the capture form re-encodes to JPEG
+    while keeping the original filename, so a photo picked from an iOS
+    library arrives as JPEG bytes under a .heic name.
+    """
+    suffix = Path(filename).suffix.lower()
+    if suffix not in JPEG_SUFFIXES:
+        suffix = ".jpg"
+    return f"staging/{timezone.now():%Y/%m/%d}/{uuid4().hex}{suffix}"
 
 
 class ScanResult(models.Model):
@@ -29,7 +55,7 @@ class ScanResult(models.Model):
         max_length=20, choices=STATUS_CHOICES, default="pending"
     )
     isbn = models.CharField(max_length=20, blank=True)
-    image = models.ImageField(upload_to="staging/%Y/%m/%d/", blank=True)
+    image = models.ImageField(upload_to=staging_image_path, blank=True)
     ocr_output = models.JSONField(null=True, blank=True)
     candidate_records = models.JSONField(default=list, blank=True)
     selected_candidate_index = models.IntegerField(null=True, blank=True)

@@ -334,6 +334,39 @@ class TestTitlePageHandoff:
         assert not scan.image
         assert not os.path.exists(image_path)
 
+    def test_retake_after_discard_shows_the_new_photo(
+        self, page, live_server, staff_user
+    ):
+        """The card after a retake points at a different image URL.
+
+        Phone captures share one filename, so a retake used to land on the
+        URL the discarded photo had already taught the browser to cache.
+        """
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+
+        def upload():
+            page.set_input_files("#image-input", FIXTURE_IMAGE)
+            expect(page.locator("#upload-btn")).to_be_enabled(timeout=5000)
+            page.click("#upload-btn")
+            card = page.locator("[id^='title-page-card-']").first
+            expect(card).to_be_visible(timeout=5000)
+            return card.locator(
+                "img[alt='Uploaded title page']"
+            ).get_attribute("src")
+
+        first_src = upload()
+
+        page.on("dialog", lambda dialog: dialog.accept())
+        page.locator("[id^='title-page-card-'] button:text('Discard')").click()
+        expect(page.locator("[id^='title-page-card-']")).to_have_count(0)
+
+        second_src = upload()
+
+        assert second_src and second_src != first_src, (
+            f"retake reused the discarded photo's URL: {second_src}"
+        )
+
     def test_candidates_table_fits_beside_qr_sidebar(
         self, page, live_server, staff_user
     ):

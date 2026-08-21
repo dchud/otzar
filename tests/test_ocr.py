@@ -196,6 +196,60 @@ class TestTitlePageUploadView:
         assert scan.ocr_output is None
         assert scan.image  # ImageField populated
 
+    def test_retake_does_not_reuse_a_discarded_image_url(
+        self, client_logged_in, tmp_path, settings
+    ):
+        """A retake gets its own URL, not the discarded photo's.
+
+        Phone captures all arrive named image.jpg. Discarding deletes the
+        stored file and frees that name, so a name derived from the upload
+        puts the next photo on the URL the browser already has cached for
+        the discarded one, and both devices keep showing the old image.
+        """
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+
+        def upload(payload):
+            image = io.BytesIO(payload)
+            image.name = "image.jpg"
+            client_logged_in.post(
+                "/ingest/upload-title/", {"image": image}, format="multipart"
+            )
+            return ScanResult.objects.filter(scan_type="ocr").latest("id")
+
+        first = upload(b"first photo")
+        first_name = first.image.name
+
+        client_logged_in.post(f"/ingest/scan-title/{first.pk}/discard/")
+        first.refresh_from_db()
+        assert not first.image
+
+        second = upload(b"second photo")
+        assert second.image.name != first_name
+
+    def test_two_uploads_of_one_filename_get_distinct_urls(
+        self, client_logged_in, tmp_path, settings
+    ):
+        """Two live scans never share a URL either."""
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        for payload in (b"photo one", b"photo two"):
+            image = io.BytesIO(payload)
+            image.name = "image.jpg"
+            client_logged_in.post(
+                "/ingest/upload-title/", {"image": image}, format="multipart"
+            )
+
+        names = list(
+            ScanResult.objects.filter(scan_type="ocr").values_list(
+                "image", flat=True
+            )
+        )
+        assert len(names) == 2
+        assert len(set(names)) == 2
+
     def test_upload_no_image_keeps_no_scan(self, client_logged_in):
         response = client_logged_in.post("/ingest/upload-title/")
         assert response.status_code == 200
