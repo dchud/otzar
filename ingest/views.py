@@ -454,16 +454,14 @@ def run_ocr(request, scan_id):
         image_bytes = fh.read()
     metadata = extract_metadata_from_image(image_bytes)
     if metadata is None:
-        # Reset to awaiting state so the card surfaces in the queue
-        # poll again with a "Try OCR again" affordance.
+        # Reset to awaiting state so the card in the poll pane keeps its
+        # Run OCR button. The response is a notice rather than a card:
+        # the card is already on screen, and rendering a second one put
+        # the same photo up twice under a duplicated element id.
         scan.status = "awaiting_ocr"
         scan.ocr_output = None
         scan.save(update_fields=["status", "ocr_output", "updated_at"])
-        return render(
-            request,
-            "ingest/_title_page_card.html",
-            {"scan": scan, "ocr_error": True},
-        )
+        return render(request, "ingest/_ocr_error.html", {"scan": scan})
 
     scan.status = "pending"
     scan.ocr_output = metadata

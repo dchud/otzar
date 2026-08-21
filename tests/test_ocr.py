@@ -343,6 +343,28 @@ class TestTitlePageUploadView:
         assert scan.ocr_output is None
 
     @patch("ingest.views.extract_metadata_from_image")
+    def test_failure_response_carries_no_second_image(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """The failure notice is a message, not another copy of the card.
+
+        The card already sits in the poll pane, so returning a card into
+        the metadata pane put the same photo on screen twice, under a
+        duplicated element id.
+        """
+        mock_ocr.return_value = None
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert b"OCR could not extract metadata" in response.content
+        assert b"Try OCR again" in response.content
+        assert b"<img" not in response.content
+        assert (
+            f'id="title-page-card-{scan.pk}"'.encode() not in response.content
+        )
+
+    @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_failure_after_success_resets_to_awaiting(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):

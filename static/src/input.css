@@ -13,6 +13,17 @@
 }
 
 @layer base {
+  /* htmx toggles .htmx-request on the element named by hx-indicator. Its
+     default styling only fades opacity, so a hidden panel still occupies
+     space above the pane it belongs to. */
+  .spinner-panel {
+    display: none;
+  }
+
+  .spinner-panel.htmx-request {
+    display: block;
+  }
+
   .text-rtl {
     font-size: 1.1em;
     line-height: 1.6;

@@ -15,7 +15,17 @@
 
   {% include "ingest/_title_page_form.html" %}
 
-  <div id="title-page-metadata" aria-live="polite"></div>
+  <div id="ocr-spinner" class="spinner-panel" aria-live="polite">
+      <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p>Reading the title page. This takes a few seconds.</p>
+      </div>
+    </div>
+
+    <div id="title-page-metadata" aria-live="polite"></div>
 
   <section aria-live="polite">
     <h2 class="text-lg font-medium mb-3">Photos awaiting review</h2>
@@ -44,6 +54,16 @@
 
     <div class="max-w-2xl">
       {% include "ingest/_title_page_form.html" %}
+    </div>
+
+    <div id="ocr-spinner" class="spinner-panel" aria-live="polite">
+      <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p>Reading the title page. This takes a few seconds.</p>
+      </div>
     </div>
 
     <div id="title-page-metadata" aria-live="polite"></div>
@@ -76,6 +96,23 @@
   // When the metadata form is populated by Run OCR / Continue editing /
   // Re-run OCR, scroll it into view so the user does not have to hunt
   // for it after clicking a card deep in the list.
+  // A poll swap mid-OCR would replace the card, re-enabling its Run OCR
+  // button under the spinner and inviting a second call to the vision
+  // API. Hold the poll until the OCR request settles.
+  let ocrInFlight = false;
+  document.body.addEventListener('htmx:beforeRequest', function (e) {
+    const path = (e.detail.requestConfig && e.detail.requestConfig.path) || '';
+    if (path.indexOf('/ocr/') !== -1) {
+      ocrInFlight = true;
+    } else if (ocrInFlight && e.detail.target.id === 'title-page-results') {
+      e.preventDefault();
+    }
+  });
+  document.body.addEventListener('htmx:afterRequest', function (e) {
+    const path = (e.detail.requestConfig && e.detail.requestConfig.path) || '';
+    if (path.indexOf('/ocr/') !== -1) ocrInFlight = false;
+  });
+
   document.body.addEventListener('htmx:afterSwap', function (e) {
     if (e.detail.target.id === 'title-page-metadata' && e.detail.target.children.length > 0) {
       e.detail.target.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -1,6 +1,7 @@
 """End-to-end tests for the title-page phone-to-desktop handoff."""
 
 import os
+import time
 from unittest.mock import patch
 
 import pytest
@@ -333,6 +334,76 @@ class TestTitlePageHandoff:
         assert scan.status == "discarded"
         assert not scan.image
         assert not os.path.exists(image_path)
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_spinner_runs_while_ocr_is_working(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """The wait for the vision API is visible while it happens."""
+
+        def slow_ocr(_image_bytes):
+            time.sleep(1.5)
+            return SAMPLE_OCR_RESPONSE
+
+        mock_ocr.side_effect = slow_ocr
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        spinner = page.locator("#ocr-spinner")
+        expect(spinner).to_be_hidden()
+
+        page.click('button:text("Run OCR")')
+        expect(spinner).to_be_visible(timeout=2000)
+
+        expect(page.locator("text=Extracted metadata")).to_be_visible(
+            timeout=15000
+        )
+        expect(spinner).to_be_hidden()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_failed_ocr_shows_the_photo_once(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """A failed OCR leaves one photo on screen, not two."""
+        mock_ocr.return_value = None
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        page.click('button:text("Run OCR")')
+        expect(
+            page.locator("text=OCR could not extract metadata")
+        ).to_be_visible(timeout=10000)
+
+        expect(page.locator("img[alt='Uploaded title page']")).to_have_count(1)
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_have_count(1)
 
     def test_retake_after_discard_shows_the_new_photo(
         self, page, live_server, staff_user
