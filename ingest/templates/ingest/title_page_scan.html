@@ -35,14 +35,16 @@
 <h1 class="text-2xl font-semibold mb-6">Scan title page</h1>
 
 <div class="flex gap-8 flex-wrap">
-  <div class="flex-1 min-w-0 max-w-2xl space-y-6">
-    <p class="text-sm text-gray-600 dark:text-gray-300">
+  <div class="flex-1 min-w-0 space-y-6">
+    <p class="text-sm text-gray-600 dark:text-gray-300 max-w-2xl">
       Upload a title page image directly, or scan the QR code with a phone
       to take a photo there. Either way, the image shows up below for
       review before OCR runs.
     </p>
 
-    {% include "ingest/_title_page_form.html" %}
+    <div class="max-w-2xl">
+      {% include "ingest/_title_page_form.html" %}
+    </div>
 
     <div id="title-page-metadata" aria-live="polite"></div>
 

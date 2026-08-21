@@ -8,6 +8,7 @@ from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
 from ingest.models import ScanResult
+from sources.cascade import CascadeResult
 from tests.e2e.conftest import login
 
 FIXTURE_IMAGE = os.path.join(
@@ -24,6 +25,39 @@ SAMPLE_OCR_RESPONSE = {
     "title_romanized": "Mishneh Torah",
     "author_romanized": "Maimonides",
 }
+
+
+# Candidate shapes matching what the catalogs return for a Hebrew title:
+# long publisher lines, series statements, and three identifiers per row.
+WIDE_CANDIDATES = [
+    {
+        "title": "The book of Leviticus : critical edition of the Hebrew text",
+        "author": "Kanotopsky, Zvi Dov",
+        "date": "1994-2003, \u00a91989-\u00a91990",
+        "publisher": "W\u00fcrttembergische Bibelanstalt",
+        "place": "Stuttgart",
+        "series_title": "Biblia Hebraica Stuttgartensia",
+        "series_volume": "2",
+        "isbn": "9783438052285",
+        "lccn": "75950123",
+        "oclc": "891550895",
+        "source_catalog": "NLI",
+    },
+    {
+        "title": "\u05e1\u05e4\u05e8 \u05d5\u05d9\u05e7\u05e8\u05d0 = Vayikra = Leviticus",
+        "author": "Scherman, Nosson",
+        "date": "1994-2003, \u00a91989-\u00a91990",
+        "publisher": "ArtScroll Mesorah Publications",
+        "place": "Brooklyn, New York",
+        "series_title": "ArtScroll series : Sapirstein edition",
+        "series_volume": "3",
+        "isbn": "9780899060269",
+        "lccn": "2004273599",
+        "oclc": "1037696818",
+        "source_catalog": "NLI",
+    },
+]
+WIDE_CANDIDATES = WIDE_CANDIDATES * 4
 
 
 def _phone_token(user):
@@ -277,3 +311,71 @@ class TestTitlePageHandoff:
         assert scan.status == "discarded"
         assert not scan.image
         assert not os.path.exists(image_path)
+
+    def test_candidates_table_fits_beside_qr_sidebar(
+        self, page, live_server, staff_user
+    ):
+        """The candidate table stays fully visible next to the QR sidebar.
+
+        The desktop content column shares a row with the QR sidebar. When
+        the column carries a width cap, the table's rightmost column — the
+        Use buttons — is pushed outside the scroll container and can only
+        be reached by scrolling sideways.
+        """
+        page.set_viewport_size({"width": 1280, "height": 800})
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="pending",
+                ocr_output=SAMPLE_OCR_RESPONSE,
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+
+        with (
+            patch("ingest.views.search_nli") as mock_nli,
+            patch("ingest.views.search_lc") as mock_lc,
+        ):
+            mock_nli.return_value = CascadeResult(records=WIDE_CANDIDATES)
+            mock_lc.return_value = CascadeResult(records=[])
+
+            page.goto(f"{live_server.url}/ingest/scan-title/")
+            expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+                timeout=10000
+            )
+            page.click('button:text("Continue editing")')
+            expect(page.locator("text=Extracted metadata")).to_be_visible(timeout=10000)
+            page.click('button:text("Search catalogs")')
+            expect(page.locator("table")).to_be_visible(timeout=10000)
+
+        # The QR sidebar shares the row, so this asserts the table fits
+        # beside it rather than in a full-width column.
+        expect(page.locator('img[alt*="QR code"]')).to_be_visible()
+
+        overflow = page.evaluate("""() => {
+            const wrap = document.querySelector('.overflow-x-auto');
+            const wrapRight = wrap.getBoundingClientRect().right;
+            const clipped = [...document.querySelectorAll('table tbody tr')]
+                .filter(tr => tr.querySelector('button')
+                    .getBoundingClientRect().right > wrapRight + 1).length;
+            return {
+                scrollOverflow: wrap.scrollWidth - wrap.clientWidth,
+                clippedButtons: clipped,
+                pageOverflow: document.documentElement.scrollWidth
+                    - document.documentElement.clientWidth,
+            };
+        }""")
+
+        assert overflow["scrollOverflow"] <= 0, (
+            f"candidate table overflows its container by {overflow['scrollOverflow']}px"
+        )
+        assert overflow["clippedButtons"] == 0, (
+            f"{overflow['clippedButtons']} Use buttons are outside the "
+            f"visible area of the table"
+        )
+        assert overflow["pageOverflow"] <= 0, "page scrolls horizontally"
