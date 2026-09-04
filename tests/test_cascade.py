@@ -445,6 +445,13 @@ class TestNormalizePublisher:
         assert normalize_publisher("ArtScroll") == "ArtScroll"
 
     def test_word_ending_in_a_suffix_is_not_truncated(self):
+        """A suffix's letters inside a longer word are not a suffix.
+
+        "Zinc" ends in the letters of "Inc"; only the word boundary in
+        the suffix pattern keeps it from being reduced to "Z".
+        """
+        assert normalize_publisher("Zinc") == "Zinc"
+        assert normalize_publisher("Editorial Zinc") == "Editorial Zinc"
         assert normalize_publisher("Sinclair") == "Sinclair"
 
     def test_hebrew_name_passes_through(self):
