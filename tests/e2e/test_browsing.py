@@ -132,6 +132,29 @@ class TestRecordDetail:
         # Identifiers
         expect(page.locator("text=0875847625")).to_be_visible()
 
+    def test_record_detail_shows_language_name(
+        self, page, live_server, sample_record
+    ):
+        page.goto(
+            f"{live_server.url}/catalog/{sample_record.record_id}/{sample_record.slug}/"
+        )
+        language = page.locator("h2", has_text="Language").locator(
+            "xpath=following-sibling::p[1]"
+        )
+        expect(language).to_have_text("English")
+
+    def test_record_detail_shows_bibliographic_language_name(
+        self, page, live_server, german_record
+    ):
+        """``ger`` is the MARC code for German and has no ISO 639-3 alpha_3."""
+        page.goto(
+            f"{live_server.url}/catalog/{german_record.record_id}/{german_record.slug}/"
+        )
+        language = page.locator("h2", has_text="Language").locator(
+            "xpath=following-sibling::p[1]"
+        )
+        expect(language).to_have_text("German")
+
     def test_record_detail_redirect_without_slug(
         self, page, live_server, sample_record
     ):

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load bidi %}
+{% load language_names %}
 
 {% block title %}{% if record %}Edit record{% else %}Add record{% endif %} — otzar{% endblock %}
 
@@ -82,7 +83,7 @@
                class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
     </div>
-    <div x-data="languageSearch('{{ form.language.value|default:'' }}')" class="relative">
+    <div x-data="languageSearch('{{ form.language.value|default:''|escapejs }}', '{{ form.language.value|default:''|language_name|escapejs }}')" class="relative">
       <label for="language-search" class="block text-sm font-medium mb-1">Language</label>
       {{ form.language }}
       <input type="text" id="language-search"
@@ -113,10 +114,10 @@
     </div>
 
     <script>
-    function languageSearch(initial) {
+    function languageSearch(initialCode, initialName) {
       return {
         query: '',
-        selected: initial || '',
+        selected: initialCode ? initialCode + ' \u2014 ' + initialName : '',
         results: [],
         open: false,
         highlight: 0,

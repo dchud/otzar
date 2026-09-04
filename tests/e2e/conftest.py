@@ -69,6 +69,27 @@ def sample_record(db, staff_user):
     return record
 
 
+@pytest.fixture
+def german_record(db, staff_user):
+    """A record whose language code diverges between ISO 639-2/B and 639-3.
+
+    MARC 008/35-37 says ``ger`` for German, and pycountry finds that only
+    under ``bibliographic``, so a lookup that reaches for ``alpha_3``
+    alone renders the field blank.
+    """
+    ensure_fts_table()
+
+    record = Record.objects.create(
+        title="Der Zauberberg",
+        date_of_publication=1924,
+        place_of_publication="Berlin",
+        language="ger",
+        created_by=staff_user,
+    )
+    index_record(record)
+    return record
+
+
 def login(
     page: Page, live_server, username="testadmin", password="testpass123"
 ):
