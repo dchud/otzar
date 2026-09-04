@@ -11,6 +11,7 @@ from sources.marc import (
     has_hebrew,
     parse_record,
     record_to_marcjson,
+    strip_control_characters,
 )
 
 # ---------------------------------------------------------------------------
@@ -151,6 +152,109 @@ LC_264_SRU_XML = """\
   <datafield tag="830" ind1=" " ind2="0">
     <subfield code="a">LIS foundations ;</subfield>
     <subfield code="v">no. 7</subfield>
+  </datafield>
+</record>
+</zs:recordData>
+<zs:recordPosition>1</zs:recordPosition>
+</zs:record>
+</zs:records>
+</zs:searchRetrieveResponse>
+"""
+
+# German cataloging practice marks a leading article for non-filing with
+# a delimiter pair around it -- NSB and NSE, which convert to U+0098 and
+# U+009C -- and leaves the second indicator at 0, where LC and NLI
+# instead count the characters to skip in that indicator. The delimiters
+# turn up wherever a title-like string can start with an article: 245,
+# the 490 series statement, and a topical subject heading.
+DNB_SRU_XML = """\
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/">
+<zs:version>1.1</zs:version>
+<zs:numberOfRecords>1</zs:numberOfRecords>
+<zs:records>
+<zs:record>
+<zs:recordSchema>MARC21-xml</zs:recordSchema>
+<zs:recordPacking>xml</zs:recordPacking>
+<zs:recordData>
+<record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>01000cam a2200265 c 4500</leader>
+  <controlfield tag="001">1043327834</controlfield>
+  <controlfield tag="008">180101s2018    gw            000 0 ger  </controlfield>
+  <datafield tag="100" ind1="1" ind2=" ">
+    <subfield code="a">Hausen, Anna von,</subfield>
+  </datafield>
+  <datafield tag="245" ind1="1" ind2="0">
+    <subfield code="a">\u0098The\u009c Complete Piano Etudes /</subfield>
+    <subfield code="b">a performer's guide.</subfield>
+  </datafield>
+  <datafield tag="264" ind1=" " ind2="1">
+    <subfield code="a">Leipzig :</subfield>
+    <subfield code="b">Verlag Beispiel,</subfield>
+    <subfield code="c">2018.</subfield>
+  </datafield>
+  <datafield tag="490" ind1="1" ind2=" ">
+    <subfield code="a">\u0098Die\u009c Klavierbibliothek ;</subfield>
+    <subfield code="v">Band 4</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="0">
+    <subfield code="a">\u0098The\u009c piano</subfield>
+    <subfield code="x">Studies and exercises.</subfield>
+  </datafield>
+</record>
+</zs:recordData>
+<zs:recordPosition>1</zs:recordPosition>
+</zs:record>
+</zs:records>
+</zs:searchRetrieveResponse>
+"""
+
+# LC record whose subject access shows both ways a 650 list goes wrong
+# when only the first $a survives: headings that differ solely in their
+# subdivisions, and one heading carried in two vocabularies at once
+# (LCSH with terminal punctuation, FAST without).
+LC_SUBJECTS_SRU_XML = """\
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/">
+<zs:version>1.1</zs:version>
+<zs:numberOfRecords>1</zs:numberOfRecords>
+<zs:records>
+<zs:record>
+<zs:recordSchema>marcxml</zs:recordSchema>
+<zs:recordPacking>xml</zs:recordPacking>
+<zs:recordData>
+<record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>01100cam a2200289 i 4500</leader>
+  <controlfield tag="001">2019012345</controlfield>
+  <controlfield tag="008">190101s2019    nyu           000 0 eng  </controlfield>
+  <datafield tag="245" ind1="1" ind2="0">
+    <subfield code="a">Jewish life in Israel /</subfield>
+    <subfield code="b">an introduction.</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="0">
+    <subfield code="a">Jews</subfield>
+    <subfield code="z">Israel</subfield>
+    <subfield code="x">History.</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="0">
+    <subfield code="a">Jews</subfield>
+    <subfield code="x">Social life and customs.</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="0">
+    <subfield code="a">Judaism.</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="7">
+    <subfield code="a">Judaism</subfield>
+    <subfield code="2">fast</subfield>
+    <subfield code="0">(OCoLC)fst00984378</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="7">
+    <subfield code="a">Jews</subfield>
+    <subfield code="2">fast</subfield>
+  </datafield>
+  <datafield tag="650" ind1=" " ind2="0">
+    <subfield code="a">Passover</subfield>
+    <subfield code="v">Juvenile literature.</subfield>
   </datafield>
 </record>
 </zs:recordData>
@@ -388,3 +492,117 @@ class TestRecordToMarcjson:
 
         json_str = json.dumps(marcjson, ensure_ascii=False)
         assert has_hebrew(json_str)
+
+
+# ---------------------------------------------------------------------------
+# Tests: strip_control_characters
+# ---------------------------------------------------------------------------
+
+
+class TestStripControlCharacters:
+    def test_removes_non_sorting_delimiters(self):
+        assert (
+            strip_control_characters("\u0098The\u009c Complete Piano Etudes")
+            == "The Complete Piano Etudes"
+        )
+
+    def test_removes_whole_c1_range(self):
+        c1 = "".join(chr(code) for code in range(0x80, 0xA0))
+        assert strip_control_characters(f"before{c1}after") == "beforeafter"
+
+    def test_leaves_ordinary_text_alone(self):
+        assert strip_control_characters("Halakhic man /") == "Halakhic man /"
+
+    def test_leaves_hebrew_alone(self):
+        hebrew = "\u05e1\u05e4\u05e8 \u05de\u05d0\u05d4"
+        assert strip_control_characters(hebrew) == hebrew
+
+    def test_empty_string(self):
+        assert strip_control_characters("") == ""
+
+    def test_none(self):
+        assert strip_control_characters(None) is None
+
+
+# ---------------------------------------------------------------------------
+# Tests: parse_record with non-sorting delimiters (DNB pattern)
+# ---------------------------------------------------------------------------
+
+
+class TestParseRecordNonSorting:
+    @pytest.fixture()
+    def record(self):
+        _, records = extract_marc_records(DNB_SRU_XML)
+        return records[0]
+
+    @pytest.fixture()
+    def parsed(self, record):
+        return parse_record(record)
+
+    def test_get_field_value_strips_delimiters(self, record):
+        val = get_field_value(record, "245", ["a"])
+        assert val == "The Complete Piano Etudes /"
+
+    def test_title(self, parsed):
+        assert (
+            parsed["title"]
+            == "The Complete Piano Etudes / a performer's guide."
+        )
+
+    def test_series_title(self, parsed):
+        assert parsed["series_title"] == "Die Klavierbibliothek ;"
+
+    def test_subject(self, parsed):
+        assert parsed["subjects"] == ["The piano -- Studies and exercises."]
+
+    def test_no_c1_characters_survive(self, parsed):
+        flattened = json.dumps(parsed, ensure_ascii=False)
+        assert not any("\u0080" <= ch <= "\u009f" for ch in flattened)
+
+    def test_control_field_positions_intact(self, parsed):
+        # 008 is fixed-length and read by position, so it is left as-is.
+        assert parsed["language"] == "ger"
+        assert parsed["date"] == "2018."
+
+
+# ---------------------------------------------------------------------------
+# Tests: subject headings -- subdivisions and deduplication
+# ---------------------------------------------------------------------------
+
+
+class TestSubjectHeadings:
+    @pytest.fixture()
+    def parsed(self):
+        _, records = extract_marc_records(LC_SUBJECTS_SRU_XML)
+        return parse_record(records[0])
+
+    def test_subdivisions_joined(self, parsed):
+        assert "Jews -- Israel -- History." in parsed["subjects"]
+
+    def test_subdivisions_follow_field_order(self, parsed):
+        # $z precedes $x in the field, so it precedes it in the heading.
+        assert "Jews -- History. -- Israel" not in parsed["subjects"]
+
+    def test_headings_differing_only_by_subdivision_stay_apart(self, parsed):
+        assert "Jews -- Social life and customs." in parsed["subjects"]
+        assert "Jews -- Israel -- History." in parsed["subjects"]
+
+    def test_form_subdivision_kept(self, parsed):
+        assert "Passover -- Juvenile literature." in parsed["subjects"]
+
+    def test_parallel_vocabulary_deduped(self, parsed):
+        judaism = [h for h in parsed["subjects"] if h.startswith("Judaism")]
+        assert judaism == ["Judaism."]
+
+    def test_vocabulary_and_control_subfields_excluded(self, parsed):
+        assert not any("fast" in h for h in parsed["subjects"])
+        assert not any("OCoLC" in h for h in parsed["subjects"])
+
+    def test_full_heading_list(self, parsed):
+        assert parsed["subjects"] == [
+            "Jews -- Israel -- History.",
+            "Jews -- Social life and customs.",
+            "Judaism.",
+            "Jews",
+            "Passover -- Juvenile literature.",
+        ]
