@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # trees are not ours to lint.
 EXCLUDED_DIRS = {
     ".beads",
+    ".claude",
     ".git",
     ".venv",
     ".django_tailwind_cli",

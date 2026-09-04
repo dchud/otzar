@@ -36,7 +36,14 @@ dev = [
 DJANGO_SETTINGS_MODULE = "otzar.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 pythonpath = ["."]
+# tmp/ is where CLAUDE.md sends all scratch, and .claude holds agent
+# worktrees -- checkouts of this repo whose tests are another branch's.
+# Collecting either turns a throwaway file into a suite failure.
+norecursedirs = ["tmp", ".claude", ".venv", "node_modules"]
 
 [tool.ruff]
 line-length = 79
 target-version = "py313"
+# Agent worktrees are checkouts of this same repo nested inside it.
+# Linting them means linting another branch's in-progress code.
+extend-exclude = [".claude"]
