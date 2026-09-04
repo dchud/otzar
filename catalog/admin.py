@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 
+from catalog.language_codes import language_name
 from catalog.models import (
     Author,
     ExternalIdentifier,
@@ -48,6 +49,29 @@ class OrphanFilter(admin.SimpleListFilter):
         return queryset
 
 
+class LanguageFilter(admin.SimpleListFilter):
+    """Filter records by language, listing names rather than codes."""
+
+    title = "language"
+    parameter_name = "language"
+
+    def lookups(self, request, model_admin):
+        codes = (
+            model_admin.get_queryset(request)
+            .exclude(language="")
+            .values_list("language", flat=True)
+            .distinct()
+        )
+        return sorted(
+            ((code, language_name(code)) for code in codes),
+            key=lambda pair: pair[1].lower(),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        return queryset.filter(language=value) if value else queryset
+
+
 class ExternalIdentifierInline(admin.TabularInline):
     model = ExternalIdentifier
     extra = 1
@@ -72,7 +96,7 @@ class RecordAdmin(admin.ModelAdmin):
         "source_catalog",
         "created_at",
     ]
-    list_filter = ["source_catalog", "language"]
+    list_filter = ["source_catalog", LanguageFilter]
     search_fields = ["title", "title_romanized", "record_id"]
     readonly_fields = ["record_id", "created_at", "updated_at"]
     filter_horizontal = ["authors", "subjects", "publishers", "locations"]

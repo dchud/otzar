@@ -1,3 +1,4 @@
+{% load language_names %}
 {% if scans %}
 {% for scan in scans %}
 <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-4"
@@ -53,7 +54,7 @@
           <p><span class="font-medium">Date:</span> {{ candidate.date }}</p>
           {% endif %}
           {% if candidate.language %}
-          <p><span class="font-medium">Language:</span> {{ candidate.language }}</p>
+          <p><span class="font-medium">Language:</span> {{ candidate.language|language_name }}</p>
           {% endif %}
         </div>
 
