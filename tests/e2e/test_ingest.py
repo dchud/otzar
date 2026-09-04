@@ -40,6 +40,35 @@ MOCK_ISBN_RESULT = {
 }
 
 
+# A German candidate. MARC 008/35-37 says `ger`, not `deu`, and pycountry
+# finds that only under `bibliographic`.
+MOCK_GERMAN_ISBN_RESULT = {
+    "nli_records": [
+        {
+            "title": "Der Zauberberg",
+            "title_alternate": None,
+            "author": "Mann, Thomas",
+            "author_alternate": None,
+            "publisher": "S. Fischer,",
+            "place": "Berlin :",
+            "date": "1924.",
+            "language": "ger",
+            "isbn": "9783100480323",
+            "additional_authors": [],
+            "subjects": ["German fiction"],
+            "lccn": None,
+            "oclc": None,
+            "lc_classification": None,
+            "dewey_classification": None,
+            "series_title": None,
+            "series_volume": None,
+            "source_marc": None,
+        }
+    ],
+    "lc_records": [],
+}
+
+
 @pytest.mark.django_db(transaction=True)
 class TestIngestLanding:
     def test_ingest_shows_three_methods(self, page, live_server, staff_user):
@@ -116,6 +145,28 @@ class TestISBNIngestFlow:
             identifier_type="LCCN"
         ).exists()
 
+    @patch("ingest.views.isbn_lookup")
+    def test_confirm_shows_language_name(
+        self, mock_lookup, page, live_server, staff_user
+    ):
+        """The confirm page names the language rather than showing its code."""
+        mock_lookup.return_value = MOCK_GERMAN_ISBN_RESULT
+        ensure_fts_table()
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+        page.fill('input[name="isbn"]', "9783100480323")
+        page.click('button:text("Look up")')
+
+        page.wait_for_selector("text=Der Zauberberg", timeout=10000)
+        page.click('button:text-is("Use")')
+        page.wait_for_url("**/ingest/confirm/", timeout=5000)
+
+        language = page.locator("h3", has_text="Language").locator(
+            "xpath=following-sibling::p[1]"
+        )
+        expect(language).to_have_text("German")
+
 
 @pytest.mark.django_db(transaction=True)
 class TestManualEntryFlow:
@@ -144,6 +195,17 @@ class TestManualEntryFlow:
         record = Record.objects.get(title="Test Manual Entry Book")
         assert record.authors.first().name == "Test Author"
         assert record.locations.first().label == "Shelf B-3"
+
+    def test_edit_form_shows_language_name(
+        self, page, live_server, staff_user, german_record
+    ):
+        """The language box on the entry form names the stored code."""
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/edit/{german_record.record_id}/")
+
+        expect(page.locator("#language-search")).to_have_attribute(
+            "placeholder", "ger \u2014 German"
+        )
 
     def test_manual_entry_validation(self, page, live_server, staff_user):
         login(page, live_server)

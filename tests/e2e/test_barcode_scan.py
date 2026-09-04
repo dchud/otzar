@@ -9,7 +9,10 @@ from playwright.sync_api import expect
 from catalog.search import ensure_fts_table
 from ingest.models import ScanResult
 from tests.e2e.conftest import login
-from tests.e2e.test_ingest import MOCK_ISBN_RESULT
+from tests.e2e.test_ingest import (
+    MOCK_GERMAN_ISBN_RESULT,
+    MOCK_ISBN_RESULT,
+)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -144,6 +147,28 @@ class TestPhoneScannerMode:
         expect(
             page.locator("text=The social life of information").first
         ).to_be_visible()
+
+    def test_poll_shows_language_name(self, page, live_server, staff_user):
+        """The poll names the candidate's language rather than its code."""
+        ensure_fts_table()
+
+        ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="9783100480323",
+            candidate_records=[
+                {
+                    **MOCK_GERMAN_ISBN_RESULT["nli_records"][0],
+                    "source_catalog": "NLI",
+                }
+            ],
+            scanned_by=staff_user,
+        )
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+
+        page.wait_for_selector("text=Der Zauberberg", timeout=10000)
+        expect(page.locator("text=Language: German").first).to_be_visible()
 
 
 @pytest.mark.django_db(transaction=True)

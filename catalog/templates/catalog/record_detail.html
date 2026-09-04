@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load bidi %}
+{% load language_names %}
 
 {% block title %}{{ record.title }} — otzar{% endblock %}
 
@@ -85,7 +86,7 @@
       {% if record.language %}
       <div>
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Language</h2>
-        <p class="mt-1">{{ record.language }}</p>
+        <p class="mt-1">{{ record.language|language_name }}</p>
       </div>
       {% endif %}
 

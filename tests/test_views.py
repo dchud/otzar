@@ -15,7 +15,7 @@ def sample_record(db):
         title="משנה תורה",
         title_romanized="Mishneh Torah",
         subtitle="ספר המדע",
-        language="Hebrew",
+        language="heb",
         date_of_publication=1480,
         notes="First printed edition.",
         source_marc={

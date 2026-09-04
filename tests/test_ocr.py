@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 
+from ingest.models import staging_image_path
 from ingest.ocr import (
     OCR_FIELDS,
     OCR_PROMPT,
@@ -1173,3 +1174,34 @@ class TestOCRLeaseRaces:
             marker = f"title-page-card-{pk}".encode()
             assert marker in upload.content, f"upload dropped card {pk}"
             assert marker in poll.content, f"poll dropped card {pk}"
+
+
+class TestStagingImagePath:
+    """The stored name has to describe the bytes that are stored.
+
+    Everything reaching this field is JPEG: the capture form re-encodes
+    what it can decode, and submits the original only when it is already
+    JPEG.
+    """
+
+    def test_png_name_is_renamed(self):
+        path = staging_image_path(None, "screenshot.png")
+        assert path.endswith(".jpg")
+
+    def test_heic_name_is_renamed(self):
+        path = staging_image_path(None, "IMG_0042.HEIC")
+        assert path.endswith(".jpg")
+
+    def test_extensionless_name_is_named(self):
+        path = staging_image_path(None, "image")
+        assert path.endswith(".jpg")
+
+    def test_jpeg_names_are_kept(self):
+        assert staging_image_path(None, "photo.jpg").endswith(".jpg")
+        assert staging_image_path(None, "photo.JPEG").endswith(".jpeg")
+
+    def test_each_upload_gets_its_own_name(self):
+        first = staging_image_path(None, "image.jpg")
+        second = staging_image_path(None, "image.jpg")
+        assert first != second
+        assert first.startswith("staging/")
