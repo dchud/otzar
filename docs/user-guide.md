@@ -9,7 +9,7 @@ The search bar is available on the home page and at `/search/`. Type any combina
 ### Search tips
 
 - **Hebrew and romanized forms both work.** A record cataloged as "משנה תורה" will also appear when you search for "Mishneh Torah."
-- **Partial words match.** Searching for "Rambam" will find records with "Rambam" in any field (author variant names, notes, etc.).
+- **Whole words match, across every field.** Searching for "Rambam" finds records carrying that word anywhere — author variant names, subjects, notes. Partial words do not match: "Ramb" finds nothing.
 - **Try alternate spellings.** Hebrew transliteration varies. If "Soloveitchik" returns nothing, try "Solovetchik" or search by the Hebrew form.
 - **Combine terms to narrow results.** Searching "Maimonides philosophy" finds records matching both words.
 - **Known limitation:** The search does not handle Hebrew morphology (prefix particles like -ב, -ה, -ל, or construct forms). Search for base words rather than inflected forms.

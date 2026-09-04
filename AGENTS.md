@@ -131,6 +131,12 @@ A bead whose work is done but whose closure has not landed yet is still open
 in the tracker. That is the cost, and it is why the tracker PR should follow
 promptly rather than accumulating.
 
+One artifact to expect: `br sync --flush-only --force` regenerates every row
+from the database, including the tombstones left by deleted beads, and writes
+a `closed_at` on them where the committed file records null. That shows up as
+unrelated churn in the diff. Restore the committed text for those lines before
+committing so the tracker PR stays additions-only and reviewable.
+
 ## Elevating beads to GitHub issues
 
 Elevation bridges the local tracker to GitHub for external visibility, PR
