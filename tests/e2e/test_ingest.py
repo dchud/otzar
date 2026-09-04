@@ -7,7 +7,9 @@ from playwright.sync_api import expect
 
 from catalog.models import Record
 from catalog.search import ensure_fts_table
+from sources.sru import SRUResult
 from tests.e2e.conftest import login
+from tests.test_marc import DNB_SRU_XML, LC_SUBJECTS_SRU_XML
 
 
 # Simulated ISBN lookup result (what sources.cascade.isbn_lookup returns)
@@ -194,3 +196,87 @@ class TestRecordManagement:
 
         # Verify record gone
         assert not Record.objects.filter(record_id=record_id).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestMarcParsingOnConfirmPage:
+    """What the parser makes of a MARC record is what the user reads.
+
+    These drive the ISBN flow with the SRU response stubbed rather than
+    the lookup result, so sources.marc does its real work in between.
+    The records come from the parser's own tests: one copy of each
+    record shape, exercised at both levels.
+    """
+
+    def _look_up(self, page, live_server, isbn):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+        page.fill('input[name="isbn"]', isbn)
+        page.click('button:text("Look up")')
+        page.click('button:text-is("Use")')
+        page.wait_for_url("**/ingest/confirm/", timeout=10000)
+
+    @patch("sources.cascade.dnb_client.search")
+    @patch("sources.cascade.lc_client.search")
+    @patch("sources.cascade.nli_client.search")
+    def test_no_non_sorting_delimiters_reach_the_page(
+        self, mock_nli, mock_lc, mock_dnb, page, live_server, staff_user
+    ):
+        mock_nli.return_value = SRUResult(success=False, error="no match")
+        mock_lc.return_value = SRUResult(success=False, error="no match")
+        mock_dnb.return_value = SRUResult(success=True, data=DNB_SRU_XML)
+        ensure_fts_table()
+
+        self._look_up(page, live_server, "9783123456789")
+
+        title = page.locator("h2.text-xl").first.inner_text()
+        assert "The Complete Piano Etudes" in title
+        assert not any(0x80 <= ord(char) <= 0x9F for char in title)
+
+        series = page.locator("text=Klavierbibliothek").inner_text()
+        assert not any(0x80 <= ord(char) <= 0x9F for char in series)
+
+    @patch("ingest.views.fetch_cover_url")
+    @patch("sources.cascade.dnb_client.search")
+    @patch("sources.cascade.lc_client.search")
+    @patch("sources.cascade.nli_client.search")
+    def test_each_subject_listed_once_with_its_subdivisions(
+        self,
+        mock_nli,
+        mock_lc,
+        mock_dnb,
+        mock_cover,
+        page,
+        live_server,
+        staff_user,
+    ):
+        mock_nli.return_value = SRUResult(success=False, error="no match")
+        mock_dnb.return_value = SRUResult(success=False, error="no match")
+        mock_lc.return_value = SRUResult(
+            success=True, data=LC_SUBJECTS_SRU_XML
+        )
+        mock_cover.return_value = ""
+        ensure_fts_table()
+
+        self._look_up(page, live_server, "9780123456789")
+
+        assert page.locator("ul.text-sm li").all_inner_texts() == [
+            "Jews -- Israel -- History.",
+            "Jews -- Social life and customs.",
+            "Judaism.",
+            "Jews",
+            "Passover -- Juvenile literature.",
+        ]
+
+        page.click('button:text("Add to catalog")')
+        page.wait_for_url("**/catalog/**", timeout=10000)
+
+        record = Record.objects.get(title__contains="Jewish life")
+        assert sorted(record.subjects.values_list("heading", flat=True)) == [
+            "Jews",
+            "Jews -- Israel -- History",
+            "Jews -- Social life and customs",
+            "Judaism",
+            "Passover -- Juvenile literature",
+        ]
+        expect(page.locator("text=Jews -- Israel -- History")).to_be_visible()
