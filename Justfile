@@ -1,11 +1,17 @@
 # Development commands for otzar
 
+# Recipes that serve or render a page depend on `tailwind`, so a fresh
+# clone gets a styled application without anyone having to know that the
+# stylesheet is generated. The build is a few hundred milliseconds once
+# the CLI is cached, so running it every time costs less than the class
+# of bug it removes.
+
 # Start the development server
-dev:
+dev: tailwind
     uv run python manage.py runserver
 
 # Run tests
-test *args:
+test *args: tailwind
     uv run pytest {{args}}
 
 # Lint check
@@ -37,7 +43,7 @@ createsuperuser:
     uv run python manage.py createsuperuser
 
 # Run end-to-end browser tests
-test-e2e *args:
+test-e2e *args: tailwind
     uv run pytest tests/e2e/ {{args}}
 
 # Full pre-push check: format, lint, process labels, unit and e2e tests
@@ -48,16 +54,21 @@ check:
 check-quick:
     ./scripts/check.sh --quick
 
-# Build Tailwind CSS
+# `--force` is not optional. Without it the command rebuilds only when
+# static/src/input.css is newer than the output, and the classes that go
+# stale are the ones a template added -- which that check never looks at.
+# A full build takes about a second.
+
+# Build Tailwind CSS from scratch
 tailwind:
-    uv run python manage.py tailwind build
+    uv run python manage.py tailwind build --force
 
 # Load test/demo data
 load-test-data:
     uv run python manage.py load_test_data
 
 # Start dev server on LAN with HTTPS (for phone barcode scanning via QR code)
-lan:
+lan: tailwind
     #!/usr/bin/env bash
     IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')
     CERT=tmp/cert.pem
