@@ -3,6 +3,8 @@
 Provides a configurable SRU client with pre-built instances for NLI, LC,
 and VIAF catalogs. Uses httpx for HTTP, with polite delays between requests
 and structured error handling via result dataclasses.
+
+Successful responses are cached; see :meth:`SRUClient.search`.
 """
 
 import os
@@ -11,6 +13,14 @@ import time
 from dataclasses import dataclass
 
 import httpx
+
+from sources.cache import ResponseCache, ttl_for_response
+
+# One shared cache for every client instance. ResponseCache holds no
+# state of its own -- it is a thin wrapper over Django's cache framework,
+# and the entries are keyed on endpoint plus parameters, so two clients
+# pointed at different catalogs cannot collide.
+_response_cache = ResponseCache()
 
 # --- Result types ---
 
@@ -126,6 +136,19 @@ class SRUClient:
 
         Returns an ``SRUResult`` with ``success=True`` and the raw XML in
         ``data`` on success, or ``success=False`` with a message in ``error``.
+
+        A response already cached for this endpoint and these parameters is
+        returned without contacting the server. That check comes before the
+        polite delay as well as before the request: the delay exists to
+        space out the load this client puts on a national library, and a
+        cache hit puts none there to space out. Skipping it is what makes a
+        repeated cascade finish in well under a second rather than in the
+        twenty-odd seconds its seven steps otherwise spend sleeping.
+
+        Only successful responses are stored. A timeout, an HTTP error, a
+        connection failure, or a body that is not XML leaves the cache
+        untouched, so a transient outage is retried on the next search
+        instead of being remembered for a month.
         """
         if self.auto_quote_alma:
             query = quote_alma_values(query)
@@ -136,6 +159,10 @@ class SRUClient:
             max_records=max_records,
             record_schema=record_schema,
         )
+
+        cached = _response_cache.get(self.base_url, params)
+        if cached is not None:
+            return SRUResult(success=True, data=cached)
 
         delay = self._get_delay()
         if delay > 0:
@@ -170,6 +197,9 @@ class SRUClient:
                 error="Response does not appear to be XML",
             )
 
+        _response_cache.set(
+            self.base_url, params, text, ttl=ttl_for_response(text)
+        )
         return SRUResult(success=True, data=text)
 
 
