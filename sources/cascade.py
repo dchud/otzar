@@ -9,6 +9,7 @@ import logging
 from dataclasses import dataclass, field
 
 from sources.marc import extract_marc_records, has_hebrew, parse_record
+from sources.normalize import normalize_publisher
 from sources.sru import SRUClient, SRUResult, dnb_client, lc_client, nli_client
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Each entry: (step_name, CQL template string).
 # Template placeholders: {title}, {place}, {date}, {publisher}, {title_romanized}.
 # A step is skipped when any placeholder in its template is missing from metadata.
+# Some placeholders are normalized before substitution: see _FIELD_NORMALIZERS.
 
 NLI_CASCADE: list[tuple[str, str]] = [
     (
@@ -120,17 +122,32 @@ def _build_lc_keyword_query(metadata: dict) -> str | None:
     return " AND ".join(f'cql.anywhere="{w}"' for w in words)
 
 
+# Placeholders whose metadata value is cleaned before it goes into a
+# CQL template. A publisher reaches the cascade in its title-page or
+# MARC form, and exact-phrase matching against a catalog publisher
+# index fails on the legal suffix and on display punctuation.
+_FIELD_NORMALIZERS = {"publisher": normalize_publisher}
+
+
 def _format_query(template: str, metadata: dict) -> str | None:
     """Format a CQL template with metadata values.
 
-    Returns None if any required placeholder is missing or empty in metadata.
+    Values for placeholders in :data:`_FIELD_NORMALIZERS` are normalized
+    first; *metadata* itself is not modified.
+
+    Returns None if any required placeholder is missing, or empty either
+    in metadata or after normalization.
     """
-    fields = _extract_template_fields(template)
-    for f in fields:
+    values = {}
+    for f in _extract_template_fields(template):
         value = metadata.get(f)
+        normalizer = _FIELD_NORMALIZERS.get(f)
+        if normalizer is not None:
+            value = normalizer(value)
         if not value:
             return None
-    return template.format(**metadata)
+        values[f] = value
+    return template.format(**values)
 
 
 # --- Core engine ---
