@@ -621,7 +621,10 @@ def run_ocr(request, scan_id):
             request, "This photo was discarded while OCR was running."
         )
 
-    if metadata is None:
+    # Extraction separates a call that produced no reading (None) from a
+    # reading with nothing in it (every field null). Both leave the user
+    # with no metadata, so both take this path.
+    if metadata is None or not any(metadata.values()):
         # Reset to awaiting state so the card in the poll pane keeps its
         # Run OCR button. The response is a notice rather than a card:
         # the card is already on screen, and rendering a second one put
