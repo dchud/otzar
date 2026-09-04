@@ -222,3 +222,104 @@ class TitlePageImage(models.Model):
         if self.record:
             return f"Title page for {self.record.record_id}"
         return f"Staged image ({self.uploaded_at:%Y-%m-%d})"
+
+
+class SeriesClaim(models.Model):
+    """One person's in-progress attempt to catalog a run of volumes.
+
+    A claim holds transient search and review state: which volumes were
+    asked for, what each lookup turned up, and what the cataloger chose.
+    ``Series`` and ``SeriesVolume`` hold what the collection actually
+    contains. Keeping the two apart means an abandoned claim leaves no
+    trace in the catalog, and a committed one adds only finished rows.
+
+    Every foreign key out of a claim nulls on delete. A claim records
+    work someone did, so removing the series it targeted, the account
+    that made it, or the scan it started from must not take that record
+    with it.
+    """
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("committed", "Committed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    series = models.ForeignKey(
+        Series,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="claims",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="series_claims",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    volume_spec = models.CharField(max_length=200)
+    originating_scan = models.ForeignKey(
+        "ingest.ScanResult",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="series_claims",
+    )
+    originating_volume_number = models.CharField(max_length=50, blank=True)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        title = self.series.title if self.series else "unassigned series"
+        return f"{title} vols. {self.volume_spec} ({self.status})"
+
+
+class SeriesClaimRow(models.Model):
+    """One volume within a claim, and what searching for it produced.
+
+    ``search_status`` covers both what a lookup found and what the
+    cataloger decided about it, because a row has one outcome and a
+    single field keeps the two from contradicting each other.
+    """
+
+    SEARCH_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("searching", "Searching"),
+        ("found", "Found"),
+        ("no_match", "No match"),
+        ("multiple", "Multiple matches"),
+        ("manual_skip", "Skip"),
+        ("manual_held", "Mark held"),
+    ]
+
+    claim = models.ForeignKey(
+        SeriesClaim, on_delete=models.CASCADE, related_name="rows"
+    )
+    volume_number = models.CharField(max_length=50)
+    search_status = models.CharField(
+        max_length=20, choices=SEARCH_STATUS_CHOICES, default="pending"
+    )
+    candidate_records = models.JSONField(default=list, blank=True)
+    selected_candidate_index = models.IntegerField(null=True, blank=True)
+    created_record = models.ForeignKey(
+        "catalog.Record",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="series_claim_rows",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["volume_number"]
+        unique_together = [("claim", "volume_number")]
+
+    def __str__(self):
+        return f"vol. {self.volume_number} ({self.search_status})"
