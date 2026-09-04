@@ -11,7 +11,6 @@ from sources.sru import SRUResult
 from tests.e2e.conftest import login
 from tests.test_marc import DNB_SRU_XML, LC_SUBJECTS_SRU_XML
 
-
 # Simulated ISBN lookup result (what sources.cascade.isbn_lookup returns)
 MOCK_ISBN_RESULT = {
     "nli_records": [

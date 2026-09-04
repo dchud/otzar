@@ -15,7 +15,6 @@ from sources.sru import (
     quote_alma_values,
 )
 
-
 # --- CQL query building ---
 
 
