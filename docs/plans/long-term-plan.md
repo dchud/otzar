@@ -177,7 +177,9 @@ entry.
 The July version of this document described the phone-to-desktop
 title-page handoff as an open pull request. It merged on 2026-09-04,
 followed the same day by: MARC parsing fixes (non-sorting delimiters
-stripped, subject subdivisions assembled and deduplicated); publisher
+stripped, subject subdivisions assembled and deduplicated), with a repair
+command for rows written before the fix; the source MARC record carried
+through to every new record; publisher
 strings normalized before catalog queries; schema-constrained OCR output;
 language codes rendered as names; volume-number normalization; the
 SeriesClaim data model; title-page capture fixes (decode failures
@@ -305,7 +307,8 @@ gunicorn) have no platform coupling and stay. `.env.example` carries
   `claude-sonnet-5`. `pymarc` is a declared dependency nothing imports.
   Both in `bd-m50`.
 - Management commands: `load_test_data`, `fetch_covers`,
-  `clean_marc_punctuation`, `cleanup_staging`.
+  `clean_marc_punctuation`, `clean_control_characters` (report by
+  default, `--apply` to write), `cleanup_staging`.
 
 ### 2.11 Tests
 
@@ -331,7 +334,7 @@ title-page handoff (phone and desktop as two browser contexts).
 | `bd-73m`, `bd-nzb`, `bd-mb8`, `bd-xtx` (P2) | Review queue rows with inline confirm; queue on `/ingest/` with a count; score candidates against OCR output; failed OCR re-run discards the previous extraction | the ingest-review thread |
 | `bd-yg9` (P2) | Attach the confirmed title-page image to the record | |
 | `otzar-55i`, `otzar-4x2` (P2) | Author roles and statement of responsibility; volume evidence for set records | parser depth |
-| `bd-jov`, `otzar-g4d` (P3) | Repair a corrupted DNB title; show the matched cascade step | |
+| `bd-jov`, `otzar-g4d` (P3) | Repair stored non-sorting delimiters; show the matched cascade step | `bd-jov`'s command merged 2026-09-04; running it against the live database is a manual step |
 | `bd-4jn`, `bd-wnx`, `bd-b4a`, `bd-2lp`, `bd-eqq` (P3) | `cleanup_staging` directory; 880 for subjects and series; vendor HTMX/Alpine; queue visibility decision; multi-value manual entry form | |
 | `otzar-ts6`, `otzar-rxn`, `otzar-5mr`, `otzar-eiy` (P4) | Phone landing screen for both scan types; rotate/crop before OCR; multi-page capture; stale `awaiting_ocr` janitor | handoff refinements |
 | `bd-x9w`, `bd-zvy`, `bd-m50`, `otzar-2or`, `bd-1yg` (P4) | DNB cascade; per-user activity view; repository drift; gitignore generated CSS; retire planning documents | |
