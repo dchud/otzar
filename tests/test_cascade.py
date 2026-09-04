@@ -13,6 +13,7 @@ from sources.cascade import (
     isbn_lookup,
     run_cascade,
 )
+from sources.normalize import normalize_publisher
 from sources.sru import SRUClient, SRUResult
 
 
@@ -380,3 +381,143 @@ class TestISBNLookup:
         assert result["nli_records"] == []
         assert result["lc_records"] == []
         assert result["dnb_records"] == []
+
+
+# --- Publisher normalization ---
+
+
+class TestNormalizePublisher:
+    """Corporate suffixes and MARC punctuation are stripped."""
+
+    def test_comma_suffix_with_period(self):
+        assert (
+            normalize_publisher("Mesorah Publications, Ltd.")
+            == "Mesorah Publications"
+        )
+
+    def test_suffix_without_comma_or_period(self):
+        assert (
+            normalize_publisher("Mesorah Publications Ltd")
+            == "Mesorah Publications"
+        )
+
+    def test_ampersand_name_keeps_its_words(self):
+        assert (
+            normalize_publisher("W. W. Norton & Company, Inc.")
+            == "W. W. Norton & Company"
+        )
+
+    def test_llc(self):
+        assert normalize_publisher("Random House, LLC") == "Random House"
+
+    def test_gmbh(self):
+        assert normalize_publisher("Springer-Verlag GmbH") == "Springer-Verlag"
+
+    def test_suffix_match_is_case_insensitive(self):
+        assert normalize_publisher("Feldheim, LTD.") == "Feldheim"
+        assert normalize_publisher("Feldheim, inc") == "Feldheim"
+
+    def test_two_stacked_suffixes(self):
+        assert (
+            normalize_publisher("Soncino Press Ltd., Inc.") == "Soncino Press"
+        )
+
+    def test_trailing_marc_comma(self):
+        assert normalize_publisher("Schocken Books,") == "Schocken Books"
+
+    def test_trailing_marc_semicolon(self):
+        assert (
+            normalize_publisher("Yale University Press ;")
+            == "Yale University Press"
+        )
+
+    def test_trailing_marc_colon_after_suffix(self):
+        assert (
+            normalize_publisher("Mesorah Publications, Ltd. :")
+            == "Mesorah Publications"
+        )
+
+    def test_name_needing_no_change(self):
+        assert (
+            normalize_publisher("Mesorah Publications")
+            == "Mesorah Publications"
+        )
+        assert normalize_publisher("ArtScroll") == "ArtScroll"
+
+    def test_word_ending_in_a_suffix_is_not_truncated(self):
+        assert normalize_publisher("Sinclair") == "Sinclair"
+
+    def test_hebrew_name_passes_through(self):
+        assert normalize_publisher("מוסד הרב קוק") == "מוסד הרב קוק"
+
+    def test_hebrew_name_loses_only_marc_punctuation(self):
+        assert normalize_publisher("מוסד הרב קוק,") == "מוסד הרב קוק"
+
+    def test_none(self):
+        assert normalize_publisher(None) == ""
+
+    def test_empty(self):
+        assert normalize_publisher("") == ""
+
+    def test_whitespace_only(self):
+        assert normalize_publisher("   ") == ""
+
+    def test_suffix_alone_normalizes_to_empty(self):
+        assert normalize_publisher("Ltd.") == ""
+
+
+class TestPublisherStepsUseNormalizedValue:
+    """Cascade steps carrying {publisher} query the normalized form."""
+
+    def _publisher_template(self) -> str:
+        return dict(NLI_CASCADE)["title+publisher"]
+
+    def test_query_drops_the_suffix(self):
+        metadata = {
+            "title": "ויקרא",
+            "publisher": "Mesorah Publications, Ltd.",
+        }
+        query = _format_query(self._publisher_template(), metadata)
+        assert query == (
+            'alma.title="ויקרא" AND alma.publisher="Mesorah Publications"'
+        )
+
+    def test_other_fields_are_untouched(self):
+        """Only the publisher is normalized; a title keeps its punctuation."""
+        metadata = {
+            "title": "Rashi : the Torah",
+            "publisher": "Mesorah Publications, Ltd.",
+        }
+        query = _format_query(self._publisher_template(), metadata)
+        assert 'alma.title="Rashi : the Torah"' in query
+
+    def test_metadata_is_not_mutated(self):
+        metadata = {
+            "title": "ויקרא",
+            "publisher": "Mesorah Publications, Ltd.",
+        }
+        _format_query(self._publisher_template(), metadata)
+        assert metadata["publisher"] == "Mesorah Publications, Ltd."
+
+    def test_publisher_normalizing_to_empty_skips_the_step(self):
+        metadata = {"title": "ויקרא", "publisher": ", Ltd."}
+        assert _format_query(self._publisher_template(), metadata) is None
+
+    def test_cascade_falls_through_when_publisher_normalizes_to_empty(self):
+        """An empty normalized publisher skips its step, it does not error."""
+        client = _make_client()
+        client.search = MagicMock(
+            return_value=SRUResult(success=True, data=_SRU_XML_ONE_RECORD)
+        )
+
+        cascade = [
+            ("title+publisher", self._publisher_template()),
+            ("title", 'alma.title="{title}"'),
+        ]
+        metadata = {"title": "ויקרא", "publisher": "Ltd."}
+
+        result = run_cascade(client, cascade, metadata)
+
+        assert result.step == "title"
+        assert client.search.call_count == 1
+        assert "publisher" not in result.query_used
