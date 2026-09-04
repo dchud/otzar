@@ -246,6 +246,13 @@ def parse_record(marc_record: mrrc.Record) -> dict:
       subdivisions, deduplicated
     - ``series_title`` -- from 490$a or 830$a
     - ``series_volume`` -- from 490$v or 830$v
+    - ``source_marc`` -- the whole record as MARC-in-JSON, uncleaned
+
+    Every value above except ``source_marc`` is cleaned for display.
+    ``source_marc`` is the archival copy of what the catalog sent, so it
+    is carried through exactly as received: it is the only record of the
+    source document, and anything that later needs to re-derive a value
+    has nothing else to read.
     """
     result: dict = {}
 
@@ -342,15 +349,37 @@ def parse_record(marc_record: mrrc.Record) -> dict:
         series_volume = get_field_value(marc_record, "830", ["v"])
     result["series_volume"] = series_volume
 
+    # --- Source record ---
+    result["source_marc"] = record_to_marcjson(marc_record)
+
     return result
 
 
 def record_to_marcjson(marc_record: mrrc.Record) -> dict:
-    """Convert an mrrc Record to a MARCJSON dict.
+    """Convert an mrrc Record to a MARC-in-JSON dict.
 
-    MARCJSON is the JSON serialization of MARC defined by the Library of
-    Congress.  The returned dict is suitable for storage in a JSONField
-    and can be round-tripped back to an mrrc Record via
-    ``mrrc.json_to_record(json.dumps(d))``.
+    MARC-in-JSON carries the whole record: the leader as a string, and
+    every field as a single-key object in an ordered list, so a repeated
+    tag stays repeated and field order survives.  Control fields hold
+    their value directly; data fields hold their two indicators and an
+    ordered list of subfields.
+
+    The result is JSON-serializable and suitable for a JSONField.  mrrc
+    reads the flat field list rather than the wrapper, so the way back
+    to a Record is::
+
+        entries = [{"leader": d["leader"]}, *d["fields"]]
+        mrrc.marcjson_to_record(json.dumps(entries, ensure_ascii=False))
+
+    Nothing is cleaned or normalized here.  This is the archival copy of
+    what the catalog sent, and the cleaning that display needs happens
+    on the extraction path instead.
     """
-    return json.loads(marc_record.to_marcjson())
+    leader = ""
+    fields: list[dict] = []
+    for entry in json.loads(marc_record.to_marcjson()):
+        if "leader" in entry:
+            leader = entry["leader"]
+        else:
+            fields.append(entry)
+    return {"leader": leader, "fields": fields}

@@ -456,6 +456,79 @@ class TestParseRecord264:
 
 
 # ---------------------------------------------------------------------------
+# Tests: parse_record carries the source record
+# ---------------------------------------------------------------------------
+
+
+class TestParseRecordSourceMarc:
+    @pytest.fixture()
+    def parsed(self):
+        _, records = extract_marc_records(LC_SRU_XML)
+        return parse_record(records[0])
+
+    def test_key_present(self, parsed):
+        assert parsed["source_marc"] is not None
+
+    def test_leader_and_fields(self, parsed):
+        source = parsed["source_marc"]
+        assert source["leader"] == "01500cam a2200300 a 4500"
+        assert isinstance(source["fields"], list)
+
+    def test_control_field_carried(self, parsed):
+        values = [
+            entry["001"]
+            for entry in parsed["source_marc"]["fields"]
+            if "001" in entry
+        ]
+        assert values == ["12345678"]
+
+    def test_data_field_carried_with_indicators(self, parsed):
+        entries = [
+            entry["245"]
+            for entry in parsed["source_marc"]["fields"]
+            if "245" in entry
+        ]
+        assert len(entries) == 1
+        assert entries[0]["ind1"] == "1"
+        assert entries[0]["ind2"] == "0"
+        assert {"a": "Halakhic man /"} in entries[0]["subfields"]
+
+    def test_repeated_tag_stays_repeated(self):
+        _, records = extract_marc_records(LC_SUBJECTS_SRU_XML)
+        parsed = parse_record(records[0])
+        entries = [
+            entry
+            for entry in parsed["source_marc"]["fields"]
+            if "650" in entry
+        ]
+        assert len(entries) == len(records[0].get_fields("650"))
+
+    def test_survives_json_round_trip(self, parsed):
+        source = parsed["source_marc"]
+        assert json.loads(json.dumps(source)) == source
+
+    def test_whole_candidate_survives_json_round_trip(self, parsed):
+        assert json.loads(json.dumps(parsed, ensure_ascii=False)) == parsed
+
+    def test_hebrew_survives_json_round_trip(self):
+        _, records = extract_marc_records(NLI_SRU_XML)
+        parsed = parse_record(records[0])
+        restored = json.loads(json.dumps(parsed, ensure_ascii=False))
+        assert restored["source_marc"] == parsed["source_marc"]
+        assert has_hebrew(
+            json.dumps(restored["source_marc"], ensure_ascii=False)
+        )
+
+    def test_reads_back_as_a_marc_record(self, parsed):
+        source = parsed["source_marc"]
+        entries = [{"leader": source["leader"]}, *source["fields"]]
+        record = mrrc.marcjson_to_record(
+            json.dumps(entries, ensure_ascii=False)
+        )
+        assert "Halakhic man" in str(record.get_field("245"))
+
+
+# ---------------------------------------------------------------------------
 # Tests: record_to_marcjson round-trip
 # ---------------------------------------------------------------------------
 
@@ -466,12 +539,13 @@ class TestRecordToMarcjson:
         rec = records[0]
         marcjson = record_to_marcjson(rec)
 
-        # Basic structure: list of dicts, leader first.
-        assert isinstance(marcjson, list)
-        assert "leader" in marcjson[0]
+        # Basic structure: leader as a string, fields as a list.
+        assert marcjson["leader"] == "01500cam a2200300 a 4500"
+        assert isinstance(marcjson["fields"], list)
+        assert not any("leader" in e for e in marcjson["fields"])
 
         # Find 245 entry and verify subfield content.
-        entries_245 = [e for e in marcjson if "245" in e]
+        entries_245 = [e for e in marcjson["fields"] if "245" in e]
         assert len(entries_245) == 1
         subfields = entries_245[0]["245"]["subfields"]
         subfield_a = [sf["a"] for sf in subfields if "a" in sf]
@@ -481,8 +555,8 @@ class TestRecordToMarcjson:
         _, records = extract_marc_records(LC_SRU_XML)
         marcjson = record_to_marcjson(records[0])
 
-        # Find 008 in the JSON array.
-        control_008 = [entry for entry in marcjson if "008" in entry]
+        # Find 008 in the fields list.
+        control_008 = [e for e in marcjson["fields"] if "008" in e]
         assert len(control_008) == 1
         assert "heb" in control_008[0]["008"]
 
@@ -555,9 +629,22 @@ class TestParseRecordNonSorting:
     def test_subject(self, parsed):
         assert parsed["subjects"] == ["The piano -- Studies and exercises."]
 
-    def test_no_c1_characters_survive(self, parsed):
-        flattened = json.dumps(parsed, ensure_ascii=False)
+    def test_no_c1_characters_survive_in_extracted_fields(self, parsed):
+        extracted = {k: v for k, v in parsed.items() if k != "source_marc"}
+        flattened = json.dumps(extracted, ensure_ascii=False)
         assert not any("\u0080" <= ch <= "\u009f" for ch in flattened)
+
+    def test_source_marc_keeps_the_delimiters(self, parsed):
+        # The extracted fields are cleaned; the source record is not.
+        # It is the only copy of what the catalog sent, and a repair
+        # that needs the delimiters has nothing else to read them from.
+        entry = next(
+            entry["245"]
+            for entry in parsed["source_marc"]["fields"]
+            if "245" in entry
+        )
+        value = next(sf["a"] for sf in entry["subfields"] if "a" in sf)
+        assert value == "\u0098The\u009c Complete Piano Etudes /"
 
     def test_control_field_positions_intact(self, parsed):
         # 008 is fixed-length and read by position, so it is left as-is.
