@@ -23,6 +23,24 @@ ET.register_namespace("", MARC_NS)
 # Hebrew Unicode block range.
 _HEBREW_RE = re.compile(r"[\u0590-\u05FF]")
 
+# The C1 control range. MARC-8 brackets a leading article that sorting
+# should skip between a non-sorting begin and end character, and those
+# convert to U+0098 and U+009C. Browsers render the range as nothing, so
+# a heading that carries it reads as though it had stray whitespace.
+_C1_CONTROL_RE = re.compile(r"[\u0080-\u009F]")
+
+# Subfields that make up a subject heading: the topical term ($a) and
+# the form ($v), general ($x), chronological ($y) and geographic ($z)
+# subdivisions.
+_HEADING_CODES = frozenset("avxyz")
+
+# How a subdivided heading reads once assembled, per LCSH display
+# practice: "Jews -- Israel -- History".
+_SUBDIVISION_SEPARATOR = " -- "
+
+# Trailing MARC punctuation, disregarded when comparing two headings.
+_TRAILING_PUNCTUATION_RE = re.compile(r"[\s.,;:/]+$")
+
 
 # --- Public API ---
 
@@ -62,11 +80,42 @@ def extract_marc_records(xml_text: str) -> tuple[int, list[mrrc.Record]]:
     return num_records, records
 
 
+def strip_control_characters(text: str | None) -> str | None:
+    """Remove C1 control characters (U+0080--U+009F) from *text*.
+
+    The pair that shows up in catalog data is U+0098 and U+009C, the
+    non-sorting delimiters wrapped around a leading article. They carry
+    no meaning once a heading is out of its sort context, and no
+    renderer displays them, so they are dropped on the way in.
+
+    *text* is returned unchanged when it is None or empty.
+    """
+    if not text:
+        return text
+    return _C1_CONTROL_RE.sub("", text)
+
+
 def has_hebrew(text: str | None) -> bool:
     """Return True if *text* contains any Hebrew characters (U+0590--U+05FF)."""
     if not text:
         return False
     return bool(_HEBREW_RE.search(text))
+
+
+def _subfield_values(field: mrrc.Field, codes: list[str]) -> list[str]:
+    """Return *field*'s values for *codes*, cleaned, in the order of *codes*.
+
+    Every path that pulls text out of a data field goes through here, so
+    a source that carries non-sorting delimiters is handled the same way
+    whichever field it puts them in.
+    """
+    values: list[str] = []
+    for code in codes:
+        values.extend(
+            strip_control_characters(value)
+            for value in field.get_subfields(code)
+        )
+    return values
 
 
 def get_field_value(
@@ -77,8 +126,10 @@ def get_field_value(
     """Extract concatenated subfield values from a MARC field.
 
     For control fields (tags 001--009) the raw value is returned and
-    *subfield_codes* is ignored.  For data fields the requested subfield
-    values are joined with a single space.
+    *subfield_codes* is ignored: those fields are read by character
+    position, so removing anything from them would shift the rest.  For
+    data fields the requested subfield values are cleaned of control
+    characters and joined with a single space.
     """
     if tag.startswith("00"):
         val = record.control_field(tag)
@@ -89,12 +140,10 @@ def get_field_value(
         return None
 
     if subfield_codes:
-        parts: list[str] = []
-        for code in subfield_codes:
-            parts.extend(field.get_subfields(code))
+        parts = _subfield_values(field, subfield_codes)
         return " ".join(parts) if parts else None
 
-    return str(field)
+    return strip_control_characters(str(field))
 
 
 def _linked_880_value(
@@ -119,12 +168,62 @@ def _linked_880_value(
             continue
         # Linkage format: "TAG-OCCURRENCE/(script)" e.g. "245-01/(2"
         if linkage[0].startswith(f"{tag}-"):
-            parts = []
-            for code in subfield_codes:
-                parts.extend(f880.get_subfields(code))
+            parts = _subfield_values(f880, subfield_codes)
             if parts:
                 return " ".join(parts)
     return None
+
+
+def _subject_heading(field: mrrc.Field) -> str | None:
+    """Assemble one full subject heading from a 650 field.
+
+    A heading is its topical term ($a) followed by whatever
+    subdivisions the cataloger applied, in the order the field carries
+    them.  Everything else in the field describes the heading rather
+    than forming part of it: $2 names the vocabulary, $0 and $1 hold
+    control numbers, $6 and $8 hold linkages.
+    """
+    parts = [
+        strip_control_characters(subfield.value).strip()
+        for subfield in field.subfields()
+        if subfield.code in _HEADING_CODES
+    ]
+    parts = [part for part in parts if part]
+    if not parts:
+        return None
+    return _SUBDIVISION_SEPARATOR.join(parts)
+
+
+def _heading_key(heading: str) -> str:
+    """Normalized form deciding whether two headings are the same heading.
+
+    Whitespace and the punctuation a cataloger puts at the end of a
+    field vary between vocabularies -- LCSH ends a heading with a
+    period, FAST does not -- and neither difference makes a second
+    heading.
+    """
+    return _TRAILING_PUNCTUATION_RE.sub("", " ".join(heading.split()))
+
+
+def _subject_headings(record: mrrc.Record) -> list[str]:
+    """Return the record's 650 headings, subdivisions kept, duplicates out.
+
+    A record catalogued in two vocabularies at once carries the same
+    heading twice, once per 650, and only $2 tells them apart.  The
+    first form encountered is the one kept.
+    """
+    headings: list[str] = []
+    seen: set[str] = set()
+    for field in record.get_fields("650"):
+        heading = _subject_heading(field)
+        if heading is None:
+            continue
+        key = _heading_key(heading)
+        if key in seen:
+            continue
+        seen.add(key)
+        headings.append(heading)
+    return headings
 
 
 def parse_record(marc_record: mrrc.Record) -> dict:
@@ -143,7 +242,8 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     - ``date`` -- from 260$c or 264$c, falling back to 008 positions 7--10
     - ``language`` -- from 008 positions 35--37
     - ``isbn`` -- from 020$a
-    - ``subjects`` -- list of strings from 650$a
+    - ``subjects`` -- list of 650 headings, each its $a followed by any
+      subdivisions, deduplicated
     - ``series_title`` -- from 490$a or 830$a
     - ``series_volume`` -- from 490$v or 830$v
     """
@@ -202,18 +302,13 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     # --- Additional authors (700 fields) ---
     additional_authors: list[str] = []
     for field in marc_record.get_fields("700"):
-        vals = field.get_subfields("a")
+        vals = _subfield_values(field, ["a"])
         if vals:
             additional_authors.append(vals[0])
     result["additional_authors"] = additional_authors
 
     # --- Subjects ---
-    subjects: list[str] = []
-    for field in marc_record.get_fields("650"):
-        vals = field.get_subfields("a")
-        if vals:
-            subjects.append(vals[0])
-    result["subjects"] = subjects
+    result["subjects"] = _subject_headings(marc_record)
 
     # --- LCCN (010$a) ---
     result["lccn"] = get_field_value(marc_record, "010", ["a"])
@@ -221,7 +316,7 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     # --- OCLC (035$a) ---
     oclc = None
     for field in marc_record.get_fields("035"):
-        vals = field.get_subfields("a")
+        vals = _subfield_values(field, ["a"])
         if vals and "OCoLC" in vals[0]:
             oclc = vals[0].replace("(OCoLC)", "").strip()
             break
