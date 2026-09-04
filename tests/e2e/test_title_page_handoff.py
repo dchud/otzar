@@ -9,6 +9,7 @@ from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
 from ingest.models import ScanResult
+from ingest.ocr import OCR_FIELDS
 from sources.cascade import CascadeResult
 from tests.e2e.conftest import login
 
@@ -412,6 +413,46 @@ class TestTitlePageHandoff:
 
         expect(page.locator("img[alt='Uploaded title page']")).to_have_count(1)
         expect(page.locator(f"#title-page-card-{scan.pk}")).to_have_count(1)
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_a_reading_with_no_fields_offers_a_retry_not_a_blank_form(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """A page the model read nothing from is not something to edit.
+
+        The extraction reports it as a reading — every key present, every
+        value null — rather than as a failed call. On screen it is the
+        same dead end as a failed call, and a metadata form with eight
+        empty boxes is a worse answer than Try OCR again and Discard.
+        """
+        mock_ocr.return_value = dict.fromkeys(OCR_FIELDS)
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
+        expect(
+            page.locator("text=OCR could not extract metadata")
+        ).to_be_visible(timeout=10000)
+        expect(page.locator("text=Try OCR again")).to_be_visible()
+        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+
+        # The card keeps its Run OCR button, so the photo stays workable.
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
 
     def test_retake_after_discard_shows_the_new_photo(
         self, page, live_server, staff_user

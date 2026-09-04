@@ -191,9 +191,11 @@ The prompt instructs the model to:
 - Transliterate using ALA-LC Hebrew romanization rules
 - Convert Hebrew gematria dates to Gregorian years
 - Return plain Hebrew (no nikkud/vowel points)
-- Return JSON only, with null for unreadable fields
+- Use null for unreadable fields
 
-The model is configurable via `CLAUDE_MODEL` (default: `claude-sonnet-4-6`). Response parsing handles markdown code fences and repairs Hebrew gershayim characters that break JSON parsing.
+The request carries a JSON schema for the eight fields, so the reply is valid JSON with every key present and needs no repair before it is parsed. A reply with every field null is a reading of a page nothing could be taken from; the extraction returns nothing at all only when the call itself produced no reply.
+
+The model is configurable via `CLAUDE_MODEL` (default: `claude-sonnet-5`).
 
 Requires `ANTHROPIC_API_KEY` in the environment.
 

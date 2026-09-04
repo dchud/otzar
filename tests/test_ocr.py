@@ -1,4 +1,5 @@
 import io
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,7 +7,12 @@ from django.contrib.auth.models import User
 from django.test import Client
 
 from ingest.models import staging_image_path
-from ingest.ocr import _parse_vision_json, extract_metadata_from_image
+from ingest.ocr import (
+    OCR_FIELDS,
+    OCR_PROMPT,
+    OCR_RESPONSE_SCHEMA,
+    extract_metadata_from_image,
+)
 
 
 @pytest.fixture
@@ -35,26 +41,58 @@ SAMPLE_OCR_RESPONSE = {
 }
 
 
-class TestParseVisionJson:
-    def test_plain_json(self):
-        result = _parse_vision_json('{"title": "test", "date": "1900"}')
-        assert result == {"title": "test", "date": "1900"}
+def _mock_vision_client(
+    mock_anthropic_cls, text, stop_reason="end_turn", blocks=None
+):
+    """Wire a mocked Anthropic client to return one vision response."""
+    mock_client = MagicMock()
+    mock_anthropic_cls.return_value = mock_client
+    mock_message = MagicMock()
+    mock_message.stop_reason = stop_reason
+    mock_message.content = (
+        blocks if blocks is not None else [MagicMock(type="text", text=text)]
+    )
+    mock_client.messages.create.return_value = mock_message
+    return mock_client
 
-    def test_markdown_fenced_json(self):
-        text = '```json\n{"title": "test"}\n```'
-        result = _parse_vision_json(text)
-        assert result == {"title": "test"}
 
-    def test_invalid_json_returns_none(self):
-        result = _parse_vision_json("not json at all")
-        assert result is None
+class TestResponseSchema:
+    """The request constrains the response format.
 
-    def test_gershayim_repair(self):
-        # Hebrew double-quote (gershayim) between Hebrew chars
-        text = '{"title": "\u05e8\u05de\u05d1"\u05dd"}'
-        result = _parse_vision_json(text)
-        assert result is not None
-        assert "\u05f4" in result["title"]
+    The alternative \u2014 asking for JSON in the prompt and repairing what
+    comes back \u2014 cannot tell a page the model could not read from a
+    string the model could not serialize.
+    """
+
+    def test_schema_covers_the_eight_metadata_keys(self):
+        assert len(OCR_FIELDS) == 8
+        assert set(OCR_RESPONSE_SCHEMA["properties"]) == set(OCR_FIELDS)
+        assert set(OCR_RESPONSE_SCHEMA["required"]) == set(OCR_FIELDS)
+        assert OCR_RESPONSE_SCHEMA["additionalProperties"] is False
+
+    def test_every_field_accepts_null(self):
+        """An unreadable field is null, not an omitted key."""
+        for field, spec in OCR_RESPONSE_SCHEMA["properties"].items():
+            variants = {option["type"] for option in spec["anyOf"]}
+            assert variants == {"string", "null"}, field
+
+    def test_prompt_leaves_serialization_to_the_schema(self):
+        """Reading instructions belong in the prompt; framing does not."""
+        assert "JSON" not in OCR_PROMPT
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_request_pins_the_response_format(self, mock_anthropic_cls):
+        mock_client = _mock_vision_client(
+            mock_anthropic_cls, json.dumps(SAMPLE_OCR_RESPONSE)
+        )
+
+        extract_metadata_from_image(b"fake image bytes")
+
+        kwargs = mock_client.messages.create.call_args.kwargs
+        assert kwargs["output_config"] == {
+            "format": {"type": "json_schema", "schema": OCR_RESPONSE_SCHEMA}
+        }
 
 
 class TestExtractMetadataFromImage:
@@ -70,16 +108,14 @@ class TestExtractMetadataFromImage:
     )
     def test_reads_past_a_leading_thinking_block(self, mock_anthropic_cls):
         """Thinking models put a reasoning block ahead of the answer."""
-        import json
-
-        mock_client = MagicMock()
-        mock_anthropic_cls.return_value = mock_client
-        mock_message = MagicMock()
-        mock_message.content = [
-            MagicMock(type="thinking", thinking="Reading the page..."),
-            MagicMock(type="text", text=json.dumps(SAMPLE_OCR_RESPONSE)),
-        ]
-        mock_client.messages.create.return_value = mock_message
+        _mock_vision_client(
+            mock_anthropic_cls,
+            None,
+            blocks=[
+                MagicMock(type="thinking", thinking="Reading the page..."),
+                MagicMock(type="text", text=json.dumps(SAMPLE_OCR_RESPONSE)),
+            ],
+        )
 
         result = extract_metadata_from_image(b"fake image bytes")
 
@@ -91,15 +127,9 @@ class TestExtractMetadataFromImage:
         {"ANTHROPIC_API_KEY": "test-key", "CLAUDE_MODEL": "test-model"},
     )
     def test_successful_extraction(self, mock_anthropic_cls):
-        import json
-
-        mock_client = MagicMock()
-        mock_anthropic_cls.return_value = mock_client
-        mock_message = MagicMock()
-        mock_message.content = [
-            MagicMock(type="text", text=json.dumps(SAMPLE_OCR_RESPONSE))
-        ]
-        mock_client.messages.create.return_value = mock_message
+        mock_client = _mock_vision_client(
+            mock_anthropic_cls, json.dumps(SAMPLE_OCR_RESPONSE)
+        )
 
         result = extract_metadata_from_image(b"fake image bytes")
 
@@ -114,6 +144,57 @@ class TestExtractMetadataFromImage:
         # Verify API was called with the right model
         call_kwargs = mock_client.messages.create.call_args
         assert call_kwargs.kwargs["model"] == "test-model"
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_gershayim_in_a_value_is_returned_intact(self, mock_anthropic_cls):
+        """Hebrew title pages carry gershayim constantly."""
+        payload = {
+            **SAMPLE_OCR_RESPONSE,
+            "author": "\u05e8\u05e9\u05f4\u05d9",
+        }
+        _mock_vision_client(mock_anthropic_cls, json.dumps(payload))
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result["author"] == "\u05e8\u05e9\u05f4\u05d9"
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_a_quote_inside_a_hebrew_value_is_returned_intact(
+        self, mock_anthropic_cls
+    ):
+        """A quotation mark between Hebrew letters is a quotation mark.
+
+        Rewriting every such quote to a gershayim guessed at what the
+        page said. An escaped quote in a schema-constrained response
+        needs no guess.
+        """
+        quoted = '\u05e1\u05e4\u05e8 "\u05d4\u05d6\u05d5\u05d4\u05e8"'
+        payload = {**SAMPLE_OCR_RESPONSE, "title": quoted}
+        _mock_vision_client(mock_anthropic_cls, json.dumps(payload))
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result["title"] == quoted
+        assert "\u05f4" not in result["title"]
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_all_null_reading_is_an_answer_not_a_failure(
+        self, mock_anthropic_cls
+    ):
+        """The model read the page and found nothing it could name.
+
+        That is an extraction result, and it is not the same event as a
+        call that never produced one.
+        """
+        empty = {field: None for field in OCR_FIELDS}
+        _mock_vision_client(mock_anthropic_cls, json.dumps(empty))
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result == empty
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -133,14 +214,44 @@ class TestExtractMetadataFromImage:
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-    def test_malformed_response_returns_none(self, mock_anthropic_cls):
-        mock_client = MagicMock()
-        mock_anthropic_cls.return_value = mock_client
-        mock_message = MagicMock()
-        mock_message.content = [
-            MagicMock(type="text", text="This is not JSON at all")
-        ]
-        mock_client.messages.create.return_value = mock_message
+    def test_truncated_response_returns_none(self, mock_anthropic_cls, caplog):
+        """Constrained output is valid JSON unless the answer is cut off."""
+        _mock_vision_client(
+            mock_anthropic_cls,
+            '{"title": "\u05de\u05e9\u05e0\u05d4',
+            stop_reason="max_tokens",
+        )
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result is None
+        assert "truncated" in caplog.text
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_refused_response_returns_none(self, mock_anthropic_cls, caplog):
+        """A refusal is exempt from the schema, so it is not an answer."""
+        _mock_vision_client(
+            mock_anthropic_cls,
+            "I can't help with that.",
+            stop_reason="refusal",
+        )
+
+        result = extract_metadata_from_image(b"fake image bytes")
+
+        assert result is None
+        assert "refused" in caplog.text
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_response_without_a_text_block_returns_none(
+        self, mock_anthropic_cls
+    ):
+        _mock_vision_client(
+            mock_anthropic_cls,
+            None,
+            blocks=[MagicMock(type="thinking", thinking="...")],
+        )
 
         result = extract_metadata_from_image(b"fake image bytes")
         assert result is None
@@ -363,6 +474,27 @@ class TestTitlePageUploadView:
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert response.status_code == 200
+        assert b"OCR could not extract metadata" in response.content
+
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_output is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_treats_an_all_null_reading_as_nothing_found(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """A reading with no fields in it is nothing to show the user.
+
+        Extraction reports the empty reading and the failed call apart;
+        the queue card treats both as work still to do.
+        """
+        mock_ocr.return_value = {field: None for field in OCR_FIELDS}
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
         assert response.status_code == 200
         assert b"OCR could not extract metadata" in response.content
 
