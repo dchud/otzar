@@ -108,9 +108,10 @@ on 2026-09-04.
   writes to it (`bd-y1g.3`).
 
 One fact a reader of the schema would not guess: `source_marc` is null on
-every record. `parse_record` never emits the key the confirm path reads,
-and the source documents were not kept, so records created before the fix
-cannot be backfilled (`bd-lg9`).
+every record created before 2026-09-04. Until that day `parse_record` did
+not emit the key the confirm path reads (`bd-lg9`); the source documents
+were not kept, so those records cannot be backfilled, and anything built
+on the field has to tolerate its absence.
 
 ### 2.3 Ingest paths
 
@@ -205,8 +206,9 @@ process-label lint that `docs/plans/` is exempt from.
   LCCN, OCLC, classifications, additional authors (700), subjects (650,
   with subdivisions), and series (490/830). Handles LC's pattern (Hebrew in
   linked 880 fields) for title and author only; subjects and series read
-  the primary field alone (`bd-wnx`). Does not carry the source record
-  through to the candidate (`bd-lg9`).
+  the primary field alone (`bd-wnx`). Carries the whole record through to
+  the candidate as MARC-in-JSON (`source_marc`), uncleaned, at roughly
+  4–5 KB per candidate.
 - **VIAF client** (`viaf.py`) — a search-cascade client that parses VIAF
   clusters and scores the best match. Built and unit-tested; not called
   from any ingest or catalog flow.
@@ -325,7 +327,7 @@ title-page handoff (phone and desktop as two browser contexts).
 | `bd-k0s` (P2, epic) | Search and browse quality | children: prefix matching (P2), Hebrew prefixes, nav search box, same-subject items (P3), facets (P4) |
 | `bd-y1g` (P2, epic) | Connect the response cache, usage log, and reindex paths | children: cache (P2), reindex and admin indexing (P2), usage log and daily cap (P3) |
 | `bd-mej`, `bd-n7a` (P2) | Remove the Fly deployment; plan AWS with backups and a tested restore | see 2.10 |
-| `bd-lg9` (P2, bug) | `source_marc` never populated | existing records cannot be backfilled |
+| `bd-lg9` (P2, bug) | `source_marc` never populated | fix merged 2026-09-04; the bead closes with the next tracker batch; records created before it stay null |
 | `bd-73m`, `bd-nzb`, `bd-mb8`, `bd-xtx` (P2) | Review queue rows with inline confirm; queue on `/ingest/` with a count; score candidates against OCR output; failed OCR re-run discards the previous extraction | the ingest-review thread |
 | `bd-yg9` (P2) | Attach the confirmed title-page image to the record | |
 | `otzar-55i`, `otzar-4x2` (P2) | Author roles and statement of responsibility; volume evidence for set records | parser depth |
@@ -369,10 +371,10 @@ Properties of the codebase worth preserving:
 - **Stable, prefix-configurable record IDs and Unicode slugs**, which
   also make per-instance identity a configuration matter (see §6).
 
-One claimed strength from July does not hold: "source MARC as source of
-truth." The design intends it and the schema has the field, but the write
-path never fills it (`bd-lg9`). Until that lands, no record can be
-re-derived from its source.
+One claimed strength from July held only in the schema: "source MARC as
+source of truth." The write path never filled the field until `bd-lg9`
+landed on 2026-09-04. Records created before then have no source document
+and cannot be re-derived from one.
 
 ---
 
@@ -477,17 +479,18 @@ existed. What follows replaces that sequence.
 
 ### Step 1 — Fixes that compound with every record
 
-Three items get worse the longer the catalog grows and cost the same to
-fix now or later, so fix them now:
+Items in this class get worse the longer the catalog grows and cost the
+same to fix now or later, so they go first. One has already landed:
+`bd-lg9` (populate `source_marc`) merged on 2026-09-04, and every record
+created before it has no source document, permanently — which is the
+argument for doing the other two now:
 
-- `bd-lg9` — populate `source_marc`. Every record created before this
-  lands has no source document, permanently.
 - `otzar-1yn.1` — match existing authors on confirm. Every duplicate
   author row created before this lands has to be merged by hand.
 - `bd-y1g.2` — reindex command and admin-write indexing. The failure is
   silent and the recovery command does not exist.
 
-All three are one-session tasks with existing tests to extend.
+Both are one-session tasks with existing tests to extend.
 
 ### Step 2 — Stop paying for the abandoned deployment; plan the real one
 
@@ -544,7 +547,7 @@ feedback from a cataloging session that uses both scan types.
 ### Dependency summary
 
 ```
-bd-lg9, otzar-1yn.1, bd-y1g.2 (step 1)      independent of everything; do first
+otzar-1yn.1, bd-y1g.2 (step 1)              independent of everything; do first
 bd-mej ─► bd-n7a                             independent of ingest work
 bd-73m ─► bd-nzb ; bd-mb8, bd-xtx            share ingest templates; land together
 otzar-cex, otzar-j2k ─► zx8 ─► 520 ─► 2ao ─► t07 ─► pqr
