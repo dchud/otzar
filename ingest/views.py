@@ -8,6 +8,7 @@ from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -18,13 +19,64 @@ from catalog.search import ensure_fts_table, index_record
 from catalog.utils import strip_marc_punctuation
 from ingest.authority import find_author_matches
 from ingest.forms import RecordForm
-from ingest.models import ScanResult
+from ingest.models import OCR_LEASE_TIMEOUT, ScanResult
 from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import create_series_volumes
 from sources.cascade import isbn_lookup, search_lc, search_nli
 from sources.covers import fetch_cover_url
 
 logger = logging.getLogger(__name__)
+
+
+def _in_progress_title_scans(user):
+    """Title-page scans the poll pane should be showing.
+
+    Both the poll and the upload response render from this, so an
+    upload cannot momentarily drop a card the next poll puts back --
+    which is what happened when the upload response listed only the
+    uploader's awaiting_ocr rows while the poll listed those plus
+    pending-with-output, and every user's rows for staff.
+    """
+    qs = ScanResult.objects.filter(scan_type="ocr").filter(
+        Q(status="awaiting_ocr")
+        | Q(status="pending", ocr_output__isnull=False)
+    )
+    if not user.is_staff:
+        qs = qs.filter(scanned_by=user)
+    return qs
+
+
+def _take_ocr_lease(scan):
+    """Claim the OCR lease for this scan. True if we got it.
+
+    One conditional UPDATE, so the database arbitrates. Reading
+    ocr_started_at and then writing it leaves a window wide enough for
+    two polling devices to pass the check together and bill two vision
+    calls -- the exact thing the lease exists to stop.
+
+    The same statement reclaims a lease left behind by a run that died
+    without releasing it.
+    """
+    now = timezone.now()
+    rows = (
+        ScanResult.objects.filter(pk=scan.pk)
+        .filter(
+            Q(ocr_started_at__isnull=True)
+            | Q(ocr_started_at__lt=now - OCR_LEASE_TIMEOUT)
+        )
+        .update(ocr_started_at=now, updated_at=now)
+    )
+    return rows == 1
+
+
+def _notice(request, message, status=200):
+    """Render a message htmx will actually put on screen."""
+    return render(
+        request,
+        "ingest/_notice.html",
+        {"message": message},
+        status=status,
+    )
 
 
 def _create_record_from_candidate(
@@ -450,10 +502,11 @@ def title_page_upload(request):
     # Return the full poll partial so both upload and poll responses are
     # interchangeable. This avoids a race where the poll cycle would
     # overwrite a single just-uploaded card with the full list.
-    qs = ScanResult.objects.filter(
-        scan_type="ocr", status="awaiting_ocr", scanned_by=request.user
+    return render(
+        request,
+        "ingest/_title_page_poll.html",
+        {"scans": _in_progress_title_scans(request.user)},
     )
-    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
 
 
 @login_required
@@ -476,20 +529,26 @@ def run_ocr(request, scan_id):
     if not request.user.is_staff and scan.scanned_by != request.user:
         return HttpResponse("Forbidden", status=403)
     if not scan.image or scan.status == "discarded":
-        return HttpResponse("Image is no longer available.", status=409)
-    if scan.ocr_is_running:
-        return HttpResponse("OCR is already running.", status=409)
+        return _notice(request, "Image is no longer available.", status=409)
+    if not _take_ocr_lease(scan):
+        return _notice(request, "OCR is already running.", status=409)
 
-    with scan.image.open("rb") as fh:
-        image_bytes = fh.read()
-
-    scan.ocr_started_at = timezone.now()
-    scan.save(update_fields=["ocr_started_at", "updated_at"])
     try:
+        with scan.image.open("rb") as fh:
+            image_bytes = fh.read()
         metadata = extract_metadata_from_image(image_bytes)
     finally:
-        scan.ocr_started_at = None
-        scan.save(update_fields=["ocr_started_at", "updated_at"])
+        ScanResult.objects.filter(pk=scan.pk).update(ocr_started_at=None)
+
+    # The row was read before a call that runs 5-9 seconds. A discard
+    # from the other device lands in that gap, and writing the result
+    # back resurrected the scan as a card with no image whose only
+    # button always 409s.
+    scan.refresh_from_db()
+    if scan.status == "discarded" or not scan.image:
+        return _notice(
+            request, "This photo was discarded while OCR was running."
+        )
 
     if metadata is None:
         # Reset to awaiting state so the card in the poll pane keeps its
@@ -524,15 +583,11 @@ def title_page_poll(request):
 
     Staff users see all in-progress scans, matching review_queue.
     """
-    from django.db.models import Q
-
-    qs = ScanResult.objects.filter(scan_type="ocr").filter(
-        Q(status="awaiting_ocr")
-        | Q(status="pending", ocr_output__isnull=False)
+    return render(
+        request,
+        "ingest/_title_page_poll.html",
+        {"scans": _in_progress_title_scans(request.user)},
     )
-    if not request.user.is_staff:
-        qs = qs.filter(scanned_by=request.user)
-    return render(request, "ingest/_title_page_poll.html", {"scans": qs})
 
 
 @login_required
@@ -547,7 +602,7 @@ def edit_title_metadata(request, scan_id):
     if not request.user.is_staff and scan.scanned_by != request.user:
         return HttpResponse("Forbidden", status=403)
     if scan.status != "pending" or not scan.ocr_output:
-        return HttpResponse("Scan has no metadata to edit.", status=409)
+        return _notice(request, "Scan has no metadata to edit.", status=409)
     return render(
         request,
         "ingest/_ocr_results.html",

@@ -80,6 +80,18 @@
   // A poll swap mid-OCR would replace the card, re-enabling its Run OCR
   // button under the spinner and inviting a second call to the vision
   // API. Hold the poll until the OCR request settles.
+  // htmx drops 4xx bodies rather than swapping them, so a 409 -- the
+  // other device already running OCR, or a photo discarded underneath
+  // this one -- reached the user as nothing at all: the button
+  // re-enabled itself and the pane stayed empty. These responses carry
+  // a rendered explanation, so let them through.
+  document.body.addEventListener('htmx:beforeSwap', function (e) {
+    if (e.detail.xhr.status === 409) {
+      e.detail.shouldSwap = true;
+      e.detail.isError = false;
+    }
+  });
+
   let ocrInFlight = false;
   document.body.addEventListener('htmx:beforeRequest', function (e) {
     const path = (e.detail.requestConfig && e.detail.requestConfig.path) || '';

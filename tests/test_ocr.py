@@ -925,3 +925,119 @@ class TestSearchProgress:
         body = response.content.decode()
 
         assert body.count("Searching...") == 1
+
+
+class TestOCRLeaseRaces:
+    """The lease has to hold under the races it exists to prevent."""
+
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+        client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    def test_lease_cannot_be_taken_twice(
+        self, client_logged_in, tmp_path, settings
+    ):
+        """Checking then setting leaves a window; claiming must be one
+        statement the database arbitrates."""
+        from ingest.views import _take_ocr_lease
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        assert _take_ocr_lease(scan) is True
+        assert _take_ocr_lease(scan) is False
+
+    def test_stale_lease_can_be_reclaimed(
+        self, client_logged_in, tmp_path, settings
+    ):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from ingest.views import _take_ocr_lease
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.ocr_started_at = timezone.now() - timedelta(minutes=5)
+        scan.save(update_fields=["ocr_started_at"])
+
+        assert _take_ocr_lease(scan) is True
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_discard_during_run_is_not_undone(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """The row is read before a 5-9 second call and written after.
+
+        A discard from the other device lands in between, and writing
+        the result back resurrected the scan as a card with no image
+        whose only button always 409s.
+        """
+        from ingest.models import ScanResult
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        def discard_midway(_image_bytes):
+            ScanResult.objects.filter(pk=scan.pk).update(
+                status="discarded", image=""
+            )
+            return SAMPLE_OCR_RESPONSE
+
+        mock_ocr.side_effect = discard_midway
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
+        assert not scan.ocr_output
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_busy_response_is_renderable(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """htmx does not swap 4xx bodies by default, so a bare string
+        409 left the other device's click doing nothing at all."""
+        from django.utils import timezone
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.ocr_started_at = timezone.now()
+        scan.save(update_fields=["ocr_started_at"])
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 409
+        assert b"already running" in response.content
+        assert b"<" in response.content, "409 body must be renderable HTML"
+        mock_ocr.assert_not_called()
+
+    def test_upload_and_poll_return_the_same_cards(
+        self, client_logged_in, tmp_path, settings
+    ):
+        """The comment on title_page_upload claims these are
+        interchangeable; they were not, so an already-OCR'd card
+        vanished on upload and came back on the next poll."""
+        from ingest.models import ScanResult
+
+        done = self._upload_scan(client_logged_in, tmp_path, settings)
+        done.status = "pending"
+        done.ocr_output = SAMPLE_OCR_RESPONSE
+        done.save(update_fields=["status", "ocr_output"])
+
+        image = io.BytesIO(b"second photo")
+        image.name = "test.jpg"
+        upload = client_logged_in.post(
+            "/ingest/upload-title/", {"image": image}, format="multipart"
+        )
+        poll = client_logged_in.get("/ingest/scan-title/poll/")
+
+        new = ScanResult.objects.filter(status="awaiting_ocr").first()
+        for pk in (done.pk, new.pk):
+            marker = f"title-page-card-{pk}".encode()
+            assert marker in upload.content, f"upload dropped card {pk}"
+            assert marker in poll.content, f"poll dropped card {pk}"

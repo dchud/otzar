@@ -646,3 +646,68 @@ class TestSharedOCRProgress:
             )
 
             expect(page.locator("table")).to_be_visible(timeout=15000)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestConcurrentDeviceFeedback:
+    """A refused action has to say so; silence reads as a broken button."""
+
+    def _staged_scan(self, staff_user):
+        from django.core.files.base import ContentFile
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+        return scan
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_second_device_is_told_ocr_is_already_running(
+        self, mock_ocr, browser, live_server, staff_user
+    ):
+        def slow_ocr(_image_bytes):
+            time.sleep(6)
+            return SAMPLE_OCR_RESPONSE
+
+        mock_ocr.side_effect = slow_ocr
+        scan = self._staged_scan(staff_user)
+
+        phone = browser.new_context()
+        phone_page = phone.new_page()
+        phone_page.goto(
+            f"{live_server.url}/ingest/phone-auth/{_phone_token(staff_user)}/"
+        )
+        phone_page.wait_for_url("**/ingest/scan-title/", timeout=5000)
+        expect(
+            phone_page.locator(f"#title-page-card-{scan.pk}")
+        ).to_be_visible(timeout=10000)
+
+        desktop = browser.new_context()
+        desktop_page = desktop.new_page()
+        login(desktop_page, live_server)
+        desktop_page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(
+            desktop_page.locator(f"#title-page-card-{scan.pk}")
+        ).to_be_visible(timeout=10000)
+
+        # Phone starts the run.
+        phone_page.click(
+            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+        )
+
+        # Desktop clicks before its poll has caught up. The request is
+        # refused, and the refusal has to be visible.
+        desktop_page.click(
+            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+        )
+        expect(desktop_page.locator("#title-page-metadata")).to_contain_text(
+            "already running", timeout=8000
+        )
+
+        assert mock_ocr.call_count == 1
+
+        desktop.close()
+        phone.close()
