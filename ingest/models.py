@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-JPEG_SUFFIXES = {".jpg", ".jpeg", ".png"}
+JPEG_SUFFIXES = {".jpg", ".jpeg"}
 
 # How long a scan may claim to be running OCR before other devices
 # stop believing it. Extraction takes 5-9 seconds against a title
@@ -24,9 +24,15 @@ def staging_image_path(instance, filename):
     holding that URL keeps painting the old image. A random stem gives
     every upload its own URL for as long as the file exists.
 
-    The suffix is normalized because the capture form re-encodes to JPEG
-    while keeping the original filename, so a photo picked from an iOS
-    library arrives as JPEG bytes under a .heic name.
+    The suffix is normalized because staged images are always JPEG
+    while their uploaded names are not. The capture form re-encodes
+    every image it can decode and keeps the original filename, so a
+    photo picked from an iOS library arrives as JPEG bytes under a
+    .heic name and a screenshot arrives as JPEG bytes under .png. What
+    the form cannot decode it submits unchanged, and only when the file
+    is already JPEG. A name kept as given would therefore describe the
+    wrong format, and the file is served with a content type derived
+    from it.
     """
     suffix = Path(filename).suffix.lower()
     if suffix not in JPEG_SUFFIXES:
