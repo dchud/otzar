@@ -623,7 +623,10 @@ def run_ocr(request, scan_id):
 
     # Extraction separates a call that produced no reading (None) from a
     # reading with nothing in it (every field null). Both leave the user
-    # with no metadata, so both take this path.
+    # with no metadata, so both take this path, and the empty reading is
+    # dropped rather than stored: keeping it would put the scan in
+    # pending with ocr_output set, which the poll pane offers to continue
+    # editing — a form of eight empty boxes over an unreadable photo.
     if metadata is None or not any(metadata.values()):
         # Reset to awaiting state so the card in the poll pane keeps its
         # Run OCR button. The response is a notice rather than a card:
