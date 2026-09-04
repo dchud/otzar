@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# `lint`, `test` and `test-e2e` are required status checks on `main`. A
+# required check that never reports is not treated as passing: it sits
+# pending and the pull request cannot merge. So a workflow-level or
+# job-level `paths-ignore` is not available here. Instead every job
+# always runs and always reports, and `test` and `test-e2e` decide
+# inside the job whether the changed files can reach any code the suites
+# exercise. `lint` has no such gate -- it is the cheap job, and its
+# process-label check reads the Markdown that the test gate ignores.
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -35,18 +44,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether the change can affect tests
+        id: relevant
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          run_tests() {
+            echo "$1 Running the tests."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ -z "$BASE_SHA" ] ||
+             [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            run_tests "No base commit to compare against."
+          fi
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            run_tests "Base commit ${BASE_SHA} is not in this checkout."
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" HEAD)
+          if [ -z "$changed" ]; then
+            run_tests "Git reported no changed files."
+          fi
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+          while IFS= read -r file; do
+            case "$file" in
+              .beads/*|*.md) ;;
+              *) run_tests "${file} can affect application behaviour." ;;
+            esac
+          done <<< "$changed"
+          echo "Only tracker and Markdown files changed. Skipping the tests."
+          echo "run=false" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@v4
+        if: steps.relevant.outputs.run == 'true'
         with:
           enable-cache: true
 
       - name: Set up Python 3.13
+        if: steps.relevant.outputs.run == 'true'
         run: uv python install 3.13
 
       - name: Install dependencies
+        if: steps.relevant.outputs.run == 'true'
         run: uv sync
 
       - name: Create .env file
+        if: steps.relevant.outputs.run == 'true'
         run: |
           cat <<'EOF' > .env
           SECRET_KEY=ci-test-secret-key-not-for-production
@@ -62,24 +109,63 @@ jobs:
           EOF
 
       - name: Run unit tests
+        if: steps.relevant.outputs.run == 'true'
         run: uv run pytest --ignore=tests/e2e
 
   test-e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether the change can affect tests
+        id: relevant
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          run_tests() {
+            echo "$1 Running the tests."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ -z "$BASE_SHA" ] ||
+             [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            run_tests "No base commit to compare against."
+          fi
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            run_tests "Base commit ${BASE_SHA} is not in this checkout."
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" HEAD)
+          if [ -z "$changed" ]; then
+            run_tests "Git reported no changed files."
+          fi
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+          while IFS= read -r file; do
+            case "$file" in
+              .beads/*|*.md) ;;
+              *) run_tests "${file} can affect application behaviour." ;;
+            esac
+          done <<< "$changed"
+          echo "Only tracker and Markdown files changed. Skipping the tests."
+          echo "run=false" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@v4
+        if: steps.relevant.outputs.run == 'true'
         with:
           enable-cache: true
 
       - name: Set up Python 3.13
+        if: steps.relevant.outputs.run == 'true'
         run: uv python install 3.13
 
       - name: Install dependencies
+        if: steps.relevant.outputs.run == 'true'
         run: uv sync
 
       - name: Create .env file
+        if: steps.relevant.outputs.run == 'true'
         run: |
           cat <<'EOF' > .env
           SECRET_KEY=ci-test-secret-key-not-for-production
@@ -95,6 +181,7 @@ jobs:
           EOF
 
       - name: Cache Playwright browsers
+        if: steps.relevant.outputs.run == 'true'
         id: playwright-cache
         uses: actions/cache@v4
         with:
@@ -104,7 +191,9 @@ jobs:
             playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
+        if: steps.relevant.outputs.run == 'true'
         run: uv run playwright install chromium --with-deps
 
       - name: Run e2e tests
+        if: steps.relevant.outputs.run == 'true'
         run: uv run pytest tests/e2e/
