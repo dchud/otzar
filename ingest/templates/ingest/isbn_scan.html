@@ -4,6 +4,7 @@
 {% block title %}Scan ISBN — otzar{% endblock %}
 
 {% block content %}
+{% include "ingest/_ingest_nav.html" %}
 {% if phone_scanner %}
 {# Phone scanner mode: streamlined for rapid scanning #}
 <h1 class="text-2xl font-semibold mb-6">Phone Scanner</h1>

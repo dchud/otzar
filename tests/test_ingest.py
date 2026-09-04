@@ -147,3 +147,91 @@ class TestEditRecord:
         assert response.status_code == 302
         record.refresh_from_db()
         assert record.title == "Updated Title"
+
+
+@pytest.mark.django_db
+class TestIngestModeNav:
+    """Ingest route is a per-item choice, so it belongs on every page.
+
+    The three ways in already existed as cards on /ingest/, but choosing
+    one meant navigating back there between items. On a phone it was
+    worse than that: base.html hides the whole nav below the sm
+    breakpoint, so a phone that landed on a scan page had no way out of
+    it at all.
+    """
+
+    @pytest.mark.parametrize(
+        "url",
+        ["/ingest/scan/", "/ingest/scan-title/", "/ingest/new/"],
+    )
+    def test_every_ingest_page_offers_all_three_routes(
+        self, client_logged_in, url
+    ):
+        response = client_logged_in.get(url)
+        body = response.content.decode()
+
+        assert 'id="ingest-mode-nav"' in body
+        assert 'href="/ingest/scan/"' in body
+        assert 'href="/ingest/scan-title/"' in body
+        assert 'href="/ingest/new/"' in body
+
+    @pytest.mark.parametrize(
+        "url,label",
+        [
+            ("/ingest/scan/", "Scan barcode"),
+            ("/ingest/scan-title/", "Title page"),
+            ("/ingest/new/", "Enter manually"),
+        ],
+    )
+    def test_current_route_is_marked_current(
+        self, client_logged_in, url, label
+    ):
+        response = client_logged_in.get(url)
+        body = response.content.decode()
+
+        marker = 'aria-current="page"'
+        assert marker in body
+        # The marked link is the one for this page, not another.
+        segment = body[body.index(marker) : body.index(marker) + 400]
+        assert label in segment
+
+    def test_nav_reaches_phone_mode_title_page(self, client_logged_in):
+        """The bar is the phone's only navigation, so it must render
+        in the streamlined capture view too."""
+        session = client_logged_in.session
+        session["phone_scanner"] = True
+        session["phone_scan_target"] = "title"
+        session.save()
+
+        response = client_logged_in.get("/ingest/scan-title/")
+        body = response.content.decode()
+
+        assert b"Title page capture" in response.content
+        assert 'id="ingest-mode-nav"' in body
+        assert 'href="/ingest/scan/"' in body
+
+    def test_phone_that_authed_for_barcode_gets_phone_title_layout(
+        self, client_logged_in
+    ):
+        """Tapping "Title page" on a phone that scanned the barcode QR
+        must not drop it into the desktop layout.
+
+        phone_scan_auth sets both phone_scanner and phone_scan_target,
+        but the target only ever meant "where to redirect after auth".
+        Keying the layout off it served the desktop QR sidebar to a
+        phone the moment the user switched routes.
+        """
+        session = client_logged_in.session
+        session["phone_scanner"] = True
+        session["phone_scan_target"] = "isbn"
+        session.save()
+
+        response = client_logged_in.get("/ingest/scan-title/")
+
+        assert b"Title page capture" in response.content
+        assert b"Capture on your phone" not in response.content
+
+    def test_desktop_session_still_gets_desktop_layout(self, client_logged_in):
+        response = client_logged_in.get("/ingest/scan-title/")
+        assert b"Scan title page" in response.content
+        assert b"Capture on your phone" in response.content

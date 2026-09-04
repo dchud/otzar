@@ -486,7 +486,7 @@ class TestTitlePageHandoff:
             expect(page.locator("text=Extracted metadata")).to_be_visible(
                 timeout=10000
             )
-            page.click('button:text("Search catalogs")')
+            page.click('#search-controls button[type="submit"]')
             expect(page.locator("table")).to_be_visible(timeout=10000)
 
         # The QR sidebar shares the row, so this asserts the table fits
@@ -515,3 +515,134 @@ class TestTitlePageHandoff:
             f"visible area of the table"
         )
         assert overflow["pageOverflow"] <= 0, "page scrolls horizontally"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestSharedOCRProgress:
+    """A run of OCR must be visible on the device that did not start it."""
+
+    def _staged_scan(self, staff_user):
+        from django.core.files.base import ContentFile
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+        return scan
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_desktop_sees_reading_while_phone_runs_ocr(
+        self, mock_ocr, browser, live_server, staff_user
+    ):
+        """The whole point of the lease.
+
+        Before it existed the desktop kept a live Run OCR button through
+        the entire run, and pressing it spent a second vision call on
+        the same image.
+        """
+
+        def slow_ocr(_image_bytes):
+            # Long enough for the desktop's 3s poll to come round twice.
+            time.sleep(6)
+            return SAMPLE_OCR_RESPONSE
+
+        mock_ocr.side_effect = slow_ocr
+        scan = self._staged_scan(staff_user)
+
+        desktop = browser.new_context()
+        desktop_page = desktop.new_page()
+        login(desktop_page, live_server)
+        desktop_page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(
+            desktop_page.locator(f"#title-page-card-{scan.pk}")
+        ).to_be_visible(timeout=10000)
+
+        phone = browser.new_context()
+        phone_page = phone.new_page()
+        phone_page.goto(
+            f"{live_server.url}/ingest/phone-auth/{_phone_token(staff_user)}/"
+        )
+        phone_page.wait_for_url("**/ingest/scan-title/", timeout=5000)
+        expect(
+            phone_page.locator(f"#title-page-card-{scan.pk}")
+        ).to_be_visible(timeout=10000)
+
+        # Phone starts the run and does not wait for it.
+        phone_page.click(
+            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+        )
+
+        # Desktop learns about it on its next poll.
+        expect(
+            desktop_page.locator(
+                f"#title-page-card-{scan.pk} button:text('Reading...')"
+            )
+        ).to_be_visible(timeout=8000)
+        expect(
+            desktop_page.locator(
+                f"#title-page-card-{scan.pk} button:text('Reading...')"
+            )
+        ).to_be_disabled()
+
+        # And once the run finishes the desktop moves on with it.
+        expect(
+            desktop_page.locator(f"#title-page-card-{scan.pk}")
+        ).to_contain_text("OCR done", timeout=20000)
+
+        assert mock_ocr.call_count == 1
+
+        desktop.close()
+        phone.close()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_search_button_shows_its_own_progress(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """The catalog search runs 7-12s; the button says so itself."""
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._staged_scan(staff_user)
+        scan.status = "pending"
+        scan.ocr_output = SAMPLE_OCR_RESPONSE
+        scan.save(update_fields=["status", "ocr_output"])
+
+        login(page, live_server)
+
+        def slow_nli(_metadata):
+            time.sleep(3)
+            return CascadeResult(records=WIDE_CANDIDATES[:2])
+
+        with (
+            patch("ingest.views.search_nli", side_effect=slow_nli),
+            patch(
+                "ingest.views.search_lc",
+                return_value=CascadeResult(records=[]),
+            ),
+        ):
+            page.goto(f"{live_server.url}/ingest/scan-title/")
+            expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+                timeout=10000
+            )
+            page.click('button:text("Continue editing")')
+            expect(page.locator("text=Extracted metadata")).to_be_visible(
+                timeout=10000
+            )
+
+            search_btn = page.locator('#search-controls button[type="submit"]')
+            expect(search_btn).to_contain_text("Search catalogs")
+
+            page.click(
+                '#search-controls button[type="submit"]', no_wait_after=True
+            )
+
+            # The button itself carries the state and stops taking clicks.
+            expect(search_btn).to_contain_text("Searching...", timeout=3000)
+            expect(search_btn).to_be_disabled()
+            # The detail beside it names what is being queried.
+            expect(page.locator("#search-controls")).to_contain_text(
+                "Querying NLI, then Library of Congress"
+            )
+
+            expect(page.locator("table")).to_be_visible(timeout=15000)

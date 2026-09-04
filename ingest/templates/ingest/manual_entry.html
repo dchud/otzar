@@ -4,6 +4,7 @@
 {% block title %}{% if record %}Edit record{% else %}Add record{% endif %} — otzar{% endblock %}
 
 {% block content %}
+{% if not record %}{% include "ingest/_ingest_nav.html" %}{% endif %}
 <h1 class="text-2xl font-semibold mb-6">{% if record %}Edit record{% else %}Add a new record{% endif %}</h1>
 
 <div class="max-w-2xl">

@@ -1,0 +1,30 @@
+{% comment %}The three ways into the catalog, on every ingest page.
+
+   Cataloguing is item-by-item and the right route changes with the
+   book: a barcode if it has one, a title-page photo for older or
+   Hebrew-language volumes, and typing it out when neither works. These
+   lived only as cards on /ingest/, so switching meant going back there
+   between items. base.html also hides the site nav below the sm
+   breakpoint, which left a phone on a scan page with no way out of it.
+
+   The current route is read from the resolver rather than passed in, so
+   no view needs to know this bar exists.{% endcomment %}
+{% with current=request.resolver_match.url_name %}
+<nav id="ingest-mode-nav" aria-label="Ingest method"
+     class="mb-6 border-b border-gray-200 dark:border-gray-700">
+  <ul class="flex flex-wrap gap-1 -mb-px">
+    <li>
+      <a class="inline-flex items-center min-h-[44px] px-4 py-2 text-sm border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded {% if current == 'isbn_scan' %}border-blue-600 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600{% endif %}"
+         href="{% url 'isbn_scan' %}"{% if current == 'isbn_scan' %} aria-current="page"{% endif %}>Scan barcode</a>
+    </li>
+    <li>
+      <a class="inline-flex items-center min-h-[44px] px-4 py-2 text-sm border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded {% if current == 'title_page_scan' %}border-blue-600 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600{% endif %}"
+         href="{% url 'title_page_scan' %}"{% if current == 'title_page_scan' %} aria-current="page"{% endif %}>Title page</a>
+    </li>
+    <li>
+      <a class="inline-flex items-center min-h-[44px] px-4 py-2 text-sm border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded {% if current == 'manual_entry' %}border-blue-600 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600{% endif %}"
+         href="{% url 'manual_entry' %}"{% if current == 'manual_entry' %} aria-current="page"{% endif %}>Enter manually</a>
+    </li>
+  </ul>
+</nav>
+{% endwith %}

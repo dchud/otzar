@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from catalog.models import Author, Location, Publisher, Record, Series
@@ -345,10 +346,16 @@ def title_page_scan(request):
     Two render modes:
     - Desktop (default): direct upload form, QR sidebar to hand off to a
       phone, and a poll pane showing photos arriving from the phone.
-    - Phone (when ``phone_scan_target`` session key is "title"): a
+    - Phone (when the ``phone_scanner`` session key is set): a
       streamlined capture-only view that polls for shared review state.
+
+    Keyed off ``phone_scanner`` rather than ``phone_scan_target``, which
+    only ever meant "where to send this phone after authenticating".
+    Reading the target here served the desktop layout -- QR sidebar and
+    all -- to a phone that authenticated for barcodes and then switched
+    to the title-page route.
     """
-    phone_mode = request.session.get("phone_scan_target") == "title"
+    phone_mode = request.session.get("phone_scanner", False)
     return render(
         request,
         "ingest/title_page_scan.html",
@@ -442,17 +449,33 @@ def run_ocr(request, scan_id):
     Accepts both ``awaiting_ocr`` (first run) and ``pending`` (re-run
     after the user found the previous extraction unusable). The image
     must still be present — the gate is image presence, not status.
-    Returns 409 only if the image has been discarded.
+    Returns 409 if the image has been discarded, or if another device
+    already has a run in flight on this scan.
+
+    The lease is taken before the vision call and released in a
+    ``finally``, so the poll pane on every device showing this scan
+    reports the run while it lasts. See ``ScanResult`` on why this is a
+    timestamp and not a status.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
     if not request.user.is_staff and scan.scanned_by != request.user:
         return HttpResponse("Forbidden", status=403)
     if not scan.image or scan.status == "discarded":
         return HttpResponse("Image is no longer available.", status=409)
+    if scan.ocr_is_running:
+        return HttpResponse("OCR is already running.", status=409)
 
     with scan.image.open("rb") as fh:
         image_bytes = fh.read()
-    metadata = extract_metadata_from_image(image_bytes)
+
+    scan.ocr_started_at = timezone.now()
+    scan.save(update_fields=["ocr_started_at", "updated_at"])
+    try:
+        metadata = extract_metadata_from_image(image_bytes)
+    finally:
+        scan.ocr_started_at = None
+        scan.save(update_fields=["ocr_started_at", "updated_at"])
+
     if metadata is None:
         # Reset to awaiting state so the card in the poll pane keeps its
         # Run OCR button. The response is a notice rather than a card:

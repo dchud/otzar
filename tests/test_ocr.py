@@ -165,8 +165,11 @@ class TestTitlePageScanView:
         assert b"Waiting for photos" in response.content
 
     def test_phone_view(self, user, client_logged_in):
-        # Switch the session to phone-mode.
+        # Switch the session to phone-mode. phone_scan_auth always sets
+        # both keys; the layout follows phone_scanner, and the target
+        # only chooses the post-auth redirect.
         session = client_logged_in.session
+        session["phone_scanner"] = True
         session["phone_scan_target"] = "title"
         session.save()
 
@@ -700,3 +703,225 @@ class TestTitlePagePoll:
         assert b"Jerusalem" in response.content
         assert b"ISBN 123" in response.content
         assert b"NLI" in response.content
+
+
+class TestOCRLease:
+    """A run of OCR is visible to every device, not just the clicking one.
+
+    The spinner on the button is driven by htmx's .htmx-request class,
+    which only ever lands in the browser that started the request. The
+    other device polls, renders from the database, and saw a row still
+    in awaiting_ocr — an idle, clickable Run OCR button inviting a
+    second call to the vision API on the same image.
+
+    ``ocr_started_at`` is that missing shared state, held as a lease
+    rather than a status so a process that dies mid-call cannot strand
+    the row: the lease simply ages out.
+    """
+
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+        client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_lease_is_held_while_extraction_runs(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """The lease must be visible to a concurrent reader mid-call.
+
+        Asserting after the response returns would prove nothing — the
+        lease is cleared by then. The check has to happen while the
+        vision call is in flight, which is what a polling second device
+        is doing.
+        """
+        from ingest.models import ScanResult
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        seen = {}
+
+        def observe(_image_bytes):
+            fresh = ScanResult.objects.get(pk=scan.pk)
+            seen["ocr_started_at"] = fresh.ocr_started_at
+            return SAMPLE_OCR_RESPONSE
+
+        mock_ocr.side_effect = observe
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert seen["ocr_started_at"] is not None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_lease_released_on_success(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        scan.refresh_from_db()
+        assert scan.ocr_started_at is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_lease_released_when_extraction_returns_none(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        mock_ocr.return_value = None
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        scan.refresh_from_db()
+        assert scan.ocr_started_at is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_lease_released_when_extraction_raises(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """An exception must not strand the row behind a held lease."""
+        mock_ocr.side_effect = RuntimeError("vision API exploded")
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        with pytest.raises(RuntimeError):
+            client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        scan.refresh_from_db()
+        assert scan.ocr_started_at is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_second_run_rejected_while_lease_is_live(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """The other device's click must not spend a second API call."""
+        from django.utils import timezone
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.ocr_started_at = timezone.now()
+        scan.save(update_fields=["ocr_started_at"])
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 409
+        mock_ocr.assert_not_called()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_proceeds_once_lease_has_aged_out(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """A crashed run leaves a lease behind; it must not be permanent."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.ocr_started_at = timezone.now() - timedelta(minutes=5)
+        scan.save(update_fields=["ocr_started_at"])
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 200
+        mock_ocr.assert_called_once()
+
+    def test_poll_card_shows_reading_state_while_lease_live(
+        self, client_logged_in, tmp_path, settings
+    ):
+        """This is the whole point: the second device sees the run."""
+        from django.utils import timezone
+
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+        scan.ocr_started_at = timezone.now()
+        scan.save(update_fields=["ocr_started_at"])
+
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+
+        assert f"title-page-card-{scan.pk}".encode() in response.content
+        assert b"Reading..." in response.content
+        assert b"disabled" in response.content
+
+    def test_poll_card_offers_run_ocr_when_no_lease(
+        self, client_logged_in, tmp_path, settings
+    ):
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.get("/ingest/scan-title/poll/")
+
+        assert f"title-page-card-{scan.pk}".encode() in response.content
+        assert b"Run OCR" in response.content
+
+
+class TestSearchProgress:
+    """The catalog search takes 7-12s and said so in passing grey text.
+
+    ``SRU_REQUEST_DELAY`` sleeps before each SRU request and the search
+    queries two catalogs, so the wait is long enough that a static
+    "Searching..." beside the button reads as though nothing is
+    happening. The button carries its own state, as Run OCR already
+    does, and the detail beside it names the catalogs being queried.
+    """
+
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+        client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_search_button_carries_its_own_busy_state(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        body = response.content.decode()
+
+        assert "Search catalogs" in body
+        # The busy label sits inside the button, not in a detached span.
+        button = body[body.index("Search catalogs") - 900 :]
+        assert "btn-idle" in button
+        assert "btn-busy" in button
+        assert "Searching..." in button
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_search_detail_names_the_catalogs_queried(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """One request covers both catalogs, so the browser cannot know
+        which is in flight. It can honestly say which will be asked."""
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        body = response.content.decode()
+
+        assert "NLI" in body
+        assert "Library of Congress" in body
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_no_detached_search_spinner_remains(
+        self, mock_ocr, client_logged_in, tmp_path, settings
+    ):
+        """The old grey span beside the button is gone, not doubled up."""
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        body = response.content.decode()
+
+        assert body.count("Searching...") == 1

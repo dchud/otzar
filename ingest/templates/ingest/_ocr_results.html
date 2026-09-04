@@ -54,7 +54,8 @@
 
     <form hx-post="{% url 'title_page_upload' %}"
           hx-target="#title-page-metadata"
-          hx-indicator="#search-spinner"
+          hx-indicator="#search-controls"
+          hx-disabled-elt="find button[type='submit']"
           class="space-y-4 min-w-0">
       {% csrf_token %}
       <input type="hidden" name="action" value="search">
@@ -120,15 +121,55 @@
         </div>
       </div>
 
-      <div class="flex gap-4 pt-2">
+      {% comment %}The search sleeps SRU_REQUEST_DELAY before each SRU request and
+         queries two catalogs, so this runs 7-12s. The button carries its
+         own state rather than deferring to a grey span alongside it, and
+         the detail names what is being asked. It is one round trip, so
+         the browser cannot know which catalog is in flight -- it says
+         what will be queried, and counts real elapsed seconds.{% endcomment %}
+      <div id="search-controls" class="flex items-center gap-4 pt-2 flex-wrap">
         <button type="submit"
-                class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-          Search catalogs
+                class="inline-flex items-center justify-center px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span class="btn-idle">Search catalogs</span>
+          <span class="btn-busy items-center gap-2">
+            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            Searching...
+          </span>
         </button>
-        <span id="search-spinner" class="htmx-indicator text-sm text-gray-500 dark:text-gray-300">
-          Searching...
+        <span class="htmx-indicator text-sm text-gray-600 dark:text-gray-300" aria-live="polite">
+          Querying NLI, then Library of Congress<span data-search-elapsed></span>
         </span>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+// Elapsed seconds beside the search button. The count is measured, not
+// estimated -- a two-catalog search runs long enough that a spinner
+// alone leaves the user wondering whether anything is happening.
+// Listeners bind to the form, which htmx replaces on every swap of this
+// partial, so they go away with it rather than accumulating.
+(function () {
+  const controls = document.getElementById("search-controls");
+  if (!controls) return;
+  const out = controls.querySelector("[data-search-elapsed]");
+  const form = controls.closest("form");
+  if (!out || !form) return;
+
+  let timer = null;
+  form.addEventListener("htmx:beforeRequest", function () {
+    const started = Date.now();
+    out.textContent = " · 0s";
+    clearInterval(timer);
+    timer = setInterval(function () {
+      const secs = Math.round((Date.now() - started) / 1000);
+      out.textContent = " · " + secs + "s";
+    }, 1000);
+  });
+  form.addEventListener("htmx:afterRequest", function () {
+    clearInterval(timer);
+    timer = null;
+  });
+})();
+</script>
