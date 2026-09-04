@@ -3,6 +3,9 @@
 Provides helpers for identifying series information in parsed MARC data,
 matching against existing Series records, and creating SeriesVolume entries
 (including gap placeholders for volumes not yet held).
+
+Volume designations are normalized to Arabic digits so that records
+writing the same volume differently can be matched to each other.
 """
 
 import re
@@ -54,6 +57,160 @@ def find_matching_series(series_title: str) -> Series | None:
             return series
 
     return None
+
+
+# Words that introduce a volume number rather than being part of it.
+_VOLUME_PREFIXES = (
+    "volume",
+    "vol",
+    "v",
+    "part",
+    "pt",
+    "number",
+    "num",
+    "no",
+    "חלק",
+    "ספר",
+    "כרך",
+    "כתב",
+    "מהדורה",
+)
+
+# A prefix counts only when a separator or a digit follows it, so the
+# Roman numeral "VI" is read as six rather than as "v" plus "i".
+_PREFIX_RE = re.compile(
+    r"^(?:" + "|".join(_VOLUME_PREFIXES) + r")(?:\.\s*|\s+|(?=\d))",
+    re.IGNORECASE,
+)
+
+_DIGITS_RE = re.compile(r"\d+")
+
+# Well-formed Roman numerals only: "IIII" is rejected, "IV" is not.
+_ROMAN_RE = re.compile(
+    r"M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})"
+)
+_ROMAN_VALUES = {
+    "I": 1,
+    "V": 5,
+    "X": 10,
+    "L": 50,
+    "C": 100,
+    "D": 500,
+    "M": 1000,
+}
+
+_GEMATRIA_UNITS = ("", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט")
+_GEMATRIA_TENS = ("", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ")
+_GEMATRIA_HUNDREDS = ("", "ק", "ר")
+
+# Final letter forms carry the same numeric value as their plain forms.
+_HEBREW_FINAL_FORMS = str.maketrans(
+    {"ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ"}
+)
+
+# Geresh and gershayim mark a letter sequence as a numeral. Keyed data
+# often substitutes the ASCII apostrophe and quotation mark.
+_NUMERAL_MARKS = "׳״'\""
+
+# Roman numerals and gematria are read no higher than this. Volume
+# designations stay well below it, and a longer match is more likely a
+# year or an ordinary word made of numeral letters.
+_MAX_LETTER_VOLUME = 200
+
+
+def _hebrew_numeral(value: int) -> str:
+    """Spell *value* (1 through 200) the way gematria is written.
+
+    Fifteen and sixteen are spelled 9+6 and 9+7 rather than 10+5 and
+    10+6, whose letters spell a divine name. The same substitution
+    applies within the hundreds, so 115 is 100+9+6.
+    """
+    tail = value % 100
+    if tail == 15:
+        letters = "טו"
+    elif tail == 16:
+        letters = "טז"
+    else:
+        letters = _GEMATRIA_TENS[tail // 10] + _GEMATRIA_UNITS[tail % 10]
+    return _GEMATRIA_HUNDREDS[value // 100] + letters
+
+
+# Built from the spelling rule so the exceptional forms live in one
+# place. Sequences outside this table, including the divine-name
+# spellings of fifteen and sixteen, are not read as numerals.
+_GEMATRIA_VALUES = {
+    _hebrew_numeral(value): value for value in range(1, _MAX_LETTER_VOLUME + 1)
+}
+
+
+def _roman_to_int(numeral: str) -> int:
+    """Convert an uppercase, well-formed Roman numeral to an integer."""
+    total = 0
+    highest = 0
+    for char in reversed(numeral):
+        value = _ROMAN_VALUES[char]
+        if value < highest:
+            total -= value
+        else:
+            total += value
+            highest = value
+    return total
+
+
+def _volume_token_value(token: str) -> int | None:
+    """Read *token* as a volume number, or return None if it is not one.
+
+    Arabic digits are tried first, then Roman numerals, then gematria.
+    """
+    token = token.strip(".,;:()[]{}<>-–—/\\")
+    if not token:
+        return None
+
+    if _DIGITS_RE.fullmatch(token):
+        value = int(token)
+        return value if value > 0 else None
+
+    upper = token.upper()
+    if _ROMAN_RE.fullmatch(upper):
+        value = _roman_to_int(upper)
+        if 1 <= value <= _MAX_LETTER_VOLUME:
+            return value
+        return None
+
+    letters = "".join(c for c in token if c not in _NUMERAL_MARKS)
+    letters = letters.translate(_HEBREW_FINAL_FORMS)
+    return _GEMATRIA_VALUES.get(letters)
+
+
+def normalize_volume_number(raw: str | None) -> str:
+    """Return the volume number in *raw* written as Arabic digits.
+
+    Covers the three ways volume designations reach the catalog:
+    Arabic digits ("v. 3"), Roman numerals ("vol. III"), and Hebrew
+    gematria ("חלק ג"). A leading word such as "vol." or "כרך" is
+    dropped, as is any part title after a colon, so "ספר ג: משפטים" is
+    volume 3. The first token that reads as a number wins.
+
+    Returns "" when *raw* is empty or holds no volume number; the caller
+    gets no volume rather than a zero to mistake for one. A non-empty
+    result is a positive integer with no leading zeros.
+    """
+    if not raw:
+        return ""
+
+    text = str(raw).split(":", 1)[0].strip()
+
+    match = _PREFIX_RE.match(text)
+    while match:
+        text = text[match.end() :].strip()
+        match = _PREFIX_RE.match(text)
+
+    for token in text.split():
+        value = _volume_token_value(token)
+        if value is not None:
+            return str(value)
+
+    return ""
 
 
 def _parse_volume_spec(volume_specs: str | list) -> list[str]:
