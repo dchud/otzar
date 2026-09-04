@@ -13,6 +13,22 @@
 }
 
 @layer base {
+  /* htmx marks the element that started a request with .htmx-request.
+     A button that swaps its own label for a spinner keeps the progress
+     where the click happened, instead of on a panel elsewhere that reads
+     as unrelated while the button still invites another press. */
+  .btn-busy {
+    display: none;
+  }
+
+  .htmx-request .btn-idle {
+    display: none;
+  }
+
+  .htmx-request .btn-busy {
+    display: inline-flex;
+  }
+
   .text-rtl {
     font-size: 1.1em;
     line-height: 1.6;

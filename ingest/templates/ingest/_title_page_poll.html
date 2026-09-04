@@ -1,0 +1,11 @@
+{% if scans %}
+<div class="space-y-4">
+  {% for scan in scans %}
+    {% include "ingest/_title_page_card.html" with scan=scan %}
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-base text-gray-600 dark:text-gray-300">
+  Waiting for photos from your phone...
+</p>
+{% endif %}

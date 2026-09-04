@@ -1,4 +1,5 @@
 {% load static %}
+{% load static_version %}
 <!DOCTYPE html>
 <html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' || (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches) }"
       x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
@@ -7,7 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}otzar{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% versioned_static 'css/tailwind.css' %}">
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
 </head>

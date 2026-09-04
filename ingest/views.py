@@ -1,8 +1,6 @@
 import io
 import json
 import logging
-import os
-import uuid
 
 import qrcode
 from django.conf import settings
@@ -10,8 +8,10 @@ from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from catalog.models import Author, Location, Publisher, Record, Series
@@ -19,13 +19,180 @@ from catalog.search import ensure_fts_table, index_record
 from catalog.utils import strip_marc_punctuation
 from ingest.authority import find_author_matches
 from ingest.forms import RecordForm
-from ingest.models import ScanResult
+from ingest.models import OCR_LEASE_TIMEOUT, ScanResult
 from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import create_series_volumes
 from sources.cascade import isbn_lookup, search_lc, search_nli
 from sources.covers import fetch_cover_url
 
 logger = logging.getLogger(__name__)
+
+
+def _close_scan_for_record(scan_id, candidate_index, record, user):
+    """Mark the scan that produced this record as confirmed.
+
+    Both routes into the candidates table carry a ScanResult -- the
+    title-page search and the ISBN lookup -- and the Use button routes
+    through select_candidate and confirm_candidate, which knew nothing
+    about it. The scan stayed pending forever, so a title-page card came
+    back in the poll pane on every tick and an ISBN lookup sat in the
+    review queue, both already catalogued.
+
+    Silent about a scan it will not touch: a candidate can be confirmed
+    without any scan behind it, and a scan that was discarded while the
+    user was deciding must not be resurrected.
+    """
+    if not scan_id:
+        return
+    scan = ScanResult.objects.filter(pk=scan_id).first()
+    if scan is None:
+        return
+    if not user.is_staff and scan.scanned_by != user:
+        return
+    if scan.status in ("discarded", "confirmed"):
+        return
+
+    scan.status = "confirmed"
+    scan.created_record = record
+    scan.selected_candidate_index = candidate_index
+    scan.save(
+        update_fields=[
+            "status",
+            "created_record",
+            "selected_candidate_index",
+            "updated_at",
+        ]
+    )
+
+
+def _in_progress_title_scans(user):
+    """Title-page scans the poll pane should be showing.
+
+    Both the poll and the upload response render from this, so an
+    upload cannot momentarily drop a card the next poll puts back --
+    which is what happened when the upload response listed only the
+    uploader's awaiting_ocr rows while the poll listed those plus
+    pending-with-output, and every user's rows for staff.
+    """
+    qs = ScanResult.objects.filter(scan_type="ocr").filter(
+        Q(status="awaiting_ocr")
+        | Q(status="pending", ocr_output__isnull=False)
+    )
+    if not user.is_staff:
+        qs = qs.filter(scanned_by=user)
+    return qs
+
+
+def _take_ocr_lease(scan):
+    """Claim the OCR lease for this scan. True if we got it.
+
+    One conditional UPDATE, so the database arbitrates. Reading
+    ocr_started_at and then writing it leaves a window wide enough for
+    two polling devices to pass the check together and bill two vision
+    calls -- the exact thing the lease exists to stop.
+
+    The same statement reclaims a lease left behind by a run that died
+    without releasing it.
+    """
+    now = timezone.now()
+    rows = (
+        ScanResult.objects.filter(pk=scan.pk)
+        .filter(
+            Q(ocr_started_at__isnull=True)
+            | Q(ocr_started_at__lt=now - OCR_LEASE_TIMEOUT)
+        )
+        .update(ocr_started_at=now, updated_at=now)
+    )
+    return rows == 1
+
+
+def _notice(request, message, status=200):
+    """Render a message htmx will actually put on screen."""
+    return render(
+        request,
+        "ingest/_notice.html",
+        {"message": message},
+        status=status,
+    )
+
+
+def _create_record_from_candidate(
+    candidate, user, notes="", location_label=""
+):
+    """Build and save a Record from a catalog candidate.
+
+    Both confirm paths -- the review page at /ingest/confirm/ and the
+    queue's "Use this" -- carried their own copy of this, and the copies
+    had drifted. The queue's set neither ``source_marc`` nor
+    ``date_of_publication_display``, so a MARC date that will not parse
+    as an integer ("1994-2003", "c1999", "[1999]") was kept by one path
+    and dropped outright by the other. One function, one record.
+
+    The year is taken from the first four digits found anywhere in the
+    date rather than by parsing the whole string, because catalog dates
+    routinely carry brackets, copyright marks and ranges. Whatever the
+    string was is preserved in the display field when no year parses out
+    of it, so nothing is lost on the way in.
+    """
+    date_str = candidate.get("date", "")
+    date_int = None
+    if date_str:
+        try:
+            date_int = int(
+                "".join(c for c in str(date_str) if c.isdigit())[:4]
+            )
+        except (ValueError, IndexError):
+            pass
+
+    record = Record(
+        title=strip_marc_punctuation(candidate.get("title")),
+        title_romanized=strip_marc_punctuation(
+            candidate.get("title_alternate")
+        ),
+        date_of_publication=date_int,
+        date_of_publication_display=strip_marc_punctuation(str(date_str))
+        if date_str and not date_int
+        else "",
+        place_of_publication=strip_marc_punctuation(candidate.get("place")),
+        language=candidate.get("language") or "",
+        source_marc=candidate.get("source_marc"),
+        source_catalog=candidate.get("source_catalog") or "",
+        notes=notes,
+        created_by=user,
+    )
+    record.save()
+
+    author_name = strip_marc_punctuation(candidate.get("author"))
+    if author_name:
+        author, _ = Author.objects.get_or_create(name=author_name)
+        record.authors.add(author)
+
+    publisher_name = strip_marc_punctuation(candidate.get("publisher"))
+    if publisher_name:
+        publisher, _ = Publisher.objects.get_or_create(
+            name=publisher_name,
+            defaults={"place": strip_marc_punctuation(candidate.get("place"))},
+        )
+        record.publishers.add(publisher)
+
+    if location_label:
+        location, _ = Location.objects.get_or_create(label=location_label)
+        record.locations.add(location)
+
+    _attach_from_candidate(record, candidate)
+
+    # Best-effort; a missing cover must not cost the user the record.
+    try:
+        cover_url = fetch_cover_url(record)
+        if cover_url:
+            record.cover_url = cover_url
+            record.save(update_fields=["cover_url"])
+    except Exception:
+        logger.exception("Cover fetch failed for record %s", record.record_id)
+
+    ensure_fts_table()
+    index_record(record)
+    return record
 
 
 @login_required
@@ -60,6 +227,14 @@ def select_candidate(request):
             logger.exception("Failed to parse candidate JSON")
     else:
         logger.warning("select_candidate called with empty candidate_data")
+
+    # The scan this candidate came from, so confirming can close it.
+    request.session["candidate_scan_id"] = _parse_int(
+        request.POST.get("scan_id")
+    )
+    request.session["candidate_index"] = _parse_int(
+        request.POST.get("candidate_index")
+    )
     return redirect("confirm_candidate")
 
 
@@ -71,78 +246,23 @@ def confirm_candidate(request):
         return redirect("ingest")
 
     if request.method == "POST":
-        # Create the record from candidate data.
-        date_str = candidate.get("date", "")
-        date_int = None
-        if date_str:
-            try:
-                date_int = int(
-                    "".join(c for c in str(date_str) if c.isdigit())[:4]
-                )
-            except (ValueError, IndexError):
-                pass
-
-        record = Record(
-            title=strip_marc_punctuation(candidate.get("title")),
-            title_romanized=strip_marc_punctuation(
-                candidate.get("title_alternate")
-            ),
-            date_of_publication=date_int,
-            date_of_publication_display=strip_marc_punctuation(str(date_str))
-            if date_str and not date_int
-            else "",
-            place_of_publication=strip_marc_punctuation(
-                candidate.get("place")
-            ),
-            language=candidate.get("language") or "",
-            source_marc=candidate.get("source_marc"),
-            source_catalog=candidate.get("source_catalog") or "",
+        record = _create_record_from_candidate(
+            candidate,
+            request.user,
             notes=request.POST.get("notes") or "",
-            created_by=request.user,
+            location_label=request.POST.get("location_label", "").strip(),
         )
-        record.save()
 
-        # Primary author
-        author_name = strip_marc_punctuation(candidate.get("author"))
-        if author_name:
-            author, _ = Author.objects.get_or_create(name=author_name)
-            record.authors.add(author)
-
-        # Publisher
-        publisher_name = strip_marc_punctuation(candidate.get("publisher"))
-        if publisher_name:
-            publisher, _ = Publisher.objects.get_or_create(
-                name=publisher_name,
-                defaults={
-                    "place": strip_marc_punctuation(candidate.get("place"))
-                },
-            )
-            record.publishers.add(publisher)
-
-        # Location from form
-        location_label = request.POST.get("location_label", "").strip()
-        if location_label:
-            location, _ = Location.objects.get_or_create(label=location_label)
-            record.locations.add(location)
-
-        # Additional data from MARC
-        _attach_from_candidate(record, candidate)
-
-        # Best-effort cover image lookup
-        try:
-            cover_url = fetch_cover_url(record)
-            if cover_url:
-                record.cover_url = cover_url
-                record.save(update_fields=["cover_url"])
-        except Exception:
-            logger.exception(
-                "Cover fetch failed for record %s", record.record_id
-            )
-
-        ensure_fts_table()
-        index_record(record)
+        _close_scan_for_record(
+            request.session.get("candidate_scan_id"),
+            request.session.get("candidate_index"),
+            record,
+            request.user,
+        )
 
         request.session.pop("candidate", None)
+        request.session.pop("candidate_scan_id", None)
+        request.session.pop("candidate_index", None)
         return redirect(
             "catalog:record_detail",
             record_id=record.record_id,
@@ -271,7 +391,7 @@ def isbn_lookup_view(request):
         candidates.append(rec)
 
     # Create a ScanResult so the scan appears in the review queue.
-    ScanResult.objects.create(
+    scan = ScanResult.objects.create(
         scan_type="isbn",
         isbn=isbn,
         candidate_records=candidates,
@@ -295,7 +415,11 @@ def isbn_lookup_view(request):
     return render(
         request,
         "ingest/_candidates.html",
-        {"candidates": candidates_with_json, "isbn": isbn},
+        {
+            "candidates": candidates_with_json,
+            "isbn": isbn,
+            "scan_id": scan.pk,
+        },
     )
 
 
@@ -342,17 +466,40 @@ def edit_record(request, record_id):
 
 @login_required
 def title_page_scan(request):
-    """Render the title page camera/upload page."""
-    return render(request, "ingest/title_page_scan.html")
+    """Render the title page capture/upload page.
+
+    Two render modes:
+    - Desktop (default): direct upload form, QR sidebar to hand off to a
+      phone, and a poll pane showing photos arriving from the phone.
+    - Phone (when the ``phone_scanner`` session key is set): a
+      streamlined capture-only view that polls for shared review state.
+
+    Keyed off ``phone_scanner`` rather than ``phone_scan_target``, which
+    only ever meant "where to send this phone after authenticating".
+    Reading the target here served the desktop layout -- QR sidebar and
+    all -- to a phone that authenticated for barcodes and then switched
+    to the title-page route.
+    """
+    phone_mode = request.session.get("phone_scanner", False)
+    return render(
+        request,
+        "ingest/title_page_scan.html",
+        {"phone_mode": phone_mode},
+    )
 
 
 @login_required
 def title_page_upload(request):
-    """Receive a title page image, run OCR, return metadata for review.
+    """Receive a title page image; defer OCR until the user confirms.
 
-    HTMX POST endpoint. On initial upload, runs Claude Vision OCR and
-    returns editable metadata fields. When the user clicks 'Search catalogs',
-    runs the search cascade and returns candidates.
+    HTMX POST endpoint with two phases:
+
+    - Image upload: saves the photo to ``ScanResult.image`` with
+      ``status=awaiting_ocr`` and returns a card partial showing the
+      uploaded image. OCR is NOT run here; the user (or a peer device)
+      triggers it via ``run_ocr`` after reviewing the photo.
+    - Cascade search (``action=search``): runs the catalog search using
+      the edited metadata fields and returns candidates.
     """
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
@@ -387,50 +534,173 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
+        # Store what the search found, so the scan carries the same
+        # record the ISBN path stores and a candidate index means
+        # something on the way back through confirm.
+        scan_id = _parse_int(request.POST.get("scan_id"))
+        if scan_id:
+            ScanResult.objects.filter(pk=scan_id).update(
+                candidate_records=candidates, updated_at=timezone.now()
+            )
+
+        candidates_with_json = [
+            {"data": c, "json": json.dumps(c)} for c in candidates
+        ]
         return render(
             request,
             "ingest/_candidates.html",
-            {"candidates": candidates, "metadata": metadata},
+            {
+                "candidates": candidates_with_json,
+                "metadata": metadata,
+                "scan_id": scan_id,
+            },
         )
 
-    # --- OCR phase (image upload) ---
+    # --- Image upload phase (OCR deferred) ---
     image_file = request.FILES.get("image")
     if not image_file:
         return HttpResponse(
             '<p class="text-red-600 text-sm">No image uploaded.</p>'
         )
 
-    image_bytes = image_file.read()
-
-    # Save to staging directory for debugging / reprocessing.
-    staging_dir = os.path.join(settings.BASE_DIR, "tmp", "title_pages")
-    os.makedirs(staging_dir, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    staging_path = os.path.join(staging_dir, filename)
-    with open(staging_path, "wb") as f:
-        f.write(image_bytes)
-
-    metadata = extract_metadata_from_image(image_bytes)
-    if metadata is None:
-        return HttpResponse(
-            '<p class="text-red-600 text-sm">'
-            "OCR could not extract metadata from this image. "
-            "Please try again with a clearer photo."
-            "</p>"
-        )
-
-    # Create a ScanResult so the OCR scan appears in the review queue.
     ScanResult.objects.create(
         scan_type="ocr",
-        ocr_output=metadata,
+        status="awaiting_ocr",
+        image=image_file,
         scanned_by=request.user,
     )
+
+    # Return the full poll partial so both upload and poll responses are
+    # interchangeable. This avoids a race where the poll cycle would
+    # overwrite a single just-uploaded card with the full list.
+    return render(
+        request,
+        "ingest/_title_page_poll.html",
+        {"scans": _in_progress_title_scans(request.user)},
+    )
+
+
+@login_required
+@require_POST
+def run_ocr(request, scan_id):
+    """Run (or re-run) OCR on a previously-uploaded title-page image.
+
+    Accepts both ``awaiting_ocr`` (first run) and ``pending`` (re-run
+    after the user found the previous extraction unusable). The image
+    must still be present — the gate is image presence, not status.
+    Returns 409 if the image has been discarded, or if another device
+    already has a run in flight on this scan.
+
+    The lease is taken before the vision call and released in a
+    ``finally``, so the poll pane on every device showing this scan
+    reports the run while it lasts. See ``ScanResult`` on why this is a
+    timestamp and not a status.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if not scan.image or scan.status == "discarded":
+        return _notice(request, "Image is no longer available.", status=409)
+    if not _take_ocr_lease(scan):
+        return _notice(request, "OCR is already running.", status=409)
+
+    try:
+        with scan.image.open("rb") as fh:
+            image_bytes = fh.read()
+        metadata = extract_metadata_from_image(image_bytes)
+    finally:
+        ScanResult.objects.filter(pk=scan.pk).update(ocr_started_at=None)
+
+    # The row was read before a call that runs 5-9 seconds. A discard
+    # from the other device lands in that gap, and writing the result
+    # back resurrected the scan as a card with no image whose only
+    # button always 409s.
+    scan.refresh_from_db()
+    if scan.status == "discarded" or not scan.image:
+        return _notice(
+            request, "This photo was discarded while OCR was running."
+        )
+
+    if metadata is None:
+        # Reset to awaiting state so the card in the poll pane keeps its
+        # Run OCR button. The response is a notice rather than a card:
+        # the card is already on screen, and rendering a second one put
+        # the same photo up twice under a duplicated element id.
+        scan.status = "awaiting_ocr"
+        scan.ocr_output = None
+        scan.save(update_fields=["status", "ocr_output", "updated_at"])
+        return render(request, "ingest/_ocr_error.html", {"scan": scan})
+
+    scan.status = "pending"
+    scan.ocr_output = metadata
+    scan.save(update_fields=["status", "ocr_output", "updated_at"])
 
     return render(
         request,
         "ingest/_ocr_results.html",
-        {"metadata": metadata, "staging_file": filename},
+        {"metadata": metadata, "scan": scan},
     )
+
+
+@login_required
+def title_page_poll(request):
+    """Return image cards for the user's in-progress title-page scans.
+
+    Includes both freshly-uploaded scans (``awaiting_ocr``) and scans
+    that have OCR output but haven't been confirmed into a Record yet
+    (``pending`` with ``ocr_output``). Without the latter, scans where
+    OCR succeeded but the user navigated away would silently disappear
+    from the UI even though their image and metadata are still saved.
+
+    Staff users see all in-progress scans, matching review_queue.
+    """
+    return render(
+        request,
+        "ingest/_title_page_poll.html",
+        {"scans": _in_progress_title_scans(request.user)},
+    )
+
+
+@login_required
+@require_POST
+def edit_title_metadata(request, scan_id):
+    """Re-render the metadata edit form for a pending scan.
+
+    Lets the user resume editing OCR output after navigating away. The
+    scan must already have ocr_output (status=pending); otherwise 409.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+    if scan.status != "pending" or not scan.ocr_output:
+        return _notice(request, "Scan has no metadata to edit.", status=409)
+    return render(
+        request,
+        "ingest/_ocr_results.html",
+        {"metadata": scan.ocr_output, "scan": scan},
+    )
+
+
+@login_required
+@require_POST
+def discard_title_scan(request, scan_id):
+    """Discard a title-page scan: remove the image file and mark the row.
+
+    Idempotent — calling on an already-discarded scan returns an empty
+    200 so the caller can rely on the card disappearing either way.
+    """
+    scan = get_object_or_404(ScanResult, pk=scan_id)
+    if not request.user.is_staff and scan.scanned_by != request.user:
+        return HttpResponse("Forbidden", status=403)
+
+    if scan.status != "discarded":
+        if scan.image:
+            scan.image.delete(save=False)
+            scan.image = None
+        scan.status = "discarded"
+        scan.save(update_fields=["status", "image", "updated_at"])
+
+    return HttpResponse("")
 
 
 def _attach_related(record, cleaned_data):
@@ -627,46 +897,7 @@ def confirm_scan(request, scan_id):
 
     candidate = candidates[candidate_index]
 
-    # Create the Record from candidate data.
-    record = Record(
-        title=strip_marc_punctuation(candidate.get("title")),
-        title_romanized=strip_marc_punctuation(
-            candidate.get("title_alternate")
-        ),
-        date_of_publication=_parse_int(candidate.get("date")),
-        place_of_publication=strip_marc_punctuation(candidate.get("place")),
-        language=candidate.get("language", ""),
-        source_catalog=candidate.get("source_catalog", ""),
-        created_by=request.user,
-    )
-    record.save()
-
-    # Attach author if present.
-    author_name = strip_marc_punctuation(candidate.get("author"))
-    if author_name:
-        author, _ = Author.objects.get_or_create(name=author_name)
-        record.authors.add(author)
-
-    # Attach publisher if present.
-    publisher_name = strip_marc_punctuation(candidate.get("publisher"))
-    if publisher_name:
-        publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
-        record.publishers.add(publisher)
-
-    # Additional data from MARC (subjects, identifiers, additional authors)
-    _attach_from_candidate(record, candidate)
-
-    # Best-effort cover image lookup
-    try:
-        cover_url = fetch_cover_url(record)
-        if cover_url:
-            record.cover_url = cover_url
-            record.save(update_fields=["cover_url"])
-    except Exception:
-        logger.exception("Cover fetch failed for record %s", record.record_id)
-
-    ensure_fts_table()
-    index_record(record)
+    record = _create_record_from_candidate(candidate, request.user)
 
     # Mark the ScanResult as confirmed.
     scan.status = "confirmed"
@@ -700,15 +931,25 @@ def discard_scan(request, scan_id):
     return redirect("review_queue")
 
 
+_QR_TARGETS = ("isbn", "title")
+
+
 @login_required
 def qr_code_view(request):
     """Generate a QR code PNG linking to the phone scanning interface.
 
     The QR URL contains a signed token (valid for 1 hour) that allows the
     phone browser to authenticate as the current user.
+
+    The optional ``target`` query param ("isbn" or "title", default "isbn")
+    selects which scan workflow the phone lands on after authentication.
     """
+    target = request.GET.get("target", "isbn")
+    if target not in _QR_TARGETS:
+        return HttpResponseBadRequest("Unknown target.")
+
     signer = TimestampSigner()
-    token = signer.sign(str(request.user.pk))
+    token = signer.sign(f"{request.user.pk}:{target}")
 
     # Build the full URL for the phone auth endpoint.
     # request.is_secure() may be False behind runserver_plus with SSL,
@@ -730,16 +971,28 @@ def qr_code_view(request):
 
 
 def phone_scan_auth(request, token):
-    """Validate a signed QR token and log the user in for this session."""
+    """Validate a signed QR token and log the user in for this session.
+
+    The token payload is ``"<user_pk>:<target>"``. Legacy tokens carrying
+    only the user_pk default to the isbn target so previously-rendered QR
+    codes keep working.
+    """
     signer = TimestampSigner()
     try:
         # Token is valid for 1 hour (3600 seconds).
-        user_pk = signer.unsign(token, max_age=3600)
+        payload = signer.unsign(token, max_age=3600)
     except SignatureExpired:
         return HttpResponse(
             "This QR code has expired. Please generate a new one.", status=403
         )
     except BadSignature:
+        return HttpResponse("Invalid QR code.", status=400)
+
+    if ":" in payload:
+        user_pk, target = payload.split(":", 1)
+    else:
+        user_pk, target = payload, "isbn"
+    if target not in _QR_TARGETS:
         return HttpResponse("Invalid QR code.", status=400)
 
     try:
@@ -749,7 +1002,8 @@ def phone_scan_auth(request, token):
 
     auth_login(request, user)
     request.session["phone_scanner"] = True
-    return redirect("isbn_scan")
+    request.session["phone_scan_target"] = target
+    return redirect("title_page_scan" if target == "title" else "isbn_scan")
 
 
 def _parse_int(value):

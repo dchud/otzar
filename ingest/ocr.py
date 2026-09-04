@@ -85,14 +85,14 @@ def extract_metadata_from_image(image_bytes):
         logger.error("ANTHROPIC_API_KEY not set")
         return None
 
-    model = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=8192,
             messages=[
                 {
                     "role": "user",
@@ -120,7 +120,17 @@ def extract_metadata_from_image(image_bytes):
         logger.exception("Unexpected error calling Claude Vision API")
         return None
 
-    text = message.content[0].text.strip()
+    text = next(
+        (block.text for block in message.content if block.type == "text"),
+        "",
+    ).strip()
+    if not text:
+        logger.warning(
+            "No text block in Claude Vision response (stop_reason=%s)",
+            message.stop_reason,
+        )
+        return None
+
     result = _parse_vision_json(text)
     if result is None:
         logger.warning("Could not parse Claude Vision response: %.200s", text)

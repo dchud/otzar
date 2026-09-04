@@ -15,6 +15,18 @@ urlpatterns = [
     path("series/<int:series_id>/", views.series_manage, name="series_manage"),
     path("scan-title/", views.title_page_scan, name="title_page_scan"),
     path("upload-title/", views.title_page_upload, name="title_page_upload"),
+    path("scan-title/poll/", views.title_page_poll, name="title_page_poll"),
+    path("scan-title/<int:scan_id>/ocr/", views.run_ocr, name="run_ocr"),
+    path(
+        "scan-title/<int:scan_id>/edit/",
+        views.edit_title_metadata,
+        name="edit_title_metadata",
+    ),
+    path(
+        "scan-title/<int:scan_id>/discard/",
+        views.discard_title_scan,
+        name="discard_title_scan",
+    ),
     path("queue/", views.review_queue, name="review_queue"),
     path("confirm/<int:scan_id>/", views.confirm_scan, name="confirm_scan"),
     path("discard/<int:scan_id>/", views.discard_scan, name="discard_scan"),
