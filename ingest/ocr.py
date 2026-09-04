@@ -4,11 +4,37 @@ import base64
 import json
 import logging
 import os
-import re
 
 import anthropic
 
 logger = logging.getLogger(__name__)
+
+# The eight keys a title-page reading produces. The schema below turns
+# them into the response format the model is constrained to, so the
+# reply arrives as valid JSON with every key present and no repair
+# step between the model and the caller. Hebrew title pages are full of
+# gershayim (רש״י, תשע״ד), and a quotation mark in a value is only a
+# problem when the model has to serialize the reply unaided.
+OCR_FIELDS = (
+    "title",
+    "subtitle",
+    "publisher",
+    "place",
+    "date",
+    "title_romanized",
+    "author",
+    "author_romanized",
+)
+
+OCR_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        field: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        for field in OCR_FIELDS
+    },
+    "required": list(OCR_FIELDS),
+    "additionalProperties": False,
+}
 
 OCR_PROMPT = (
     "This is a photograph of a Hebrew book title page. "
@@ -38,47 +64,27 @@ OCR_PROMPT = (
     "- Use null for any field you truly cannot read. "
     "Do NOT guess or hallucinate \u2014 if the text is unclear, return null.\n"
     "- Decorative or ornamental letters are still Hebrew letters \u2014 "
-    "read them carefully even if stylized.\n\n"
-    "Return ONLY a JSON object with these 8 keys: "
-    "title, subtitle, publisher, place, date, title_romanized, "
-    "author, author_romanized. "
-    "Use the original Hebrew script (without nikkud) for all values "
-    "except date (use Gregorian digits), title_romanized, and "
-    "author_romanized (Latin script). "
-    "Use null for any field you cannot determine."
+    "read them carefully even if stylized.\n"
+    "- Give every value in the original Hebrew script (without nikkud), "
+    "except date, which uses Gregorian digits, and title_romanized and "
+    "author_romanized, which use Latin script."
 )
 
 
-def _parse_vision_json(text):
-    """Parse JSON from vision model response, handling markdown fences and gershayim."""
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```\w*\n?", "", text)
-        text = re.sub(r"\n?```$", "", text)
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        # Repair Hebrew gershayim (double quote between Hebrew chars)
-        repaired = re.sub(
-            r'(?<=[\u0590-\u05FF])"(?=[\u0590-\u05FF])',
-            "\u05f4",
-            text,
-        )
-        try:
-            return json.loads(repaired)
-        except json.JSONDecodeError:
-            return None
-
-
 def extract_metadata_from_image(image_bytes):
-    """Send a title page image to Claude Vision and extract bibliographic metadata.
+    """Read a title page image and return its bibliographic metadata.
 
     Args:
         image_bytes: Raw image bytes (JPEG or PNG).
 
     Returns:
-        A dict with keys: title, subtitle, publisher, place, date,
-        title_romanized, author, author_romanized. Returns None on error.
+        A dict holding every key in ``OCR_FIELDS``, each value a string
+        or None. A page the model could read nothing from comes back
+        with every value None: that is a reading, and what to do with an
+        empty one is the caller's decision. None is returned only when
+        the call produced no reading at all \u2014 an API failure, a refusal,
+        a reply cut short, or a reply with no text in it \u2014 and the log
+        names which.
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -93,6 +99,12 @@ def extract_metadata_from_image(image_bytes):
         message = client.messages.create(
             model=model,
             max_tokens=8192,
+            output_config={
+                "format": {
+                    "type": "json_schema",
+                    "schema": OCR_RESPONSE_SCHEMA,
+                }
+            },
             messages=[
                 {
                     "role": "user",
@@ -120,20 +132,33 @@ def extract_metadata_from_image(image_bytes):
         logger.exception("Unexpected error calling Claude Vision API")
         return None
 
+    # The schema binds the answer, not the turn: a reply the model never
+    # finished, or declined to give, is outside it.
+    if message.stop_reason == "max_tokens":
+        logger.error("Claude Vision reply was truncated at the token limit")
+        return None
+    if message.stop_reason == "refusal":
+        logger.error(
+            "Claude Vision refused the image: %s", message.stop_details
+        )
+        return None
+
     text = next(
         (block.text for block in message.content if block.type == "text"),
         "",
     ).strip()
     if not text:
-        logger.warning(
+        logger.error(
             "No text block in Claude Vision response (stop_reason=%s)",
             message.stop_reason,
         )
         return None
 
-    result = _parse_vision_json(text)
-    if result is None:
-        logger.warning("Could not parse Claude Vision response: %.200s", text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        logger.exception(
+            "Claude Vision reply is not schema-constrained JSON: %.200s",
+            text,
+        )
         return None
-
-    return result

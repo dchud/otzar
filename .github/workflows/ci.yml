@@ -55,7 +55,7 @@ jobs:
           CSRF_TRUSTED_ORIGINS=
           DATA_DIR=
           ANTHROPIC_API_KEY=
-          CLAUDE_MODEL=claude-haiku-4-5-20251001
+          CLAUDE_MODEL=claude-haiku-4-5
           SRU_REQUEST_DELAY=0
           RECORD_ID_PREFIX=otzar-
           SITE_PASSWORD=
@@ -88,7 +88,7 @@ jobs:
           CSRF_TRUSTED_ORIGINS=
           DATA_DIR=
           ANTHROPIC_API_KEY=
-          CLAUDE_MODEL=claude-haiku-4-5-20251001
+          CLAUDE_MODEL=claude-haiku-4-5
           SRU_REQUEST_DELAY=0
           RECORD_ID_PREFIX=otzar-
           SITE_PASSWORD=
