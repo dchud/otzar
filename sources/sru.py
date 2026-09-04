@@ -12,7 +12,6 @@ from dataclasses import dataclass
 
 import httpx
 
-
 # --- Result types ---
 
 

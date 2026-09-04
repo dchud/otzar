@@ -11,7 +11,6 @@ writing the same volume differently can be matched to each other.
 import re
 
 from catalog.models import Record, Series, SeriesVolume
-
 from ingest.authority import normalize_for_comparison
 
 

@@ -10,7 +10,6 @@ from catalog.search import ensure_fts_table
 from ingest.models import ScanResult
 from tests.e2e.conftest import login
 
-
 CANDIDATE = {
     "title": "Biblia Hebraica Stuttgartensia",
     "title_alternate": "Torah, Neviim u-Khetuvim",

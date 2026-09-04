@@ -16,7 +16,6 @@ from sources.cascade import (
 from sources.normalize import normalize_publisher
 from sources.sru import SRUClient, SRUResult
 
-
 # --- Helpers ---
 
 # Minimal valid SRU+MARCXML response with one record.
