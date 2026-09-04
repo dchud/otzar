@@ -225,3 +225,4 @@ tmp/
 db.sqlite3-wal
 db.sqlite3-shm
 .django_tailwind_cli/
+.playwright-mcp/
