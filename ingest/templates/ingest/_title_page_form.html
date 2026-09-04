@@ -23,6 +23,10 @@
            class="sr-only">
   </div>
 
+  <p id="capture-error"
+     role="alert"
+     class="hidden text-red-600 dark:text-red-400 text-sm"></p>
+
   <div id="preview-container" class="hidden">
     <img id="preview-image" class="max-w-sm rounded border border-gray-200 dark:border-gray-700" alt="Preview of selected title page image">
   </div>
@@ -51,13 +55,35 @@
   const preview = document.getElementById("preview-image");
   const previewContainer = document.getElementById("preview-container");
   const uploadBtn = document.getElementById("upload-btn");
+  const captureError = document.getElementById("capture-error");
   const form = document.getElementById("title-page-form");
   const MAX_DIM = 1500;
+
+  function showError(message) {
+    captureError.textContent = message;
+    captureError.classList.remove("hidden");
+  }
+
+  function clearError() {
+    captureError.textContent = "";
+    captureError.classList.add("hidden");
+  }
+
+  // A browser that cannot decode the file cannot resize it either, and
+  // the resize only saves bandwidth, so JPEG goes up as it is. Anything
+  // else is refused: the OCR call declares image/jpeg for whatever it
+  // is handed, and the stored filename says .jpg to match.
+  function isJpeg(file) {
+    return file.type
+      ? file.type === "image/jpeg"
+      : /\.jpe?g$/i.test(file.name);
+  }
 
   // imageOrientation: 'from-image' applies any EXIF rotation tag while
   // decoding, so a landscape phone shot lands as actual landscape pixels
   // instead of a sideways portrait blob.
   input.addEventListener("change", async function () {
+    clearError();
     const file = this.files[0];
     if (!file) return;
     let bitmap;
@@ -65,6 +91,22 @@
       bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     } catch (err) {
       console.error("Image decode failed:", err);
+      preview.src = "";
+      previewContainer.classList.add("hidden");
+      if (isJpeg(file)) {
+        showError(
+          "This browser could not read the image, so there is no " +
+          "preview. Upload sends the photo as taken, at full size."
+        );
+        uploadBtn.disabled = false;
+      } else {
+        showError(
+          "This browser could not read the image. Take the photo " +
+          "again, or choose a JPEG."
+        );
+        uploadBtn.disabled = true;
+        input.value = "";
+      }
       return;
     }
     let w = bitmap.width;
@@ -99,6 +141,7 @@
     preview.src = "";
     previewContainer.classList.add("hidden");
     uploadBtn.disabled = true;
+    clearError();
   });
 })();
 </script>

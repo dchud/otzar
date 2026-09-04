@@ -446,6 +446,72 @@ class TestTitlePageHandoff:
             f"retake reused the discarded photo's URL: {second_src}"
         )
 
+    def test_undecodable_jpeg_is_reported_and_still_uploads(
+        self, page, live_server, staff_user
+    ):
+        """A JPEG the browser cannot decode says so and uploads unresized.
+
+        The client-side resize saves bandwidth; it is not a condition of
+        uploading. A browser that fails to decode the file cannot resize
+        it, cannot preview it, and used to leave the page unchanged with
+        the reason in the console.
+        """
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+
+        page.set_input_files(
+            "#image-input",
+            files=[
+                {
+                    "name": "title-page.jpg",
+                    "mimeType": "image/jpeg",
+                    "buffer": b"not decodable as an image",
+                }
+            ],
+        )
+
+        error = page.locator("#capture-error")
+        expect(error).to_be_visible(timeout=5000)
+        expect(error).to_contain_text("could not read the image")
+        expect(page.locator("#preview-container")).to_be_hidden()
+        expect(page.locator("#upload-btn")).to_be_enabled()
+
+        page.click("#upload-btn")
+        expect(page.locator("[id^='title-page-card-']")).to_be_visible(
+            timeout=5000
+        )
+
+        scan = ScanResult.objects.get(scan_type="ocr")
+        assert scan.image.name.endswith(".jpg"), scan.image.name
+
+    def test_undecodable_non_jpeg_is_refused_with_a_reason(
+        self, page, live_server, staff_user
+    ):
+        """A file that is neither decodable nor JPEG is refused out loud.
+
+        Sending it would store bytes the OCR call cannot describe, since
+        it declares image/jpeg for whatever it is handed.
+        """
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+
+        page.set_input_files(
+            "#image-input",
+            files=[
+                {
+                    "name": "IMG_0042.heic",
+                    "mimeType": "image/heic",
+                    "buffer": b"not decodable as an image",
+                }
+            ],
+        )
+
+        error = page.locator("#capture-error")
+        expect(error).to_be_visible(timeout=5000)
+        expect(error).to_contain_text("choose a JPEG")
+        expect(page.locator("#upload-btn")).to_be_disabled()
+        assert ScanResult.objects.count() == 0
+
     def test_candidates_table_fits_beside_qr_sidebar(
         self, page, live_server, staff_user
     ):
