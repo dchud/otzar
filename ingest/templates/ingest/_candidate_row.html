@@ -1,0 +1,53 @@
+{% comment %}The data cells of one catalog candidate, in the column order
+`_candidate_headings.html` declares. Callers supply the surrounding
+`<tr>` and the trailing action cell, because the search results offer a
+single Use button where the queue offers an expand toggle.
+
+Context:
+  item     {"data": the candidate dict, "json": its JSON payload}
+  counter  1-based position within the result set
+{% endcomment %}
+<td class="py-2 pr-2 text-gray-400">{{ counter }}</td>
+<td class="py-2 pr-3 min-w-0">
+  <div class="font-medium" dir="auto">{{ item.data.title|default:"[No title]" }}</div>
+  {% if item.data.title_alternate and item.data.title_alternate != item.data.title %}
+  <div class="text-xs text-gray-500 dark:text-gray-400" dir="auto">{{ item.data.title_alternate }}</div>
+  {% endif %}
+  {% if item.data.author %}
+  <div class="text-xs text-gray-700 dark:text-gray-300 mt-0.5" dir="auto">
+    {{ item.data.author }}{% if item.data.additional_authors %} <span class="text-gray-500 dark:text-gray-400">+{{ item.data.additional_authors|length }}</span>{% endif %}
+  </div>
+  {% endif %}
+</td>
+<td class="py-2 pr-3 whitespace-nowrap">{{ item.data.date|default:"—" }}</td>
+<td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
+  {% if item.data.publisher %}<span dir="auto">{{ item.data.publisher }}</span>{% endif %}
+  {% if item.data.place %}<div class="text-xs text-gray-500 dark:text-gray-400" dir="auto">{{ item.data.place }}</div>{% endif %}
+  {% if not item.data.publisher and not item.data.place %}<span class="text-gray-400">—</span>{% endif %}
+</td>
+<td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
+  {% if item.data.series_title %}
+  <span dir="auto">{{ item.data.series_title }}</span>
+  {% if item.data.series_volume %}<div class="text-xs text-gray-500 dark:text-gray-400">vol. {{ item.data.series_volume }}</div>{% endif %}
+  {% else %}<span class="text-gray-400">—</span>{% endif %}
+</td>
+<td class="py-2 pr-3 text-xs text-gray-600 dark:text-gray-400">
+  {% if item.data.isbn %}<div>ISBN {{ item.data.isbn }}</div>{% endif %}
+  {% if item.data.lccn %}<div>LCCN {{ item.data.lccn }}</div>{% endif %}
+  {% if item.data.oclc %}<div>OCLC {{ item.data.oclc }}</div>{% endif %}
+  {% if not item.data.isbn and not item.data.lccn and not item.data.oclc %}<span class="text-gray-400">—</span>{% endif %}
+</td>
+<td class="py-2 pr-3">
+  {% if item.data.source_catalog %}
+  <span class="inline-block text-xs px-1.5 py-0.5 rounded
+               {% if item.data.source_catalog == 'NLI' %}
+               bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+               {% elif item.data.source_catalog == 'DNB' %}
+               bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200
+               {% else %}
+               bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+               {% endif %}">
+    {{ item.data.source_catalog }}
+  </span>
+  {% endif %}
+</td>

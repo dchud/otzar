@@ -116,6 +116,41 @@ def _notice(request, message, status=200):
     )
 
 
+def _candidates_with_json(candidates):
+    """Pair each candidate with the JSON payload its row posts back.
+
+    The candidate travels to ``select_candidate`` verbatim rather than
+    being looked up again, so the row a user picked and the record that
+    gets built describe the same thing. The template renders the payload
+    into a textarea under autoescaping: the browser resolves the
+    character references when it reads the field back, so the JSON
+    arrives intact and a title carrying markup cannot close the tag.
+    """
+    return [{"data": c, "json": json.dumps(c)} for c in candidates or []]
+
+
+def _scan_for_repeat_search(user, scan_id):
+    """The pending scan a repeated search should write its results into.
+
+    A search launched from a queue row belongs to the scan already
+    sitting in that row. Starting a fresh one would leave the original
+    behind with its empty candidate list, so a user who retried twice
+    would end up with three rows for one book.
+
+    Returns None when there is no such scan to reuse -- no id given, the
+    scan is gone or already resolved, or it belongs to someone else --
+    and the caller creates one instead.
+    """
+    if not scan_id:
+        return None
+    scan = ScanResult.objects.filter(pk=scan_id, status="pending").first()
+    if scan is None:
+        return None
+    if not user.is_staff and scan.scanned_by != user:
+        return None
+    return scan
+
+
 def _create_record_from_candidate(
     candidate, user, notes="", location_label=""
 ):
@@ -390,13 +425,21 @@ def isbn_lookup_view(request):
         rec["source_catalog"] = "DNB"
         candidates.append(rec)
 
-    # Create a ScanResult so the scan appears in the review queue.
-    scan = ScanResult.objects.create(
-        scan_type="isbn",
-        isbn=isbn,
-        candidate_records=candidates,
-        scanned_by=request.user,
+    # Create a ScanResult so the scan appears in the review queue, or
+    # refresh the one this search was launched from.
+    scan = _scan_for_repeat_search(
+        request.user, _parse_int(request.POST.get("scan_id"))
     )
+    if scan is None:
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            isbn=isbn,
+            candidate_records=candidates,
+            scanned_by=request.user,
+        )
+    else:
+        scan.candidate_records = candidates
+        scan.save(update_fields=["candidate_records", "updated_at"])
 
     # Phone scanner mode: return a brief confirmation instead of candidates.
     if request.session.get("phone_scanner"):
@@ -407,16 +450,11 @@ def isbn_lookup_view(request):
             {"isbn": isbn, "count": count},
         )
 
-    # Pair each candidate with its JSON for the select form.
-    candidates_with_json = [
-        {"data": c, "json": json.dumps(c)} for c in candidates
-    ]
-
     return render(
         request,
         "ingest/_candidates.html",
         {
-            "candidates": candidates_with_json,
+            "candidates": _candidates_with_json(candidates),
             "isbn": isbn,
             "scan_id": scan.pk,
         },
@@ -543,14 +581,11 @@ def title_page_upload(request):
                 candidate_records=candidates, updated_at=timezone.now()
             )
 
-        candidates_with_json = [
-            {"data": c, "json": json.dumps(c)} for c in candidates
-        ]
         return render(
             request,
             "ingest/_candidates.html",
             {
-                "candidates": candidates_with_json,
+                "candidates": _candidates_with_json(candidates),
                 "metadata": metadata,
                 "scan_id": scan_id,
             },
@@ -870,13 +905,22 @@ def series_manage(request, series_id):
 
 @login_required
 def review_queue(request):
-    """Show pending ScanResults for the current user (or all, for staff)."""
+    """Show pending ScanResults for the current user (or all, for staff).
+
+    Each scan carries its candidates paired with their JSON payloads,
+    the shape the candidate table partial reads, so the queue renders
+    the same rows as the search results it came from.
+    """
     if request.user.is_staff:
         scans = ScanResult.objects.filter(status="pending")
     else:
         scans = ScanResult.objects.filter(
             status="pending", scanned_by=request.user
         )
+
+    scans = list(scans)
+    for scan in scans:
+        scan.candidates = _candidates_with_json(scan.candidate_records)
 
     return render(request, "ingest/review_queue.html", {"scans": scans})
 
