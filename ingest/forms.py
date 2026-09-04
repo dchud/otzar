@@ -35,6 +35,7 @@ class RecordForm(forms.ModelForm):
             "place_of_publication",
             "language",
             "notes",
+            "provenance",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -55,4 +56,7 @@ class RecordForm(forms.ModelForm):
             ),
             "language": forms.HiddenInput(),
             "notes": forms.Textarea(attrs={"class": INPUT_CLASSES, "rows": 3}),
+            "provenance": forms.Textarea(
+                attrs={"class": INPUT_CLASSES, "rows": 3, "dir": "auto"}
+            ),
         }

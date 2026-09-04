@@ -29,6 +29,13 @@ class Record(models.Model):
     )
     cover_url = models.URLField(max_length=500, blank=True, default="")
     notes = models.TextField(blank=True)
+    provenance = models.TextField(
+        blank=True,
+        help_text=(
+            "Ownership history of this copy: former owners, inscriptions, "
+            "bookplates, stamps, and how it was acquired."
+        ),
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
