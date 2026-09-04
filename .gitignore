@@ -224,6 +224,10 @@ cache/
 media/
 staticfiles/
 tmp/
+db.sqlite3-wal
+db.sqlite3-shm
+.django_tailwind_cli/
+.playwright-mcp/
 
 # Tailwind compiles this from static/src/input.css by scanning the
 # templates, so it is a product of the tree rather than a part of it.
@@ -232,10 +236,6 @@ tmp/
 # makes every branch that rebuilds conflict in a minified single line
 # no one can merge by reading it. Build it with `just tailwind`.
 static/css/tailwind.css
-db.sqlite3-wal
-db.sqlite3-shm
-.django_tailwind_cli/
-.playwright-mcp/
 
 # Agent worktrees and local harness state
 .claude/worktrees/

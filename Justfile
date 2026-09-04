@@ -2,9 +2,9 @@
 
 # Recipes that serve or render a page depend on `tailwind`, so a fresh
 # clone gets a styled application without anyone having to know that the
-# stylesheet is generated. The build is a few hundred milliseconds once
-# the CLI is cached, so running it every time costs less than the class
-# of bug it removes.
+# stylesheet is generated. A build is about a second once the CLI is
+# cached, so running it every time costs less than the class of bug it
+# removes.
 
 # Start the development server
 dev: tailwind
