@@ -169,6 +169,15 @@
     {{ form.notes }}
   </fieldset>
 
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-medium mb-2">Provenance</legend>
+    <div>
+      <label for="id_provenance" class="block text-sm font-medium mb-1">Ownership history</label>
+      {{ form.provenance }}
+      <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">{{ form.provenance.help_text }}</p>
+    </div>
+  </fieldset>
+
   <div class="flex gap-4 pt-4">
     <button type="submit"
             class="px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">

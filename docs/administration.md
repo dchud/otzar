@@ -4,7 +4,7 @@ System administration reference for the otzar catalog application.
 
 ## Configuration reference
 
-All configuration is via environment variables, loaded from a `.env` file locally or set as Fly.io secrets in production. See `.env.example` for a template.
+All configuration is via environment variables, loaded from a `.env` file or set in the environment of the running process. See `.env.example` for a template.
 
 ### Django core
 
@@ -12,26 +12,26 @@ All configuration is via environment variables, loaded from a `.env` file locall
 |---|---|---|---|
 | `SECRET_KEY` | Yes (production) | Insecure dev fallback | Django secret key. Generate with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
 | `DEBUG` | No | `true` | Set to `false` in production. Accepts `true`, `1`, `yes` (case-insensitive). |
-| `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated list of hostnames the app will serve. In production, set to `otzar.fly.dev` and any custom domain. |
-| `CSRF_TRUSTED_ORIGINS` | No | (empty) | Comma-separated list of origins for CSRF validation. Set to the full production URL (e.g. `https://otzar.fly.dev`). |
-| `DATA_DIR` | No | Project root | Directory for the SQLite database, cache, and media files. On Fly.io, set to `/data` (the mounted persistent volume). Locally, defaults to the project directory. |
+| `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated list of hostnames the app will serve. In production, set to the hostname the site is served from. |
+| `CSRF_TRUSTED_ORIGINS` | No | (empty) | Comma-separated list of origins for CSRF validation. Set to the full site URL including scheme (e.g. `https://catalog.example.org`). |
+| `DATA_DIR` | No | Project root | Directory for the SQLite database, cache, and media files. In production, point it at storage that survives a restart or a rebuilt container. Locally, defaults to the project directory. |
 
 ### Claude Vision OCR
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | For title page scanning | (none) | Anthropic API key. Required only if using title page photograph/OCR ingest. Not needed for ISBN scan or manual entry. |
-| `CLAUDE_MODEL` | No | `claude-sonnet-4-6` | Model used for OCR. Sonnet is recommended for Hebrew script accuracy. |
+| `CLAUDE_MODEL` | No | `claude-sonnet-5` | Model used for OCR. Sonnet reads Hebrew decorative type more accurately than Haiku. |
 
 ### S3 backups
 
-Required in production for Litestream continuous backups. Not needed for local development.
+Placeholders for an S3-based backup mechanism. No application code reads them.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `AWS_ACCESS_KEY_ID` | Production | (none) | AWS access key for the S3 backup bucket. |
-| `AWS_SECRET_ACCESS_KEY` | Production | (none) | AWS secret key. |
-| `AWS_S3_BUCKET` | Production | (none) | S3 bucket name for WAL streaming. |
+| `AWS_ACCESS_KEY_ID` | No | (none) | AWS access key for an S3 backup bucket. |
+| `AWS_SECRET_ACCESS_KEY` | No | (none) | AWS secret key. |
+| `AWS_S3_BUCKET` | No | (none) | S3 bucket name for backups. |
 | `AWS_S3_REGION` | No | `us-east-1` | AWS region for the backup bucket. |
 
 ### SRU catalog endpoints
@@ -71,10 +71,24 @@ just createsuperuser
 
 The site-wide password is controlled entirely by the `SITE_PASSWORD` environment variable.
 
-- **Set it**: Add `SITE_PASSWORD=yourpassword` to `.env` (local) or `fly secrets set SITE_PASSWORD=yourpassword` (production). The app reads this at startup.
-- **Clear it**: Remove the variable or set it to an empty string. Restart the app (or redeploy) for the change to take effect.
+- **Set it**: Add `SITE_PASSWORD=yourpassword` to `.env`, or set it in the environment the app runs in. The app reads this at startup.
+- **Clear it**: Remove the variable or set it to an empty string. Restart the app for the change to take effect.
 
 When active, unauthenticated visitors see a password prompt. Once entered correctly, the password is stored in the session. Logged-in catalogers bypass the gate entirely.
+
+### Applying code updates
+
+```bash
+git pull
+uv sync
+uv run python manage.py migrate
+```
+
+Restart the app afterwards so it picks up the new code and any changed environment variables.
+
+The container image built from `Dockerfile` handles the migration step on its own: `entrypoint.sh` runs `manage.py migrate --noinput` before starting gunicorn, so restarting the container applies pending migrations.
+
+Migrations are written to be non-destructive. Review each migration before merging it.
 
 ### Loading test data
 
@@ -117,40 +131,43 @@ This removes:
 1. `ScanResult` objects with status `discarded` where `updated_at` is older than the cutoff.
 2. Image files in `tmp/title_pages/` with filesystem modification times older than the cutoff.
 
-Run periodically (e.g. weekly via cron or a scheduled Fly.io machine) to reclaim storage.
+Run periodically (e.g. weekly via cron or an equivalent scheduler) to reclaim storage.
 
 
 ## Backup and restore
 
-### Fly.io volume snapshots
+Everything worth keeping lives under `DATA_DIR`:
 
-Fly.io takes daily snapshots of the persistent volume (`/data`), which contains the SQLite database, cache, and media files. Snapshots are retained for up to 60 days.
+- `db.sqlite3` -- the catalog database, including the full-text search index.
+- `media/` -- uploaded title page images.
+- `cache/` -- the file-based cache. Derived from the database; no need to back it up.
 
-List snapshots:
+### Backing up the database
+
+SQLite runs in WAL mode, so copying `db.sqlite3` while the app is writing can capture an inconsistent file. Use the SQLite backup command, which is safe against a live database:
 
 ```bash
-fly volumes list
-fly volumes snapshots list <volume-id>
+sqlite3 "$DATA_DIR/db.sqlite3" ".backup /path/to/backup.sqlite3"
 ```
 
-Restore from a snapshot by creating a new volume from it and redeploying. See `docs/deployment.md` for the full procedure.
+The alternative is to stop the app first and copy `db.sqlite3` along with any `db.sqlite3-wal` and `db.sqlite3-shm` files beside it.
 
-### Litestream
+Media files are ordinary files. Copy `media/` with `rsync` or an equivalent tool.
 
-Litestream continuously streams SQLite WAL changes to S3. This provides point-in-time recovery beyond what daily snapshots offer.
+### Restoring
 
-Litestream requires the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_S3_BUCKET` environment variables to be set.
+1. Stop the app.
+2. Put the database file back at `DATA_DIR/db.sqlite3`, deleting any stale `db.sqlite3-wal` and `db.sqlite3-shm` files next to it.
+3. Restore `media/`.
+4. Start the app.
 
-To restore from Litestream:
+The FTS index (`catalog_fts`) is a table in the same database file, so it comes back with the restore. If search returns nothing after a restore, rebuild it:
 
-1. Stop the app: `fly machine stop`
-2. SSH into the machine: `fly ssh console`
-3. Restore the database: `litestream restore -o /data/db.sqlite3 s3://<bucket>/db.sqlite3`
-4. Restart the app: `fly machine start`
+```bash
+uv run python manage.py shell -c "from catalog.search import reindex_all; reindex_all()"
+```
 
-### Media files
-
-Media files (title page images) are stored on the persistent volume under `/data/media/`. They are included in volume snapshots but not in Litestream backups (which cover only the SQLite database).
+Check a restore by comparing the record count against what the source held, opening a known record, and running a search that should return hits.
 
 
 ## Monitoring
@@ -162,56 +179,11 @@ The app exposes a health check at `/health/`. It runs `SELECT 1` against the dat
 - `200 {"status": "ok"}` when healthy.
 - `503 {"status": "error", "detail": "..."}` when the database is unreachable.
 
-Fly.io polls this endpoint every 30 seconds (configured in `fly.toml`).
+The site password gate exempts the endpoint, so it answers without authentication.
 
 ### Logs
 
-View application logs:
-
-```bash
-fly logs                   # live tail
-fly logs --app otzar       # explicit app name
-```
-
-Gunicorn access logs and error logs are written to stdout/stderr and captured by Fly.io.
-
-### Status
-
-```bash
-fly status                 # machine state, region, image version
-fly volumes list           # volume health and size
-fly checks list            # health check history
-```
-
-
-## Upgrading
-
-### How updates are applied
-
-The project uses continuous deployment via GitHub Actions. Pushing to `main` triggers:
-
-1. Tests run in CI.
-2. On success, the app is built as a Docker image and deployed to Fly.io.
-3. The entrypoint script runs `manage.py migrate --noinput` before starting gunicorn, so database migrations are applied automatically on each deploy.
-
-### After a deploy
-
-Check that the app is healthy:
-
-```bash
-fly status
-curl https://otzar.fly.dev/health/
-fly logs  # check for migration errors or startup issues
-```
-
-### Rollback
-
-If a deploy causes problems:
-
-1. **Redeploy the previous image**: `fly deploy --image <previous-image-ref>`. Find previous image references in the Fly.io dashboard or GitHub Actions logs.
-2. **Restore the database**: If a migration caused data issues, restore from a Litestream backup or volume snapshot (see Backup and restore above).
-
-Migrations are designed to be non-destructive. Review each migration before merging to `main`.
+Gunicorn writes access and error logs to stdout and stderr (`--access-logfile -` and `--error-logfile -` in `entrypoint.sh`), where the process manager or container runtime collects them.
 
 
 ## Troubleshooting
@@ -221,22 +193,25 @@ Migrations are designed to be non-destructive. Review each migration before merg
 SQLite is configured with WAL mode and a 5-second busy timeout (`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;`). Under normal use (2-3 concurrent catalogers), this is sufficient.
 
 If "database is locked" errors appear:
-- Check `fly logs` for concurrent write contention.
-- Ensure only one Fly.io machine is running (`fly scale show`). SQLite does not support multiple writers across machines.
-- As a last resort, restart the machine: `fly machine restart`.
+
+- Check the application logs for concurrent write contention.
+- Ensure only one instance of the app writes to the database. SQLite does not support multiple writers across machines.
+- As a last resort, restart the app.
 
 ### Migration failures
 
-If `migrate` fails during deploy:
-- Check `fly logs` for the specific error.
-- SSH into the machine (`fly ssh console`) and inspect the database state.
+If `migrate` fails:
+
+- Check the logs for the specific error.
+- Inspect the database directly with `uv run python manage.py dbshell`.
 - If the migration is reversible, run `uv run python manage.py migrate <app> <previous_migration>` to roll back.
 - If data is corrupted, restore from backup.
 
 ### API key issues (Anthropic)
 
 If title page OCR fails with authentication errors:
-- Verify `ANTHROPIC_API_KEY` is set: `fly secrets list` (it will show the key name but not the value).
+
+- Verify `ANTHROPIC_API_KEY` is set in the environment the app runs in.
 - Ensure the key has not been revoked or expired in the Anthropic dashboard.
 - Check that `CLAUDE_MODEL` is set to a valid model name.
 
@@ -245,16 +220,18 @@ ISBN barcode scanning and manual entry do not require an API key.
 ### SRU endpoint failures
 
 External catalog lookups may fail if upstream services are down or have changed their URLs.
-- Check `fly logs` for connection errors or unexpected response codes.
+
+- Check the logs for connection errors or unexpected response codes.
 - Test the endpoint directly: `curl "https://nli.alma.exlibrisgroup.com/view/sru/972NNL_INST?version=1.2&operation=searchRetrieve&query=alma.isbn=0123456789"`
-- If an endpoint URL has changed, update the corresponding `SRU_*_URL` secret.
+- If an endpoint URL has changed, update the corresponding `SRU_*_URL` variable.
 
 ### Static files not loading
 
-Static files are served by WhiteNoise and collected at build time. If styles or scripts are missing after a deploy:
+Static files are served by WhiteNoise and collected by `collectstatic`. If styles or scripts are missing:
+
 - The `collectstatic` step in the Dockerfile may have failed. Check the build logs.
 - Verify `STATIC_ROOT` points to `staticfiles/` in the project directory.
 
 ### Site password not working
 
-The `SitePasswordMiddleware` reads `SITE_PASSWORD` at startup. Changes to the secret require a restart or redeploy to take effect. Clearing the variable disables the gate entirely.
+The `SitePasswordMiddleware` reads `SITE_PASSWORD` at startup. Changing the variable requires a restart to take effect. Clearing it disables the gate entirely.

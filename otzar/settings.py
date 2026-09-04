@@ -76,8 +76,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "otzar.wsgi.application"
 
-# When running on Fly.io, /data is a persistent volume.
-# Locally, fall back to the project directory.
+# Root for persistent data: the SQLite database, the file-based cache
+# and uploaded media all live under it. Point it at storage that
+# outlives the process; defaults to the project directory.
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR))).resolve()
 
 CACHES = {

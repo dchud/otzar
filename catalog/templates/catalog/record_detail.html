@@ -183,6 +183,14 @@
       </div>
       {% endif %}
 
+      {# Provenance #}
+      {% if record.provenance %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Provenance</h2>
+        <p class="mt-1 whitespace-pre-line" dir="auto">{{ record.provenance }}</p>
+      </div>
+      {% endif %}
+
       {# Related: other works by same author(s) #}
       {% if other_by_author %}
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">

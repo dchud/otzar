@@ -9,6 +9,7 @@ from catalog.models import (
     Series,
     SeriesVolume,
 )
+from ingest.forms import RecordForm
 from ingest.models import ScanResult
 
 
@@ -64,6 +65,71 @@ class TestRecordModel:
         )
         record.refresh_from_db()
         assert record.source_marc == marc_data
+
+    def test_provenance_defaults_to_empty(self):
+        record = Record.objects.create(title="Untraced Copy")
+        record.refresh_from_db()
+        assert record.provenance == ""
+
+    def test_provenance_stores_free_text(self):
+        text = (
+            "Inscribed on the flyleaf: 'From the library of A. Cohen'.\n"
+            "Bookplate of the Sassoon family; acquired 1932."
+        )
+        record = Record.objects.create(
+            title="Sefer ha-Kuzari", provenance=text
+        )
+        record.refresh_from_db()
+        assert record.provenance == text
+
+
+@pytest.mark.django_db
+class TestRecordFormProvenance:
+    def test_form_saves_provenance(self):
+        form = RecordForm(
+            data={
+                "title": "Sefer ha-Kuzari",
+                "provenance": "Bookplate of the Sassoon family.",
+            }
+        )
+        assert form.is_valid(), form.errors
+        record = form.save()
+        record.refresh_from_db()
+        assert record.provenance == "Bookplate of the Sassoon family."
+
+    def test_provenance_is_optional(self):
+        form = RecordForm(data={"title": "Untraced Copy"})
+        assert form.is_valid(), form.errors
+        assert form.save().provenance == ""
+
+
+@pytest.mark.django_db
+class TestRecordAdminProvenance:
+    @pytest.fixture
+    def superuser_client(self, client, django_user_model):
+        django_user_model.objects.create_superuser(
+            username="root", password="rootpass123", email="root@example.com"
+        )
+        client.login(username="root", password="rootpass123")
+        return client
+
+    def test_change_form_offers_provenance(self, superuser_client):
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        response = superuser_client.get(
+            f"/admin/catalog/record/{record.pk}/change/"
+        )
+        assert 'name="provenance"' in response.content.decode()
+
+    def test_admin_search_matches_provenance(self, superuser_client):
+        Record.objects.create(
+            title="Sefer ha-Kuzari",
+            provenance="Bookplate of Solomon Schechter",
+        )
+        Record.objects.create(title="Some Other Book")
+        response = superuser_client.get("/admin/catalog/record/?q=Schechter")
+        body = response.content.decode()
+        assert "Sefer ha-Kuzari" in body
+        assert "Some Other Book" not in body
 
 
 @pytest.mark.django_db
