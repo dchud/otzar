@@ -40,11 +40,13 @@ createsuperuser:
 test-e2e *args:
     uv run pytest tests/e2e/ {{args}}
 
-# Full CI check: tests, lint, format
+# Full pre-push check: format, lint, process labels, unit and e2e tests
 check:
-    uv run pytest --ignore=tests/e2e
-    uv run ruff check .
-    uv run ruff format --check .
+    ./scripts/check.sh
+
+# Same, without the e2e suite
+check-quick:
+    ./scripts/check.sh --quick
 
 # Build Tailwind CSS
 tailwind:

@@ -28,6 +28,9 @@ jobs:
       - name: Check formatting
         run: uv run ruff format --check .
 
+      - name: Check for process labels in persistent artifacts
+        run: uv run python scripts/lint_process_labels.py
+
   test:
     runs-on: ubuntu-latest
     steps:

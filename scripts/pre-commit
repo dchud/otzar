@@ -15,4 +15,11 @@ if ! uv run ruff check . 2>/dev/null; then
     exit 1
 fi
 
+if ! uv run python scripts/lint_process_labels.py; then
+    echo ""
+    echo "Process labels belong in commit messages, PR bodies and bead"
+    echo "descriptions, not in code, tests or user-facing docs."
+    exit 1
+fi
+
 echo "All checks passed."
