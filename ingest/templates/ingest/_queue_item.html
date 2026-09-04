@@ -1,10 +1,12 @@
-<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-     x-data="{ expanded: false }"
+{% load language_names %}
+<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+     x-data="{ open: null }"
      id="scan-{{ scan.pk }}">
-  <!-- Summary row -->
+
+  <!-- What was scanned -->
   <div class="flex items-start justify-between gap-4">
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <span class="inline-block text-xs px-2 py-0.5 rounded
                      {% if scan.scan_type == 'isbn' %}
                      bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
@@ -14,7 +16,7 @@
           {{ scan.get_scan_type_display }}
         </span>
         <span class="text-xs text-gray-500 dark:text-gray-300">
-          {{ scan.created_at|timesince }} ago
+          {{ scan.created_at|timesince }} ago{% if scan.scanned_by %} &middot; scanned by {{ scan.scanned_by.username }}{% endif %}
         </span>
       </div>
 
@@ -27,79 +29,204 @@
           [Title page scan]
         {% endif %}
       </p>
-
-      <p class="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
-        {{ scan.candidate_records|length }} candidate{{ scan.candidate_records|length|pluralize }}
-        {% if scan.scanned_by %}&middot; scanned by {{ scan.scanned_by.username }}{% endif %}
-      </p>
     </div>
 
-    <div class="flex gap-2 shrink-0">
-      <button @click="expanded = !expanded"
-              class="text-sm px-3 py-1 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              x-text="expanded ? 'Collapse' : 'Details'"
-              aria-expanded="false" x-bind:aria-expanded="expanded.toString()">
-        Details
+    <form method="post" action="{% url 'discard_scan' scan.pk %}" class="shrink-0">
+      {% csrf_token %}
+      <button type="submit"
+              class="text-sm px-3 py-1 min-h-[44px] border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500">
+        Discard
       </button>
-      <form method="post" action="{% url 'discard_scan' scan.pk %}">
-        {% csrf_token %}
-        <button type="submit"
-                class="text-sm px-3 py-1 min-h-[44px] border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500">
-          Discard
-        </button>
-      </form>
-    </div>
+    </form>
   </div>
 
-  <!-- Expanded detail with candidates -->
-  <div x-show="expanded" x-cloak class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
-    {% if scan.ocr_output %}
-    <div>
-      <h3 class="text-sm font-medium mb-1">OCR Output</h3>
-      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        {% for key, value in scan.ocr_output.items %}
-        {% if value %}
-        <dt class="text-gray-500 dark:text-gray-300">{{ key }}</dt>
-        <dd dir="auto">{{ value }}</dd>
-        {% endif %}
-        {% endfor %}
-      </dl>
-    </div>
-    {% endif %}
+  {% if scan.ocr_output %}
+  <details class="text-sm">
+    <summary class="cursor-pointer text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
+      Text read from the photo
+    </summary>
+    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 mt-2">
+      {% for key, value in scan.ocr_output.items %}
+      {% if value %}
+      <dt class="text-gray-500 dark:text-gray-300">{{ key }}</dt>
+      <dd dir="auto">{{ value }}</dd>
+      {% endif %}
+      {% endfor %}
+    </dl>
+  </details>
+  {% endif %}
 
-    {% if scan.candidate_records %}
-    <h3 class="text-sm font-medium">Candidates</h3>
-    {% for candidate in scan.candidate_records %}
-    <div class="border border-gray-100 dark:border-gray-800 rounded p-3">
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-sm" dir="auto">{{ candidate.title|default:"[No title]" }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
-            {% if candidate.author %}{{ candidate.author }}{% endif %}
-            {% if candidate.date %} &middot; {{ candidate.date }}{% endif %}
-            {% if candidate.source_catalog %}
-            <span class="inline-block ml-1 px-1.5 py-0 rounded text-xs
-                         {% if candidate.source_catalog == 'NLI' %}
-                         bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                         {% else %}
-                         bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                         {% endif %}">{{ candidate.source_catalog }}</span>
-            {% endif %}
-          </p>
-        </div>
-        <form method="post" action="{% url 'confirm_scan' scan.pk %}">
-          {% csrf_token %}
-          <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
-          <button type="submit"
-                  class="text-sm px-3 py-1 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-            Use this
-          </button>
-        </form>
-      </div>
+  {% comment %}The search can be run again into this container, replacing
+  the "no matches" panel with the candidates it finds.{% endcomment %}
+  <div id="scan-{{ scan.pk }}-results">
+    {% if scan.candidates %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Records matching this scan</caption>
+        <thead class="text-xs text-gray-500 dark:text-gray-400 uppercase">
+          <tr class="border-b border-gray-200 dark:border-gray-700">
+            {% include "ingest/_candidate_headings.html" %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in scan.candidates %}
+          <tr id="scan-{{ scan.pk }}-row-{{ forloop.counter0 }}"
+              class="border-b border-gray-100 dark:border-gray-800 align-top cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              @click="open = open === {{ forloop.counter0 }} ? null : {{ forloop.counter0 }}">
+            {% include "ingest/_candidate_row.html" with item=item counter=forloop.counter %}
+            <td class="py-2 text-right">
+              <button type="button"
+                      @click.stop="open = open === {{ forloop.counter0 }} ? null : {{ forloop.counter0 }}"
+                      aria-expanded="false"
+                      x-bind:aria-expanded="(open === {{ forloop.counter0 }}).toString()"
+                      aria-controls="scan-{{ scan.pk }}-candidate-{{ forloop.counter0 }}"
+                      class="text-sm px-3 py-1 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <span x-text="open === {{ forloop.counter0 }} ? 'Close' : 'Details'">Details</span>
+              </button>
+            </td>
+          </tr>
+
+          {% comment %}Starts hidden in the markup rather than through a
+          class, so the detail is not on screen for the moment before
+          Alpine takes over the row.{% endcomment %}
+          <tr id="scan-{{ scan.pk }}-candidate-{{ forloop.counter0 }}"
+              x-show="open === {{ forloop.counter0 }}" style="display: none"
+              class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
+            <td colspan="8" class="p-4">
+              <div class="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                <dl class="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-1">
+                  <dt class="text-gray-500 dark:text-gray-400">Title</dt>
+                  <dd dir="auto">{{ item.data.title|default:"—" }}</dd>
+                  {% if item.data.title_alternate %}
+                  <dt class="text-gray-500 dark:text-gray-400">Also titled</dt>
+                  <dd dir="auto">{{ item.data.title_alternate }}</dd>
+                  {% endif %}
+                  <dt class="text-gray-500 dark:text-gray-400">Author</dt>
+                  <dd dir="auto">{{ item.data.author|default:"—" }}</dd>
+                  {% if item.data.additional_authors %}
+                  <dt class="text-gray-500 dark:text-gray-400">Also by</dt>
+                  <dd dir="auto">{{ item.data.additional_authors|join:"; " }}</dd>
+                  {% endif %}
+                  <dt class="text-gray-500 dark:text-gray-400">Date</dt>
+                  <dd>{{ item.data.date|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Publisher</dt>
+                  <dd dir="auto">{{ item.data.publisher|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Place</dt>
+                  <dd dir="auto">{{ item.data.place|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Language</dt>
+                  <dd>{% if item.data.language %}{{ item.data.language|language_name }}{% else %}—{% endif %}</dd>
+                </dl>
+
+                <dl class="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-1">
+                  <dt class="text-gray-500 dark:text-gray-400">Series</dt>
+                  <dd dir="auto">
+                    {% if item.data.series_title %}
+                      {{ item.data.series_title }}{% if item.data.series_volume %}, vol. {{ item.data.series_volume }}{% endif %}
+                    {% else %}—{% endif %}
+                  </dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Subjects</dt>
+                  <dd dir="auto">
+                    {% if item.data.subjects %}{{ item.data.subjects|join:"; " }}{% else %}—{% endif %}
+                  </dd>
+                  <dt class="text-gray-500 dark:text-gray-400">ISBN</dt>
+                  <dd>{{ item.data.isbn|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">LCCN</dt>
+                  <dd>{{ item.data.lccn|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">OCLC</dt>
+                  <dd>{{ item.data.oclc|default:"—" }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Class.</dt>
+                  <dd>
+                    {% if item.data.lc_classification %}LC {{ item.data.lc_classification }}{% endif %}
+                    {% if item.data.dewey_classification %}<span class="ml-2">DDC {{ item.data.dewey_classification }}</span>{% endif %}
+                    {% if not item.data.lc_classification and not item.data.dewey_classification %}—{% endif %}
+                  </dd>
+                  <dt class="text-gray-500 dark:text-gray-400">Source</dt>
+                  <dd>{{ item.data.source_catalog|default:"—" }}</dd>
+                </dl>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <form method="post" action="{% url 'confirm_scan' scan.pk %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
+                  <button type="submit"
+                          class="text-sm px-4 py-1 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+                    Confirm
+                  </button>
+                </form>
+
+                <form method="post" action="{% url 'select_candidate' %}">
+                  {% csrf_token %}
+                  <textarea name="candidate_data" class="hidden">{{ item.json }}</textarea>
+                  <input type="hidden" name="scan_id" value="{{ scan.pk }}">
+                  <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
+                  <button type="submit"
+                          class="text-sm px-4 py-1 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    See full record
+                  </button>
+                </form>
+
+                <p class="text-xs text-gray-500 dark:text-gray-300">
+                  Confirm catalogs this record now. See full record opens the review page,
+                  where a physical location and notes can be added first.
+                </p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% endfor %}
+
     {% else %}
-    <p class="text-sm text-gray-500 dark:text-gray-300">No candidates found for this scan.</p>
+    <div class="rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-3">
+      <p class="text-sm">
+        <span class="font-medium">No matching records found.</span>
+        The catalogs returned nothing for this scan.
+      </p>
+
+      {% if scan.scan_type == 'isbn' and scan.isbn %}
+      <form hx-post="{% url 'isbn_lookup' %}"
+            hx-target="#scan-{{ scan.pk }}-results"
+            hx-swap="innerHTML"
+            hx-disabled-elt="find button[type='submit']">
+        {% csrf_token %}
+        <input type="hidden" name="isbn" value="{{ scan.isbn }}">
+        <input type="hidden" name="scan_id" value="{{ scan.pk }}">
+        <button type="submit"
+                class="text-sm px-4 py-1 min-h-[44px] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          Search again
+        </button>
+      </form>
+
+      {% elif scan.ocr_output %}
+      <form hx-post="{% url 'title_page_upload' %}"
+            hx-target="#scan-{{ scan.pk }}-results"
+            hx-swap="innerHTML"
+            hx-disabled-elt="find button[type='submit']">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="search">
+        <input type="hidden" name="scan_id" value="{{ scan.pk }}">
+        <input type="hidden" name="title" value="{{ scan.ocr_output.title|default:'' }}">
+        <input type="hidden" name="subtitle" value="{{ scan.ocr_output.subtitle|default:'' }}">
+        <input type="hidden" name="author" value="{{ scan.ocr_output.author|default:'' }}">
+        <input type="hidden" name="publisher" value="{{ scan.ocr_output.publisher|default:'' }}">
+        <input type="hidden" name="place" value="{{ scan.ocr_output.place|default:'' }}">
+        <input type="hidden" name="date" value="{{ scan.ocr_output.date|default:'' }}">
+        <input type="hidden" name="title_romanized" value="{{ scan.ocr_output.title_romanized|default:'' }}">
+        <input type="hidden" name="author_romanized" value="{{ scan.ocr_output.author_romanized|default:'' }}">
+        <button type="submit"
+                class="text-sm px-4 py-1 min-h-[44px] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          Search again
+        </button>
+      </form>
+      {% endif %}
+
+      <p class="text-xs text-gray-600 dark:text-gray-300">
+        Searching again queries the catalogs with the same details and replaces
+        this panel with whatever comes back. Discard removes the scan.
+      </p>
+    </div>
     {% endif %}
   </div>
 </div>

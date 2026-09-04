@@ -97,7 +97,7 @@ class RecordAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["source_catalog", LanguageFilter]
-    search_fields = ["title", "title_romanized", "record_id"]
+    search_fields = ["title", "title_romanized", "record_id", "provenance"]
     readonly_fields = ["record_id", "created_at", "updated_at"]
     filter_horizontal = ["authors", "subjects", "publishers", "locations"]
     inlines = [ExternalIdentifierInline, TitlePageImageInline]

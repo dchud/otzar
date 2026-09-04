@@ -286,6 +286,14 @@ Opt in by running:
 
 This symlinks `scripts/pre-commit` into `.git/hooks/`. The hook runs `ruff format --check` and `ruff check` before each commit and blocks on failure, printing the commands to fix issues.
 
+## Continuous integration
+
+GitHub Actions runs three jobs on every pull request against `main` and on every push to `main`: `lint` (ruff check, ruff format check, and the process-label check), `test` (unit tests), and `test-e2e` (Playwright browser tests). All three are required status checks on `main`.
+
+`test` and `test-e2e` compare the changed paths against the base commit and do no work when every changed path is either under `.beads/` or a Markdown file. Nothing in the application, the templates or the test suites reads either, so a change confined to them cannot alter a test result. Markdown is still checked, by the process-label step in `lint`, which always runs in full. Any other path -- Python, templates, static assets, `pyproject.toml`, `uv.lock`, the workflow itself -- runs both suites, and so does any change the comparison cannot classify.
+
+The three jobs always start and always report a result. A required status check that never reports stays pending and blocks the merge, so the skip lives inside the job rather than in a `paths-ignore` filter on the job or the workflow.
+
 ## Justfile commands
 
 | Command | Description |

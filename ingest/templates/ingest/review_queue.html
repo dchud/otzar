@@ -4,7 +4,15 @@
 
 {% block content %}
 <div class="space-y-6">
-  <h1 class="text-2xl font-semibold">Review Queue</h1>
+  <div>
+    <h1 class="text-2xl font-semibold">Review Queue</h1>
+    {% if scans %}
+    <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+      Each row is one record a catalog offered. Open a row to see every field it
+      would contribute, then confirm it or open the full review page.
+    </p>
+    {% endif %}
+  </div>
 
   {% if scans %}
   <div id="queue-list" class="space-y-4" aria-live="polite">
