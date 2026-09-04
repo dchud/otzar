@@ -110,6 +110,27 @@ rejects a direct push to `main`. Exception: when a bead's deliverable is not in
 any PR diff, close it after the work lands and let the closure ride into a later
 PR.
 
+### Batched closures when work runs in parallel
+
+The rule above assumes one branch at a time. It breaks down when several
+agents work at once in separate worktrees, because `issues.jsonl` is a single
+file that every one of them would rewrite. Each agent flushes the whole
+tracker, so their exports differ in every line the others changed, and the
+result is a conflict in a file no one can merge by reading it.
+
+So when work is running in parallel, agents do not touch `.beads/` at all —
+not `br close`, not `br update`, not `br sync`. Reading (`br show`, `br list`,
+`br ready`) is fine. The session coordinating the work closes the beads
+afterwards in one tracker PR covering the batch.
+
+This trades one extra PR per batch for not having to hand-merge a JSONL
+export. Say so in each PR body — "bead closure batched, see the tracker PR" —
+so a reader does not take the missing closure for an oversight.
+
+A bead whose work is done but whose closure has not landed yet is still open
+in the tracker. That is the cost, and it is why the tracker PR should follow
+promptly rather than accumulating.
+
 ## Elevating beads to GitHub issues
 
 Elevation bridges the local tracker to GitHub for external visibility, PR
