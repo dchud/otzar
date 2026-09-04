@@ -27,6 +27,85 @@ from sources.covers import fetch_cover_url
 logger = logging.getLogger(__name__)
 
 
+def _create_record_from_candidate(
+    candidate, user, notes="", location_label=""
+):
+    """Build and save a Record from a catalog candidate.
+
+    Both confirm paths -- the review page at /ingest/confirm/ and the
+    queue's "Use this" -- carried their own copy of this, and the copies
+    had drifted. The queue's set neither ``source_marc`` nor
+    ``date_of_publication_display``, so a MARC date that will not parse
+    as an integer ("1994-2003", "c1999", "[1999]") was kept by one path
+    and dropped outright by the other. One function, one record.
+
+    The year is taken from the first four digits found anywhere in the
+    date rather than by parsing the whole string, because catalog dates
+    routinely carry brackets, copyright marks and ranges. Whatever the
+    string was is preserved in the display field when no year parses out
+    of it, so nothing is lost on the way in.
+    """
+    date_str = candidate.get("date", "")
+    date_int = None
+    if date_str:
+        try:
+            date_int = int(
+                "".join(c for c in str(date_str) if c.isdigit())[:4]
+            )
+        except (ValueError, IndexError):
+            pass
+
+    record = Record(
+        title=strip_marc_punctuation(candidate.get("title")),
+        title_romanized=strip_marc_punctuation(
+            candidate.get("title_alternate")
+        ),
+        date_of_publication=date_int,
+        date_of_publication_display=strip_marc_punctuation(str(date_str))
+        if date_str and not date_int
+        else "",
+        place_of_publication=strip_marc_punctuation(candidate.get("place")),
+        language=candidate.get("language") or "",
+        source_marc=candidate.get("source_marc"),
+        source_catalog=candidate.get("source_catalog") or "",
+        notes=notes,
+        created_by=user,
+    )
+    record.save()
+
+    author_name = strip_marc_punctuation(candidate.get("author"))
+    if author_name:
+        author, _ = Author.objects.get_or_create(name=author_name)
+        record.authors.add(author)
+
+    publisher_name = strip_marc_punctuation(candidate.get("publisher"))
+    if publisher_name:
+        publisher, _ = Publisher.objects.get_or_create(
+            name=publisher_name,
+            defaults={"place": strip_marc_punctuation(candidate.get("place"))},
+        )
+        record.publishers.add(publisher)
+
+    if location_label:
+        location, _ = Location.objects.get_or_create(label=location_label)
+        record.locations.add(location)
+
+    _attach_from_candidate(record, candidate)
+
+    # Best-effort; a missing cover must not cost the user the record.
+    try:
+        cover_url = fetch_cover_url(record)
+        if cover_url:
+            record.cover_url = cover_url
+            record.save(update_fields=["cover_url"])
+    except Exception:
+        logger.exception("Cover fetch failed for record %s", record.record_id)
+
+    ensure_fts_table()
+    index_record(record)
+    return record
+
+
 @login_required
 def ingest_index(request):
     """Landing page with links to all ingest methods."""
@@ -70,76 +149,12 @@ def confirm_candidate(request):
         return redirect("ingest")
 
     if request.method == "POST":
-        # Create the record from candidate data.
-        date_str = candidate.get("date", "")
-        date_int = None
-        if date_str:
-            try:
-                date_int = int(
-                    "".join(c for c in str(date_str) if c.isdigit())[:4]
-                )
-            except (ValueError, IndexError):
-                pass
-
-        record = Record(
-            title=strip_marc_punctuation(candidate.get("title")),
-            title_romanized=strip_marc_punctuation(
-                candidate.get("title_alternate")
-            ),
-            date_of_publication=date_int,
-            date_of_publication_display=strip_marc_punctuation(str(date_str))
-            if date_str and not date_int
-            else "",
-            place_of_publication=strip_marc_punctuation(
-                candidate.get("place")
-            ),
-            language=candidate.get("language") or "",
-            source_marc=candidate.get("source_marc"),
-            source_catalog=candidate.get("source_catalog") or "",
+        record = _create_record_from_candidate(
+            candidate,
+            request.user,
             notes=request.POST.get("notes") or "",
-            created_by=request.user,
+            location_label=request.POST.get("location_label", "").strip(),
         )
-        record.save()
-
-        # Primary author
-        author_name = strip_marc_punctuation(candidate.get("author"))
-        if author_name:
-            author, _ = Author.objects.get_or_create(name=author_name)
-            record.authors.add(author)
-
-        # Publisher
-        publisher_name = strip_marc_punctuation(candidate.get("publisher"))
-        if publisher_name:
-            publisher, _ = Publisher.objects.get_or_create(
-                name=publisher_name,
-                defaults={
-                    "place": strip_marc_punctuation(candidate.get("place"))
-                },
-            )
-            record.publishers.add(publisher)
-
-        # Location from form
-        location_label = request.POST.get("location_label", "").strip()
-        if location_label:
-            location, _ = Location.objects.get_or_create(label=location_label)
-            record.locations.add(location)
-
-        # Additional data from MARC
-        _attach_from_candidate(record, candidate)
-
-        # Best-effort cover image lookup
-        try:
-            cover_url = fetch_cover_url(record)
-            if cover_url:
-                record.cover_url = cover_url
-                record.save(update_fields=["cover_url"])
-        except Exception:
-            logger.exception(
-                "Cover fetch failed for record %s", record.record_id
-            )
-
-        ensure_fts_table()
-        index_record(record)
 
         request.session.pop("candidate", None)
         return redirect(
@@ -756,46 +771,7 @@ def confirm_scan(request, scan_id):
 
     candidate = candidates[candidate_index]
 
-    # Create the Record from candidate data.
-    record = Record(
-        title=strip_marc_punctuation(candidate.get("title")),
-        title_romanized=strip_marc_punctuation(
-            candidate.get("title_alternate")
-        ),
-        date_of_publication=_parse_int(candidate.get("date")),
-        place_of_publication=strip_marc_punctuation(candidate.get("place")),
-        language=candidate.get("language", ""),
-        source_catalog=candidate.get("source_catalog", ""),
-        created_by=request.user,
-    )
-    record.save()
-
-    # Attach author if present.
-    author_name = strip_marc_punctuation(candidate.get("author"))
-    if author_name:
-        author, _ = Author.objects.get_or_create(name=author_name)
-        record.authors.add(author)
-
-    # Attach publisher if present.
-    publisher_name = strip_marc_punctuation(candidate.get("publisher"))
-    if publisher_name:
-        publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
-        record.publishers.add(publisher)
-
-    # Additional data from MARC (subjects, identifiers, additional authors)
-    _attach_from_candidate(record, candidate)
-
-    # Best-effort cover image lookup
-    try:
-        cover_url = fetch_cover_url(record)
-        if cover_url:
-            record.cover_url = cover_url
-            record.save(update_fields=["cover_url"])
-    except Exception:
-        logger.exception("Cover fetch failed for record %s", record.record_id)
-
-    ensure_fts_table()
-    index_record(record)
+    record = _create_record_from_candidate(candidate, request.user)
 
     # Mark the ScanResult as confirmed.
     scan.status = "confirmed"

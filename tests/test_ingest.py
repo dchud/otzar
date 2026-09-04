@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
@@ -235,3 +237,105 @@ class TestIngestModeNav:
         response = client_logged_in.get("/ingest/scan-title/")
         assert b"Scan title page" in response.content
         assert b"Capture on your phone" in response.content
+
+
+@pytest.mark.django_db
+class TestCandidateRecordCreation:
+    """Both confirm paths must build the same record from a candidate.
+
+    /ingest/confirm/ (reached from the cascade results) and the queue's
+    "Use this" each had their own copy of the record-building code, and
+    they had drifted: the queue path set neither source_marc nor
+    date_of_publication_display, so a MARC date that will not parse as
+    an integer was stored by one path and dropped by the other.
+    """
+
+    CANDIDATE = {
+        "title": "Biblia Hebraica Stuttgartensia /",
+        "title_alternate": "Torah, Nevi'im u-Khetuvim",
+        "author": "Elliger, Karl",
+        "date": "1994-2003",
+        "publisher": "Deutsche Bibelgesellschaft",
+        "place": "Stuttgart",
+        "language": "ger",
+        "source_catalog": "NLI",
+        "source_marc": {"leader": "00000nam a2200000 a 4500"},
+        "subjects": ["Bible. Old Testament -- Criticism"],
+        "additional_authors": ["Rudolph, Wilhelm"],
+        "isbn": "9783438052285",
+        "lccn": "75950123",
+    }
+
+    def _fields(self, record):
+        return {
+            "title": record.title,
+            "title_romanized": record.title_romanized,
+            "date_of_publication": record.date_of_publication,
+            "date_display": record.date_of_publication_display,
+            "place": record.place_of_publication,
+            "language": record.language,
+            "source_catalog": record.source_catalog,
+            "source_marc": record.source_marc,
+            "authors": sorted(a.name for a in record.authors.all()),
+            "publishers": sorted(p.name for p in record.publishers.all()),
+            "subjects": sorted(s.heading for s in record.subjects.all()),
+            "identifiers": sorted(
+                (i.identifier_type, i.value)
+                for i in record.external_identifiers.all()
+            ),
+        }
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_queue_confirm_matches_review_page_confirm(
+        self, _cover, client_logged_in, user
+    ):
+        from ingest.models import ScanResult
+
+        # Path A: the review page at /ingest/confirm/.
+        session = client_logged_in.session
+        session["candidate"] = self.CANDIDATE
+        session.save()
+        client_logged_in.post("/ingest/confirm/")
+        via_review = Record.objects.order_by("-id").first()
+
+        # Path B: the queue's "Use this".
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+        scan.refresh_from_db()
+        via_queue = scan.created_record
+
+        assert via_queue is not None
+        assert self._fields(via_queue) == self._fields(via_review)
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_queue_confirm_keeps_an_unparseable_date(
+        self, _cover, client_logged_in, user
+    ):
+        """The case that was silently losing data.
+
+        "1994-2003" is not an int, so the queue path stored no year and
+        no display string -- the date simply vanished from the record.
+        """
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        record = scan.created_record
+        assert record.get_date_display(), "the date was dropped entirely"
+        assert "1994" in record.get_date_display()
