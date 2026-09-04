@@ -59,6 +59,9 @@
           class="space-y-4 min-w-0">
       {% csrf_token %}
       <input type="hidden" name="action" value="search">
+      {% if scan %}
+      <input type="hidden" name="scan_id" value="{{ scan.id }}">
+      {% endif %}
       {% if staging_file %}
       <input type="hidden" name="staging_file" value="{{ staging_file }}">
       {% endif %}

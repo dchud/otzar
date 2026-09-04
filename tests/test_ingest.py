@@ -339,3 +339,141 @@ class TestCandidateRecordCreation:
         record = scan.created_record
         assert record.get_date_display(), "the date was dropped entirely"
         assert "1994" in record.get_date_display()
+
+
+@pytest.mark.django_db
+class TestScanClosedOnConfirm:
+    """Choosing a candidate has to close the scan that produced it.
+
+    Both entry points into `_candidates.html` create or carry a
+    ScanResult, and the "Use" button routes through select_candidate ->
+    confirm_candidate, which knew nothing about it. The scan stayed
+    pending forever: title-page scans reappeared in the Incoming photos
+    pane on every poll tick, and ISBN lookups piled up in the review
+    queue, both already catalogued.
+    """
+
+    CANDIDATE = {
+        "title": "Mishneh Torah",
+        "author": "Maimonides",
+        "date": "1862",
+        "publisher": "Romm",
+        "place": "Vilna",
+        "source_catalog": "NLI",
+    }
+
+    def _select_and_confirm(self, client, scan_id=None, index=0):
+        import json as _json
+
+        payload = {"candidate_data": _json.dumps(self.CANDIDATE)}
+        if scan_id is not None:
+            payload["scan_id"] = str(scan_id)
+            payload["candidate_index"] = str(index)
+        client.post("/ingest/select-candidate/", payload)
+        return client.post("/ingest/confirm/")
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_title_page_scan_is_confirmed(
+        self, _cover, client_logged_in, user
+    ):
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output={"title": "Mishneh Torah"},
+            scanned_by=user,
+        )
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        scan.refresh_from_db()
+        assert scan.status == "confirmed"
+        assert scan.created_record is not None
+        assert scan.created_record.title == "Mishneh Torah"
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_confirmed_scan_leaves_the_poll_pane(
+        self, _cover, client_logged_in, user
+    ):
+        """The symptom the user actually sees."""
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output={"title": "Mishneh Torah"},
+            scanned_by=user,
+        )
+        before = client_logged_in.get("/ingest/scan-title/poll/")
+        assert f"title-page-card-{scan.pk}".encode() in before.content
+
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        after = client_logged_in.get("/ingest/scan-title/poll/")
+        assert f"title-page-card-{scan.pk}".encode() not in after.content
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_isbn_lookup_scan_is_confirmed(
+        self, _cover, client_logged_in, user
+    ):
+        """isbn_lookup_view creates a ScanResult too, and it was piling
+        up in the review queue the same way."""
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            isbn="9780899060269",
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        scan.refresh_from_db()
+        assert scan.status == "confirmed"
+        assert scan.created_record is not None
+        assert scan.selected_candidate_index == 0
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_confirm_without_a_scan_still_works(
+        self, _cover, client_logged_in
+    ):
+        """Not every candidate comes from a scan."""
+        response = self._select_and_confirm(client_logged_in)
+        assert response.status_code == 302
+        assert Record.objects.filter(title="Mishneh Torah").exists()
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_discarded_scan_is_not_resurrected(
+        self, _cover, client_logged_in, user
+    ):
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="ocr", status="discarded", scanned_by=user
+        )
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_another_users_scan_is_not_touched(
+        self, _cover, client_logged_in, django_user_model
+    ):
+        from ingest.models import ScanResult
+
+        other = django_user_model.objects.create_user(
+            username="someone-else", password="testpass123"
+        )
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output={"title": "Mishneh Torah"},
+            scanned_by=other,
+        )
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.created_record is None

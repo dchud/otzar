@@ -28,6 +28,43 @@ from sources.covers import fetch_cover_url
 logger = logging.getLogger(__name__)
 
 
+def _close_scan_for_record(scan_id, candidate_index, record, user):
+    """Mark the scan that produced this record as confirmed.
+
+    Both routes into the candidates table carry a ScanResult -- the
+    title-page search and the ISBN lookup -- and the Use button routes
+    through select_candidate and confirm_candidate, which knew nothing
+    about it. The scan stayed pending forever, so a title-page card came
+    back in the poll pane on every tick and an ISBN lookup sat in the
+    review queue, both already catalogued.
+
+    Silent about a scan it will not touch: a candidate can be confirmed
+    without any scan behind it, and a scan that was discarded while the
+    user was deciding must not be resurrected.
+    """
+    if not scan_id:
+        return
+    scan = ScanResult.objects.filter(pk=scan_id).first()
+    if scan is None:
+        return
+    if not user.is_staff and scan.scanned_by != user:
+        return
+    if scan.status in ("discarded", "confirmed"):
+        return
+
+    scan.status = "confirmed"
+    scan.created_record = record
+    scan.selected_candidate_index = candidate_index
+    scan.save(
+        update_fields=[
+            "status",
+            "created_record",
+            "selected_candidate_index",
+            "updated_at",
+        ]
+    )
+
+
 def _in_progress_title_scans(user):
     """Title-page scans the poll pane should be showing.
 
@@ -190,6 +227,14 @@ def select_candidate(request):
             logger.exception("Failed to parse candidate JSON")
     else:
         logger.warning("select_candidate called with empty candidate_data")
+
+    # The scan this candidate came from, so confirming can close it.
+    request.session["candidate_scan_id"] = _parse_int(
+        request.POST.get("scan_id")
+    )
+    request.session["candidate_index"] = _parse_int(
+        request.POST.get("candidate_index")
+    )
     return redirect("confirm_candidate")
 
 
@@ -208,7 +253,16 @@ def confirm_candidate(request):
             location_label=request.POST.get("location_label", "").strip(),
         )
 
+        _close_scan_for_record(
+            request.session.get("candidate_scan_id"),
+            request.session.get("candidate_index"),
+            record,
+            request.user,
+        )
+
         request.session.pop("candidate", None)
+        request.session.pop("candidate_scan_id", None)
+        request.session.pop("candidate_index", None)
         return redirect(
             "catalog:record_detail",
             record_id=record.record_id,
@@ -337,7 +391,7 @@ def isbn_lookup_view(request):
         candidates.append(rec)
 
     # Create a ScanResult so the scan appears in the review queue.
-    ScanResult.objects.create(
+    scan = ScanResult.objects.create(
         scan_type="isbn",
         isbn=isbn,
         candidate_records=candidates,
@@ -361,7 +415,11 @@ def isbn_lookup_view(request):
     return render(
         request,
         "ingest/_candidates.html",
-        {"candidates": candidates_with_json, "isbn": isbn},
+        {
+            "candidates": candidates_with_json,
+            "isbn": isbn,
+            "scan_id": scan.pk,
+        },
     )
 
 
@@ -476,13 +534,26 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
+        # Store what the search found, so the scan carries the same
+        # record the ISBN path stores and a candidate index means
+        # something on the way back through confirm.
+        scan_id = _parse_int(request.POST.get("scan_id"))
+        if scan_id:
+            ScanResult.objects.filter(pk=scan_id).update(
+                candidate_records=candidates, updated_at=timezone.now()
+            )
+
         candidates_with_json = [
             {"data": c, "json": json.dumps(c)} for c in candidates
         ]
         return render(
             request,
             "ingest/_candidates.html",
-            {"candidates": candidates_with_json, "metadata": metadata},
+            {
+                "candidates": candidates_with_json,
+                "metadata": metadata,
+                "scan_id": scan_id,
+            },
         )
 
     # --- Image upload phase (OCR deferred) ---

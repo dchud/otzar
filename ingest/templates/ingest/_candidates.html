@@ -74,6 +74,10 @@
             <form method="post" action="{% url 'select_candidate' %}" class="inline">
               {% csrf_token %}
               <textarea name="candidate_data" class="hidden">{{ item.json|safe }}</textarea>
+              {% if scan_id %}
+              <input type="hidden" name="scan_id" value="{{ scan_id }}">
+              <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
+              {% endif %}
               <button type="submit"
                       class="text-sm px-3 py-1.5 inline-flex items-center bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
                 Use
