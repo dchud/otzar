@@ -40,3 +40,6 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 79
 target-version = "py313"
+# Agent worktrees are checkouts of this same repo nested inside it.
+# Linting them means linting another branch's in-progress code.
+extend-exclude = [".claude"]
