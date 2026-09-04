@@ -3,9 +3,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from otzar import build_info
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Resolved here so it is read once per process, at startup. Shelling out
+# to git during a render would pay a subprocess on every page for a
+# value that cannot change while the process runs.
+BUILD_INFO = build_info.resolve(BASE_DIR)
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-only-change-me")
 
@@ -61,6 +68,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "otzar.context_processors.site_chrome",
             ],
         },
     },
