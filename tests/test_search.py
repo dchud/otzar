@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from io import StringIO
 
 import pytest
+from django.core.management import call_command
 from django.db import OperationalError, connection
 
 import catalog.search
@@ -307,3 +309,144 @@ def test_a_failed_rebuild_rolls_back_a_real_transaction():
     finally:
         with connection.cursor() as cursor:
             cursor.execute(f"DROP TABLE IF EXISTS {FTS_TABLE}")
+
+
+@pytest.mark.django_db
+class TestReindexCommand:
+    """The command an operator recovers an index with."""
+
+    def test_it_rebuilds_a_dropped_table(self):
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        with connection.cursor() as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {FTS_TABLE}")
+
+        out = StringIO()
+        call_command("reindex", stdout=out)
+
+        assert "Indexed 1 record" in out.getvalue()
+        assert [r[0] for r in search("Kuzari")] == [record.record_id]
+
+    def test_it_reports_records_it_could_not_index(self, monkeypatch):
+        good = Record.objects.create(title="Sefer ha-Kuzari")
+        bad = Record.objects.create(title="Mishneh Torah")
+        _fail_row_values_for(monkeypatch, {bad.record_id})
+
+        out = StringIO()
+        call_command("reindex", stdout=out)
+
+        assert "Indexed 1 record" in out.getvalue()
+        assert bad.record_id in out.getvalue()
+        assert [r[0] for r in search("Kuzari")] == [good.record_id]
+
+
+# Every editable field of the record change form, so a test can post it
+# with one value changed and have the form validate.
+RECORD_FORM_DEFAULTS = {
+    "slug": "",
+    "title_romanized": "",
+    "subtitle": "",
+    "date_of_publication": "",
+    "date_of_publication_display": "",
+    "place_of_publication": "",
+    "language": "",
+    "source_marc": "",
+    "source_catalog": "",
+    "cover_url": "",
+    "notes": "",
+    "provenance": "",
+    "created_by": "",
+    "authors": [],
+    "subjects": [],
+    "publishers": [],
+    "locations": [],
+    "external_identifiers-TOTAL_FORMS": "0",
+    "external_identifiers-INITIAL_FORMS": "0",
+    "external_identifiers-MIN_NUM_FORMS": "0",
+    "external_identifiers-MAX_NUM_FORMS": "1000",
+    "title_page_images-TOTAL_FORMS": "0",
+    "title_page_images-INITIAL_FORMS": "0",
+    "title_page_images-MIN_NUM_FORMS": "0",
+    "title_page_images-MAX_NUM_FORMS": "1000",
+}
+
+
+@pytest.mark.django_db
+class TestAdminIndexMaintenance:
+    """Writes made through the admin have to reach the index.
+
+    The index denormalizes a record's own text along with the names of
+    the authors, subjects and publishers it links to, so an admin write
+    that never reaches the index leaves search answering with text the
+    catalog no longer holds.
+    """
+
+    @pytest.fixture
+    def superuser_client(self, client, django_user_model):
+        django_user_model.objects.create_superuser(
+            username="admin", email="admin@example.com", password="pw"
+        )
+        client.login(username="admin", password="pw")
+        ensure_fts_table()
+        return client
+
+    def test_editing_a_record_updates_the_index(self, superuser_client):
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        index_record(record)
+
+        response = superuser_client.post(
+            f"/admin/catalog/record/{record.pk}/change/",
+            {**RECORD_FORM_DEFAULTS, "title": "Sefer ha-Zohar"},
+        )
+
+        assert response.status_code == 302
+        assert [r[0] for r in search("Zohar")] == [record.record_id]
+        assert search("Kuzari") == []
+
+    def test_deleting_a_record_clears_its_index_entry(self, superuser_client):
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        index_record(record)
+
+        response = superuser_client.post(
+            f"/admin/catalog/record/{record.pk}/delete/", {"post": "yes"}
+        )
+
+        assert response.status_code == 302
+        assert search("Kuzari") == []
+
+    def test_renaming_an_author_reindexes_their_records(
+        self, superuser_client
+    ):
+        author = Author.objects.create(name="Halevi, Yehudah")
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        record.authors.add(author)
+        index_record(record)
+
+        response = superuser_client.post(
+            f"/admin/catalog/author/{author.pk}/change/",
+            {
+                "name": "Judah Halevi",
+                "name_romanized": "",
+                "viaf_id": "",
+                "variant_names": "[]",
+            },
+        )
+
+        assert response.status_code == 302
+        assert [r[0] for r in search("Judah")] == [record.record_id]
+        assert search("Yehudah") == []
+
+    def test_deleting_an_author_reindexes_their_records(
+        self, superuser_client
+    ):
+        author = Author.objects.create(name="Halevi, Yehudah")
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        record.authors.add(author)
+        index_record(record)
+
+        response = superuser_client.post(
+            f"/admin/catalog/author/{author.pk}/delete/", {"post": "yes"}
+        )
+
+        assert response.status_code == 302
+        assert search("Yehudah") == []
+        assert [r[0] for r in search("Kuzari")] == [record.record_id]

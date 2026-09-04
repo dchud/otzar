@@ -13,10 +13,15 @@ from catalog.models import (
     Subject,
     TitlePageImage,
 )
+from catalog.search import reindex_records
 
 
 def delete_orphans(modeladmin, request, queryset):
-    """Delete selected items that have no linked records."""
+    """Delete selected items that have no linked records.
+
+    Nothing here touches the search index: an orphan is an object no
+    record links to, so no record's indexed text changes.
+    """
     deleted = 0
     for obj in queryset:
         if obj.records.count() == 0:
@@ -72,6 +77,46 @@ class LanguageFilter(admin.SimpleListFilter):
         return queryset.filter(language=value) if value else queryset
 
 
+class IndexedAdmin(admin.ModelAdmin):
+    """Admin for a model the search index reads text from.
+
+    The index denormalizes a record's own text together with the names
+    of the authors, subjects and publishers it links to, so a write
+    through the admin has to reindex every record that draws on the
+    object saved or deleted -- otherwise a record edited here keeps its
+    old text in search, a deleted one keeps an orphaned entry, and a
+    renamed author leaves every one of their records stale.
+
+    The default covers the models a record links to. `Record` itself
+    overrides it. Models the index holds no text from, such as
+    `Location` and `Series`, do not need this at all.
+    """
+
+    def indexed_record_ids(self, obj):
+        """Return the ids of records whose indexed text draws on `obj`."""
+        return list(obj.records.values_list("record_id", flat=True))
+
+    def save_related(self, request, form, formsets, change):
+        # Runs after the many-to-many fields and inlines are saved, so
+        # the record is whole by the time it is indexed.
+        super().save_related(request, form, formsets, change)
+        reindex_records(self.indexed_record_ids(form.instance))
+
+    def delete_model(self, request, obj):
+        record_ids = self.indexed_record_ids(obj)
+        super().delete_model(request, obj)
+        reindex_records(record_ids)
+
+    def delete_queryset(self, request, queryset):
+        record_ids = [
+            record_id
+            for obj in queryset
+            for record_id in self.indexed_record_ids(obj)
+        ]
+        super().delete_queryset(request, queryset)
+        reindex_records(record_ids)
+
+
 class ExternalIdentifierInline(admin.TabularInline):
     model = ExternalIdentifier
     extra = 1
@@ -88,7 +133,7 @@ class TitlePageImageInline(admin.TabularInline):
 
 
 @admin.register(Record)
-class RecordAdmin(admin.ModelAdmin):
+class RecordAdmin(IndexedAdmin):
     list_display = [
         "record_id",
         "title",
@@ -102,9 +147,12 @@ class RecordAdmin(admin.ModelAdmin):
     filter_horizontal = ["authors", "subjects", "publishers", "locations"]
     inlines = [ExternalIdentifierInline, TitlePageImageInline]
 
+    def indexed_record_ids(self, obj):
+        return [obj.record_id]
+
 
 @admin.register(Author)
-class AuthorAdmin(admin.ModelAdmin):
+class AuthorAdmin(IndexedAdmin):
     list_display = ["name", "name_romanized", "viaf_id", "record_count"]
     search_fields = ["name", "name_romanized", "viaf_id"]
     list_filter = [OrphanFilter]
@@ -123,7 +171,7 @@ class AuthorAdmin(admin.ModelAdmin):
 
 
 @admin.register(Subject)
-class SubjectAdmin(admin.ModelAdmin):
+class SubjectAdmin(IndexedAdmin):
     list_display = ["heading", "heading_romanized", "source", "record_count"]
     list_filter = ["source", OrphanFilter]
     search_fields = ["heading", "heading_romanized"]
@@ -142,7 +190,7 @@ class SubjectAdmin(admin.ModelAdmin):
 
 
 @admin.register(Publisher)
-class PublisherAdmin(admin.ModelAdmin):
+class PublisherAdmin(IndexedAdmin):
     list_display = ["name", "name_romanized", "place", "record_count"]
     search_fields = ["name", "name_romanized", "place"]
     list_filter = [OrphanFilter]
