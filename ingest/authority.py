@@ -5,10 +5,19 @@ romanized, and variant name matching strategies.
 """
 
 import re
+from dataclasses import dataclass, field
 
 from catalog.models import Author
 from catalog.utils import strip_marc_punctuation
 from sources.marc import has_hebrew
+from sources.viaf import (
+    CATALOG_AUTHORITY_SOURCES,
+    ClusterMatch,
+    VIAFClient,
+    VIAFCluster,
+    choose_cluster,
+    storable_forms,
+)
 
 # Match types in the order that makes a match trustworthy. An exact or
 # romanized hit is a name the catalog already holds in full; a variant
@@ -153,7 +162,7 @@ def single_strong_match(
     return author if match_type in STRONG_MATCH_TYPES else None
 
 
-def record_author_forms(author: Author, *forms: str) -> None:
+def record_author_forms(author: Author, *forms: str) -> list[str]:
     """Keep heading forms on *author* that it does not already carry.
 
     Filing a book under an author asserts that the headings it arrived
@@ -161,6 +170,8 @@ def record_author_forms(author: Author, *forms: str) -> None:
     from the other catalog matches on its own. A romanization of a
     heading in the original script belongs in ``name_romanized``, which
     the browse pages render; anything else is a variant name.
+
+    Returns the names of the fields written, empty when nothing was.
     """
     known = {
         normalize_for_comparison(str(value))
@@ -194,6 +205,7 @@ def record_author_forms(author: Author, *forms: str) -> None:
         changed.append("variant_names")
     if changed:
         author.save(update_fields=changed)
+    return changed
 
 
 def resolve_candidate_author(candidate: dict, choice=None) -> Author | None:
@@ -225,3 +237,165 @@ def resolve_candidate_author(candidate: dict, choice=None) -> Author | None:
 
     record_author_forms(author, primary, alternate)
     return author
+
+
+# ---------------------------------------------------------------------------
+# Enrichment from VIAF
+# ---------------------------------------------------------------------------
+
+# How many forms one enrichment adds to a row: room for both catalogs'
+# established headings and the tracings most likely to be typed at the
+# manual-entry form, while the list ``find_author_matches`` walks on
+# every row stays short.
+VIAF_FORM_LIMIT = 10
+
+# Outcomes of enriching an author, beyond those ``choose_cluster`` has.
+LINKED = "linked"
+CONFLICT = "conflict"
+UNAVAILABLE = "unavailable"
+
+
+@dataclass
+class AuthorEnrichment:
+    """What VIAF holds for an Author, and what of it is worth keeping.
+
+    ``outcome`` is ``linked`` when one cluster is the person and its ID
+    belongs on the row (or is there already); ``conflict`` when the row
+    carries a different ID; ``unavailable`` when VIAF did not answer;
+    otherwise one of the ``choose_cluster`` outcomes, with ``matches``
+    listing what did match so a caller can offer it. ``forms`` are the
+    name forms to record, best first, already reduced to those the row
+    lacks. ``also_linked`` are other rows carrying the same VIAF ID: the
+    same person filed twice.
+    """
+
+    author: Author
+    outcome: str
+    detail: str = ""
+    cluster: VIAFCluster | None = None
+    matches: list[tuple[VIAFCluster, ClusterMatch]] = field(
+        default_factory=list
+    )
+    forms: list[str] = field(default_factory=list)
+    also_linked: list[Author] = field(default_factory=list)
+
+    @property
+    def viaf_id(self) -> str:
+        return self.cluster.viaf_id if self.cluster is not None else ""
+
+    @property
+    def source_ids(self) -> dict[str, str]:
+        """The cluster's identifiers in the files this catalog draws on."""
+        if self.cluster is None:
+            return {}
+        return {
+            code: value
+            for code, value in self.cluster.source_ids.items()
+            if code in CATALOG_AUTHORITY_SOURCES
+        }
+
+
+def author_forms(author: Author) -> list[str]:
+    """Every name form the row holds: name, romanization, variants."""
+    return [
+        str(form)
+        for form in [author.name, author.name_romanized, *author.variant_names]
+        if form
+    ]
+
+
+def enrich_author_from_viaf(
+    author: Author, client: VIAFClient | None = None
+) -> AuthorEnrichment:
+    """Look *author* up in VIAF and return what it holds for them.
+
+    Nothing is written; :func:`apply_author_enrichment` does that. The
+    row's name and romanization drive the search, and every form on the
+    row is matched against what comes back, under the bar
+    ``choose_cluster`` sets. A row holding both the Hebrew heading and
+    the romanized one is matched on each against the heading in its own
+    script, which is how one person established in two files is
+    recognized across them.
+
+    Where this runs from. Not the confirm path: the first lookup of a
+    new author is one to four VIAF requests, each spaced by the client's
+    delay, and only a repeat is answered from the cache, so it would
+    hold the user's request for that long. The ``enrich_authors``
+    management command is the caller, run by hand or on a schedule over
+    the rows without a VIAF ID. The point a confirm could hand off from
+    is right after ``resolve_candidate_author`` creates a row, through a
+    task backend that runs outside the request; Django's built-in
+    immediate backend runs a task inside it, which costs the same as
+    calling directly.
+
+    A caller looping over authors passes one *client* for the whole
+    loop, because the wait between requests lives on the instance.
+    """
+    if client is None:
+        client = VIAFClient()
+
+    result = client.search_author_clusters(
+        author.name, author.name_romanized or None
+    )
+    if result is None:
+        return AuthorEnrichment(author, UNAVAILABLE, "VIAF did not answer")
+
+    choice = choose_cluster(result, author_forms(author))
+    if choice.cluster is None:
+        return AuthorEnrichment(
+            author, choice.outcome, choice.detail, matches=choice.matches
+        )
+
+    cluster = choice.cluster
+    if author.viaf_id and author.viaf_id != cluster.viaf_id:
+        detail = (
+            f"row carries VIAF {author.viaf_id}; the search found "
+            f"VIAF {cluster.viaf_id} {choice.detail}"
+        )
+        return AuthorEnrichment(
+            author, CONFLICT, detail, cluster, choice.matches
+        )
+
+    known = {normalize_for_comparison(form) for form in author_forms(author)}
+    forms: list[str] = []
+    for form in storable_forms(cluster):
+        key = normalize_for_comparison(form)
+        if key in known:
+            continue
+        known.add(key)
+        forms.append(form)
+        if len(forms) == VIAF_FORM_LIMIT:
+            break
+
+    also_linked = list(
+        Author.objects.filter(viaf_id=cluster.viaf_id).exclude(pk=author.pk)
+    )
+    return AuthorEnrichment(
+        author,
+        LINKED,
+        choice.detail,
+        cluster,
+        choice.matches,
+        forms,
+        also_linked,
+    )
+
+
+def apply_author_enrichment(enrichment: AuthorEnrichment) -> list[str]:
+    """Write a ``linked`` enrichment onto its row; return the fields written.
+
+    Sets ``viaf_id`` when the row has none and records the forms through
+    ``record_author_forms``, which files a romanization of a Hebrew name
+    in ``name_romanized`` and everything else in ``variant_names``. Any
+    other outcome writes nothing.
+    """
+    if enrichment.outcome != LINKED:
+        return []
+    author = enrichment.author
+    changed: list[str] = []
+    if not author.viaf_id:
+        author.viaf_id = enrichment.viaf_id
+        author.save(update_fields=["viaf_id"])
+        changed.append("viaf_id")
+    changed.extend(record_author_forms(author, *enrichment.forms))
+    return changed
