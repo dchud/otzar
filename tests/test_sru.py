@@ -86,10 +86,10 @@ FAKE_XML = """\
 
 class TestSRUClientSearch:
     def _make_client(self, **kwargs):
-        defaults = dict(
-            base_url="https://example.com/sru",
-            request_delay=0,
-        )
+        defaults = {
+            "base_url": "https://example.com/sru",
+            "request_delay": 0,
+        }
         defaults.update(kwargs)
         return SRUClient(**defaults)
 
@@ -266,7 +266,10 @@ class TestSearchCaching:
     """
 
     def _make_client(self, **kwargs):
-        defaults = dict(base_url="https://example.com/sru", request_delay=0)
+        defaults = {
+            "base_url": "https://example.com/sru",
+            "request_delay": 0,
+        }
         defaults.update(kwargs)
         return SRUClient(**defaults)
 

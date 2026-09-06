@@ -1,5 +1,6 @@
 import html as html_module
 import re
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -412,7 +413,7 @@ class TestExpandedRow:
         match = re.search(
             r'<textarea name="candidate_data"[^>]*>(.*?)</textarea>',
             html,
-            re.S,
+            re.DOTALL,
         )
         assert match, "no candidate payload in the row"
 
@@ -476,7 +477,7 @@ class TestRepeatIsbnSearch:
     with its empty candidate list.
     """
 
-    RESULT = {
+    RESULT: ClassVar[dict[str, list[dict[str, str]]]] = {
         "nli_records": [{"title": "Found on the second pass"}],
         "lc_records": [],
     }

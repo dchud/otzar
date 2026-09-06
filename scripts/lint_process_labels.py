@@ -52,23 +52,25 @@ EXEMPTION = "process-label-ok"
 
 CHECKS = [
     (
-        re.compile(r"\bbd-[a-z0-9]{3,}\b", re.I),
+        re.compile(r"\bbd-[a-z0-9]{3,}\b", re.IGNORECASE),
         "bead ID",
     ),
     (
-        re.compile(r"\bPR\s*#\s*\d+|\bPR\d+\b|\bthis PR\b", re.I),
+        re.compile(r"\bPR\s*#\s*\d+|\bPR\d+\b|\bthis PR\b", re.IGNORECASE),
         "PR reference",
     ),
     (
         re.compile(
             r"\b(?:since|as of|flipped in|changed in|default since)\s+"
             r"v?\d+\.\d+",
-            re.I,
+            re.IGNORECASE,
         ),
         "version-tagged claim",
     ),
     (
-        re.compile(r"\b(?:pre|post)-(?:PR|release|merge|migration)\b", re.I),
+        re.compile(
+            r"\b(?:pre|post)-(?:PR|release|merge|migration)\b", re.IGNORECASE
+        ),
         "stage-relative wording",
     ),
 ]

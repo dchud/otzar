@@ -142,7 +142,7 @@ class TestEnrichAuthorFromViaf:
         enrichment = enrich_author_from_viaf(author, client=client)
 
         assert enrichment.outcome == LINKED
-        matched = dict((c.viaf_id, m) for c, m in enrichment.matches)[
+        matched = {c.viaf_id: m for c, m in enrichment.matches}[
             SHNEUR_ZALMAN_ID
         ]
         assert matched.tier == HEADING
