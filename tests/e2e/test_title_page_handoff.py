@@ -1,7 +1,9 @@
 """End-to-end tests for the title-page phone-to-desktop handoff."""
 
 import os
+import threading
 import time
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -65,6 +67,42 @@ WIDE_CANDIDATES = WIDE_CANDIDATES * 4
 def _phone_token(user):
     """Sign a title-target QR token for the given user."""
     return TimestampSigner().sign(f"{user.pk}:title")
+
+
+# Upper bound on how long a held-open vision call waits to be released.
+# Only a test that never gets to its release reaches it; it exists so
+# such a test fails instead of hanging the server thread forever.
+OCR_RELEASE_TIMEOUT = 30
+
+
+@contextmanager
+def ocr_held_open(mock_ocr):
+    """Block the mocked vision call for the body of the ``with``.
+
+    A fixed sleep gives the assertions inside a fixed budget, and on a
+    loaded machine the poll they are waiting for does not reliably fit
+    in it. Holding the call open instead makes the run last exactly as
+    long as the assertions need: the lease stays taken while they check
+    for it, and the call returns when the block ends.
+
+    Yields the event the view sets on reaching the mock, which is after
+    it has taken the lease. Waiting on that orders a second device's
+    action after the lease rather than hoping for it.
+    """
+    reached = threading.Event()
+    release = threading.Event()
+
+    def blocking_ocr(_image_bytes):
+        reached.set()
+        if not release.wait(timeout=OCR_RELEASE_TIMEOUT):
+            raise AssertionError("the OCR mock was never released")
+        return SAMPLE_OCR_RESPONSE
+
+    mock_ocr.side_effect = blocking_ocr
+    try:
+        yield reached
+    finally:
+        release.set()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -650,13 +688,6 @@ class TestSharedOCRProgress:
         the entire run, and pressing it spent a second vision call on
         the same image.
         """
-
-        def slow_ocr(_image_bytes):
-            # Long enough for the desktop's 3s poll to come round twice.
-            time.sleep(6)
-            return SAMPLE_OCR_RESPONSE
-
-        mock_ocr.side_effect = slow_ocr
         scan = self._staged_scan(staff_user)
 
         desktop = browser.new_context()
@@ -677,22 +708,23 @@ class TestSharedOCRProgress:
             phone_page.locator(f"#title-page-card-{scan.pk}")
         ).to_be_visible(timeout=10000)
 
-        # Phone starts the run and does not wait for it.
-        phone_page.click(
-            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
-        )
+        with ocr_held_open(mock_ocr) as ocr_reached:
+            # Phone starts the run and does not wait for it.
+            phone_page.click(
+                'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+            )
+            assert ocr_reached.wait(timeout=15), (
+                "the phone's request never reached the vision call"
+            )
 
-        # Desktop learns about it on its next poll.
-        expect(
-            desktop_page.locator(
+            # Desktop learns about it on its next poll. The run is held
+            # open until this passes, so the wait is bounded by the poll
+            # alone and cannot lose a race against the run finishing.
+            reading = desktop_page.locator(
                 f"#title-page-card-{scan.pk} button:text('Reading...')"
             )
-        ).to_be_visible(timeout=8000)
-        expect(
-            desktop_page.locator(
-                f"#title-page-card-{scan.pk} button:text('Reading...')"
-            )
-        ).to_be_disabled()
+            expect(reading).to_be_visible(timeout=15000)
+            expect(reading).to_be_disabled()
 
         # And once the run finishes the desktop moves on with it.
         expect(
@@ -775,11 +807,6 @@ class TestConcurrentDeviceFeedback:
     def test_second_device_is_told_ocr_is_already_running(
         self, mock_ocr, browser, live_server, staff_user
     ):
-        def slow_ocr(_image_bytes):
-            time.sleep(6)
-            return SAMPLE_OCR_RESPONSE
-
-        mock_ocr.side_effect = slow_ocr
         scan = self._staged_scan(staff_user)
 
         phone = browser.new_context()
@@ -800,19 +827,36 @@ class TestConcurrentDeviceFeedback:
             desktop_page.locator(f"#title-page-card-{scan.pk}")
         ).to_be_visible(timeout=10000)
 
-        # Phone starts the run.
-        phone_page.click(
-            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+        # What is under test is a device acting on a view that has not
+        # caught up yet, so the desktop's poll is pinned at the state it
+        # had before the phone started: 204 tells htmx to leave the DOM
+        # alone. Whether the poll eventually shows the lease is the
+        # sibling test's job; here it would only remove the stale button
+        # this test has to click, on a tick nothing controls.
+        desktop_page.route(
+            "**/scan-title/poll/",
+            lambda route: route.fulfill(status=204, body=""),
         )
 
-        # Desktop clicks before its poll has caught up. The request is
-        # refused, and the refusal has to be visible.
-        desktop_page.click(
-            'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
-        )
-        expect(desktop_page.locator("#title-page-metadata")).to_contain_text(
-            "already running", timeout=8000
-        )
+        with ocr_held_open(mock_ocr) as ocr_reached:
+            # Phone starts the run.
+            phone_page.click(
+                'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+            )
+            # The lease has to be taken before the desktop clicks, or the
+            # second click is not the second click.
+            assert ocr_reached.wait(timeout=15), (
+                "the phone's request never reached the vision call"
+            )
+
+            # Desktop clicks on its stale view. The request is refused,
+            # and the refusal has to be visible.
+            desktop_page.click(
+                'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
+            )
+            expect(
+                desktop_page.locator("#title-page-metadata")
+            ).to_contain_text("already running", timeout=15000)
 
         assert mock_ocr.call_count == 1
 
