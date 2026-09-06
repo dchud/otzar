@@ -142,7 +142,15 @@ class RecordAdmin(IndexedAdmin):
         "created_at",
     ]
     list_filter = ["source_catalog", LanguageFilter]
-    search_fields = ["title", "title_romanized", "record_id", "provenance"]
+    search_fields = [
+        "title",
+        "title_romanized",
+        "record_id",
+        "provenance",
+        "bookplate_text",
+        "dedication_text",
+        "stamp_text",
+    ]
     readonly_fields = ["record_id", "created_at", "updated_at"]
     filter_horizontal = ["authors", "subjects", "publishers", "locations"]
     inlines = [ExternalIdentifierInline, TitlePageImageInline]

@@ -190,6 +190,133 @@ class TestRecordAdminProvenance:
 
 
 @pytest.mark.django_db
+class TestRecordOwnershipMarks:
+    """Marks the copy carries: a bookplate, a dedication, a stamp.
+
+    Three different things -- a printed ownership label, a handwritten
+    inscription, an institutional mark -- transcribed as they read.
+    """
+
+    def test_marks_default_to_empty(self):
+        record = Record.objects.create(title="Unmarked Copy")
+        record.refresh_from_db()
+        assert record.bookplate_text == ""
+        assert record.dedication_text == ""
+        assert record.stamp_text == ""
+
+    def test_bookplate_text_stores_a_transcription(self):
+        record = Record.objects.create(
+            title="Sefer ha-Kuzari",
+            bookplate_text="Ex libris David Solomon Sassoon",
+        )
+        record.refresh_from_db()
+        assert record.bookplate_text == "Ex libris David Solomon Sassoon"
+
+    def test_stamp_text_holds_one_line_per_stamp(self):
+        text = (
+            "Bibliothèque de l'Alliance Israélite Universelle, Paris\n"
+            "WITHDRAWN"
+        )
+        record = Record.objects.create(
+            title="Sefer ha-Kuzari", stamp_text=text
+        )
+        record.refresh_from_db()
+        assert record.stamp_text == text
+
+    def test_dedication_text_holds_hebrew(self):
+        record = Record.objects.create(
+            title="Mishneh Torah", dedication_text="לזכר נשמת אמי מורתי"
+        )
+        record.refresh_from_db()
+        assert record.dedication_text == "לזכר נשמת אמי מורתי"
+
+    def test_a_mark_has_no_length_ceiling(self):
+        # A dedication transcribes what someone wrote by hand, and
+        # nothing about that has a width worth picking: a presentation
+        # inscription can run to a paragraph, and a copy can carry more
+        # than one bookplate or stamp, each on its own line. So these
+        # are text fields rather than CharFields.
+        dedication = "\n".join(
+            f"For Rivka, on her {n}th birthday, with love from Papa"
+            for n in range(100)
+        )
+        assert len(dedication) > 4000
+        record = Record.objects.create(
+            title="Siddur", dedication_text=dedication
+        )
+        record.refresh_from_db()
+        assert record.dedication_text == dedication
+
+
+@pytest.mark.django_db
+class TestRecordFormOwnershipMarks:
+    def test_form_saves_every_mark(self):
+        form = RecordForm(
+            data={
+                "title": "Sefer ha-Kuzari",
+                "bookplate_text": "Ex libris David Solomon Sassoon",
+                "dedication_text": "To Rivka, from her father, 1932.",
+                "stamp_text": "Alliance Israélite Universelle, Paris",
+            }
+        )
+        assert form.is_valid(), form.errors
+        record = form.save()
+        record.refresh_from_db()
+        assert record.bookplate_text == "Ex libris David Solomon Sassoon"
+        assert record.dedication_text == "To Rivka, from her father, 1932."
+        assert record.stamp_text == "Alliance Israélite Universelle, Paris"
+
+    def test_marks_are_optional(self):
+        form = RecordForm(data={"title": "Unmarked Copy"})
+        assert form.is_valid(), form.errors
+        record = form.save()
+        assert record.bookplate_text == ""
+        assert record.dedication_text == ""
+        assert record.stamp_text == ""
+
+
+@pytest.mark.django_db
+class TestRecordAdminOwnershipMarks:
+    @pytest.fixture
+    def superuser_client(self, client, django_user_model):
+        django_user_model.objects.create_superuser(
+            username="root", password="rootpass123", email="root@example.com"
+        )
+        client.login(username="root", password="rootpass123")
+        return client
+
+    @pytest.mark.parametrize(
+        "field", ["bookplate_text", "dedication_text", "stamp_text"]
+    )
+    def test_change_form_offers_the_mark(self, superuser_client, field):
+        record = Record.objects.create(title="Sefer ha-Kuzari")
+        response = superuser_client.get(
+            f"/admin/catalog/record/{record.pk}/change/"
+        )
+        assert f'name="{field}"' in response.content.decode()
+
+    @pytest.mark.parametrize(
+        "field,term",
+        [
+            ("bookplate_text", "Sassoon"),
+            ("dedication_text", "Rivka"),
+            ("stamp_text", "Alliance"),
+        ],
+    )
+    def test_admin_search_matches_the_mark(
+        self, superuser_client, field, term
+    ):
+        Record.objects.create(
+            title="Sefer ha-Kuzari", **{field: f"Ex libris {term}"}
+        )
+        Record.objects.create(title="Some Other Book")
+        response = superuser_client.get(f"/admin/catalog/record/?q={term}")
+        body = response.content.decode()
+        assert "Sefer ha-Kuzari" in body
+        assert "Some Other Book" not in body
+
+
+@pytest.mark.django_db
 class TestAuthorModel:
     def test_create_author(self):
         author = Author.objects.create(
