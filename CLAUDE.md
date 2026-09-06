@@ -248,9 +248,11 @@ between. GitHub collapses single line breaks, and a manual wrap there produces
 noisy diffs and awkward mobile rendering.
 
 Markdown files in the repository are hard-wrapped at 79 columns, like the
-Python. They are source files: they are reviewed as diffs line by line, and an
-edited sentence in an unwrapped paragraph rewrites the whole paragraph in the
-diff. That GitHub also renders them does not make them the first case.
+Python. They are read in a terminal as often as in a browser — with `cat`, in
+an editor, by an agent — and none of those reflow a 400-character paragraph.
+They are also reviewed as diffs, where an edited sentence inside an unwrapped
+paragraph rewrites the whole paragraph. That GitHub renders them too does not
+make them the first case.
 
 Exceptions in both: fenced code blocks, tables, and long URLs, none of which are
 broken to fit. Commit message bodies wrap at ~72.

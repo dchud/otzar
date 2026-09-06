@@ -1,0 +1,265 @@
+{
+  "schema_version": "br.doctor.schema_migration.applied.v1",
+  "run_id": "20260904T222445.440228Z-3737-0",
+  "database_path": "/Users/dchud/Documents/projects/otzar/.beads/beads.db",
+  "plan_token": "62f6f7cfa1533c1a6ce6d3df5e41efec4dd81dfafe37d34da3d4381edf890662",
+  "prepared_receipt_sha256": "558296226d66bb1148469564e1e0052a8091b6bb50d4393b542d1784017a8709",
+  "marked_at": "2026-09-04T22:24:45.465888+00:00",
+  "forecast": {
+    "from_version": 13,
+    "to_version": 17,
+    "content_hash_rows_rebuilt": 166,
+    "gate_result_history_created": true,
+    "post_migration_maintenance": true
+  },
+  "effects": {
+    "from_version": 13,
+    "to_version": 17,
+    "content_hash_rows_rebuilt": 166,
+    "gate_result_history_created": true,
+    "post_migration_maintenance_completed": true
+  },
+  "raw_before": {
+    "components": [
+      {
+        "suffix": "",
+        "present": true,
+        "length": 1273856,
+        "sha256": "c84323f665c0fd27b44bd373ef77442d228d001e75a3c25eb409f3bf7a41bfe8",
+        "unix_mode": 33188
+      },
+      {
+        "suffix": "-wal",
+        "present": true,
+        "length": 32,
+        "sha256": "a3e69e858ce2bb1e7f6f364111a6396cc37db70169b4183a6c8dcf827b7969d0",
+        "unix_mode": 33188
+      },
+      {
+        "suffix": "-shm",
+        "present": true,
+        "length": 32768,
+        "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+        "unix_mode": 33188
+      },
+      {
+        "suffix": "-journal",
+        "present": false,
+        "length": null,
+        "sha256": null,
+        "unix_mode": null
+      }
+    ]
+  },
+  "logical_before": {
+    "user_version": 13,
+    "integrity_check": "database disk image is malformed: page 19 is never used",
+    "schema_sha256": "987c20a1e37bb2cca10775625de4e2f9fa5aa316a72f748645c0747f6074ea57",
+    "contents_sha256": "609fd427d6329436d1e3cd8408d78bc9d437dd25397d9026f0b0bba3a413e953",
+    "tables": [
+      {
+        "name": "blocked_issues_cache",
+        "row_count": 8,
+        "rows_sha256": "fa1394a50470778d7410bbbfedb1d3bdc3ba67593a429f776b7fd6aefa963b17"
+      },
+      {
+        "name": "child_counters",
+        "row_count": 3,
+        "rows_sha256": "9e6ff417f6bac43bef21efd53ae5952e4f14c31c40100fc0a2d88d3b1432b3f1"
+      },
+      {
+        "name": "close_metadata",
+        "row_count": 0,
+        "rows_sha256": "fd96e66f70122d836c45823be36b8d96be0a7423a9149ec2dd05f16c4263d31f"
+      },
+      {
+        "name": "comments",
+        "row_count": 7,
+        "rows_sha256": "9a0eb03798b56c1d27651910b5bee7087f5a841ab280ee63d59b2c7a50f25cd9"
+      },
+      {
+        "name": "config",
+        "row_count": 1,
+        "rows_sha256": "99b0e7c4370d614d7835f93154329baabc6fcc874f56f7cd870fb6084cdd406d"
+      },
+      {
+        "name": "dependencies",
+        "row_count": 227,
+        "rows_sha256": "4111ba84bac6f8c29d26dccfe090ad5b02140bfbb23c3d073343a4c098c853ce"
+      },
+      {
+        "name": "dirty_issues",
+        "row_count": 0,
+        "rows_sha256": "cc278c69726f5a1f8dcdb479e985171f764ae8c4d8d41b8280826baf1b1be1ba"
+      },
+      {
+        "name": "events",
+        "row_count": 660,
+        "rows_sha256": "d8717be50cf0b9989da634fbc08fad4a5a62117e841f7a5def59728ff99d08ab"
+      },
+      {
+        "name": "export_hashes",
+        "row_count": 166,
+        "rows_sha256": "7e16846183fb5775b49fa6db6be35b62f52638d4bcefd13e85bcae851f370023"
+      },
+      {
+        "name": "gate_results",
+        "row_count": 0,
+        "rows_sha256": "a360c72db907c2936d5c05af4e653445922cc0355d2a23543f62c22716ab7f3a"
+      },
+      {
+        "name": "issues",
+        "row_count": 166,
+        "rows_sha256": "e5bef356b9fbad22c80ff98ed87fbf92ae4724432db9500be5483acd2c2e61b8"
+      },
+      {
+        "name": "labels",
+        "row_count": 0,
+        "rows_sha256": "fb539d9bc19887aa9dc6e722e6b5cb23fd15ed21368892624bc3b43dcc2c4df7"
+      },
+      {
+        "name": "metadata",
+        "row_count": 7,
+        "rows_sha256": "0eb66bfe7051e00b2750a826eefb4f3d6bb1c2cc864a21eab436770a0f7e4249"
+      },
+      {
+        "name": "sqlite_sequence",
+        "row_count": 2,
+        "rows_sha256": "27825d1532f05f90591f3af1c95fa03d640e19b37864954df589a51e3e74b60c"
+      }
+    ]
+  },
+  "raw_after": {
+    "components": [
+      {
+        "suffix": "",
+        "present": true,
+        "length": 1269760,
+        "sha256": "075f12866a90a58b6944b294b33184072199c234a0ee311131bd54fa3cef4e38",
+        "unix_mode": 33188
+      },
+      {
+        "suffix": "-wal",
+        "present": false,
+        "length": null,
+        "sha256": null,
+        "unix_mode": null
+      },
+      {
+        "suffix": "-shm",
+        "present": false,
+        "length": null,
+        "sha256": null,
+        "unix_mode": null
+      },
+      {
+        "suffix": "-journal",
+        "present": false,
+        "length": null,
+        "sha256": null,
+        "unix_mode": null
+      }
+    ]
+  },
+  "logical_after": {
+    "user_version": 17,
+    "integrity_check": "ok",
+    "schema_sha256": "3f2f3375d1c02a584bf3e42b56f4edc39db2a08bc79f7e1d1e351921b9588742",
+    "contents_sha256": "882cb6322e17d56ef2611d84d8142cb883242882d40025f7e11a16e399454924",
+    "tables": [
+      {
+        "name": "blocked_issues_cache",
+        "row_count": 8,
+        "rows_sha256": "fa1394a50470778d7410bbbfedb1d3bdc3ba67593a429f776b7fd6aefa963b17"
+      },
+      {
+        "name": "capacity_exemption_history",
+        "row_count": 0,
+        "rows_sha256": "093b079b9c2a552c936ecb3e31471049f83bf52d3bd9fd2a3c21733d9cd125c1"
+      },
+      {
+        "name": "capacity_exemptions",
+        "row_count": 0,
+        "rows_sha256": "fbda7353fb3baafd599889c90557842a503be99c1dcb186eca832ad2794cb7b4"
+      },
+      {
+        "name": "capacity_occupancy",
+        "row_count": 0,
+        "rows_sha256": "dabbdb58ea49d71bca1d7009676e4635877eaf260f4c892b2c665ab88ebde075"
+      },
+      {
+        "name": "child_counters",
+        "row_count": 3,
+        "rows_sha256": "9e6ff417f6bac43bef21efd53ae5952e4f14c31c40100fc0a2d88d3b1432b3f1"
+      },
+      {
+        "name": "close_metadata",
+        "row_count": 0,
+        "rows_sha256": "fd96e66f70122d836c45823be36b8d96be0a7423a9149ec2dd05f16c4263d31f"
+      },
+      {
+        "name": "comments",
+        "row_count": 7,
+        "rows_sha256": "9a0eb03798b56c1d27651910b5bee7087f5a841ab280ee63d59b2c7a50f25cd9"
+      },
+      {
+        "name": "config",
+        "row_count": 1,
+        "rows_sha256": "99b0e7c4370d614d7835f93154329baabc6fcc874f56f7cd870fb6084cdd406d"
+      },
+      {
+        "name": "dependencies",
+        "row_count": 227,
+        "rows_sha256": "4111ba84bac6f8c29d26dccfe090ad5b02140bfbb23c3d073343a4c098c853ce"
+      },
+      {
+        "name": "dirty_issues",
+        "row_count": 166,
+        "rows_sha256": "f9ba300073bf1fb59dd6f8e5e895352710df7555a40a32cf0da3b68cedb69874"
+      },
+      {
+        "name": "events",
+        "row_count": 660,
+        "rows_sha256": "d8717be50cf0b9989da634fbc08fad4a5a62117e841f7a5def59728ff99d08ab"
+      },
+      {
+        "name": "export_hashes",
+        "row_count": 0,
+        "rows_sha256": "95f71892c7a32c3fd14b3151e8690d5babb95473f62cd0776e4d817898f3e9ee"
+      },
+      {
+        "name": "gate_result_history",
+        "row_count": 0,
+        "rows_sha256": "ade6edf42bcd9c1b088917fba2152530722844ee57e6447eafe84fd20f177162"
+      },
+      {
+        "name": "gate_results",
+        "row_count": 0,
+        "rows_sha256": "a360c72db907c2936d5c05af4e653445922cc0355d2a23543f62c22716ab7f3a"
+      },
+      {
+        "name": "issues",
+        "row_count": 166,
+        "rows_sha256": "e3f17951dece938821186b70b8883fe6fac8b54758b683b1d4cdb154defb881d"
+      },
+      {
+        "name": "labels",
+        "row_count": 0,
+        "rows_sha256": "fb539d9bc19887aa9dc6e722e6b5cb23fd15ed21368892624bc3b43dcc2c4df7"
+      },
+      {
+        "name": "metadata",
+        "row_count": 7,
+        "rows_sha256": "0eb66bfe7051e00b2750a826eefb4f3d6bb1c2cc864a21eab436770a0f7e4249"
+      },
+      {
+        "name": "sqlite_sequence",
+        "row_count": 2,
+        "rows_sha256": "27825d1532f05f90591f3af1c95fa03d640e19b37864954df589a51e3e74b60c"
+      }
+    ]
+  },
+  "attested": true,
+  "attestation_errors": [],
+  "undo_command": "br doctor migrate-schema undo 20260904T222445.440228Z-3737-0"
+}
