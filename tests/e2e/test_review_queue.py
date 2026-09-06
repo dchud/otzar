@@ -96,9 +96,8 @@ class TestQueueRows:
 
 @pytest.mark.django_db(transaction=True)
 class TestInlineConfirm:
-    @patch("ingest.views.fetch_cover_url", return_value="")
     def test_confirm_inside_the_row_creates_the_record(
-        self, _cover, page, live_server, staff_user, queued_scan
+        self, page, live_server, staff_user, queued_scan
     ):
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/queue/")

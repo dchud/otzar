@@ -10,8 +10,6 @@ Both are checked from the browser, because both are only worth having
 if a reader can see them on the record afterwards.
 """
 
-from unittest.mock import patch
-
 import pytest
 from playwright.sync_api import expect
 
@@ -93,9 +91,8 @@ def confirm_in_queue(page, live_server, scan, index):
 class TestReviewPageConfirm:
     """The route that ends on the new record's own page."""
 
-    @patch("ingest.views.fetch_cover_url", return_value="")
     def test_the_part_and_the_responsibility_reach_the_record_page(
-        self, _cover, page, live_server, staff_user
+        self, page, live_server, staff_user
     ):
         scan = scan_for(staff_user, VOLUME_TWO)
         login(page, live_server)
@@ -115,9 +112,8 @@ class TestReviewPageConfirm:
             "translated, annotated, and elucidated by"
         )
 
-    @patch("ingest.views.fetch_cover_url", return_value="")
     def test_the_series_statement_reaches_the_record_page(
-        self, _cover, page, live_server, staff_user
+        self, page, live_server, staff_user
     ):
         scan = scan_for(staff_user, VOLUME_TWO)
         login(page, live_server)
@@ -139,9 +135,8 @@ class TestReviewPageConfirm:
 
 @pytest.mark.django_db(transaction=True)
 class TestSecondVolumeJoinsTheSet:
-    @patch("ingest.views.fetch_cover_url", return_value="")
     def test_the_second_confirm_lands_in_the_first_one_s_series(
-        self, _cover, page, live_server, staff_user
+        self, page, live_server, staff_user
     ):
         """Two volumes of one set are one series with two positions.
 
@@ -184,9 +179,8 @@ class TestSecondVolumeJoinsTheSet:
 
 @pytest.mark.django_db(transaction=True)
 class TestCandidateWithoutSeries:
-    @patch("ingest.views.fetch_cover_url", return_value="")
     def test_it_confirms_and_the_page_offers_no_empty_series(
-        self, _cover, page, live_server, staff_user
+        self, page, live_server, staff_user
     ):
         scan = scan_for(staff_user, NO_SERIES)
         login(page, live_server)
