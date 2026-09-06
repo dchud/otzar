@@ -19,6 +19,9 @@ FTS_TEXT_COLUMNS = {
     "place": "place_of_publication",
     "notes": "notes",
     "provenance": "provenance",
+    "bookplate": "bookplate_text",
+    "dedication": "dedication_text",
+    "stamp": "stamp_text",
 }
 
 # Columns assembled from related objects rather than a single attribute.

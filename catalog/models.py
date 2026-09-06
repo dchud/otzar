@@ -57,8 +57,37 @@ class Record(models.Model):
     provenance = models.TextField(
         blank=True,
         help_text=(
-            "Ownership history of this copy: former owners, inscriptions, "
-            "bookplates, stamps, and how it was acquired."
+            "Ownership history of this copy in prose: former owners, how "
+            "it was acquired, where it has been. Transcribe a bookplate, "
+            "a dedication or a stamp in its own field instead."
+        ),
+    )
+    # The marks of ownership the copy carries, transcribed as they
+    # read. Provenance says who owned the item; these say what the item
+    # itself shows for it. They are text rather than CharFields because
+    # a transcription has no width worth picking: a bookplate can carry
+    # a motto and a donor line, a dedication runs to a paragraph, and a
+    # copy can bear several stamps, each on its own line.
+    bookplate_text = models.TextField(
+        blank=True,
+        help_text=(
+            "Text of any bookplate pasted into this copy, including the "
+            "owner's name and any motto."
+        ),
+    )
+    dedication_text = models.TextField(
+        blank=True,
+        help_text=(
+            "Text of any handwritten dedication or presentation "
+            "inscription, with who wrote it for whom, if the "
+            "inscription says."
+        ),
+    )
+    stamp_text = models.TextField(
+        blank=True,
+        help_text=(
+            "Text of any stamp on this copy — a library, a "
+            "bookseller, a private collection. One stamp per line."
         ),
     )
     created_by = models.ForeignKey(

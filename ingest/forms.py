@@ -36,6 +36,9 @@ class RecordForm(forms.ModelForm):
             "language",
             "notes",
             "provenance",
+            "bookplate_text",
+            "dedication_text",
+            "stamp_text",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -58,5 +61,17 @@ class RecordForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"class": INPUT_CLASSES, "rows": 3}),
             "provenance": forms.Textarea(
                 attrs={"class": INPUT_CLASSES, "rows": 3, "dir": "auto"}
+            ),
+            # Transcriptions, so they take the item's own direction.
+            # Two rows for a bookplate and a stamp, which are a line or
+            # two each; three for a dedication, which runs longer.
+            "bookplate_text": forms.Textarea(
+                attrs={"class": INPUT_CLASSES, "rows": 2, "dir": "auto"}
+            ),
+            "dedication_text": forms.Textarea(
+                attrs={"class": INPUT_CLASSES, "rows": 3, "dir": "auto"}
+            ),
+            "stamp_text": forms.Textarea(
+                attrs={"class": INPUT_CLASSES, "rows": 2, "dir": "auto"}
             ),
         }
