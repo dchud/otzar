@@ -262,7 +262,7 @@ class TestSearchCaching:
 
     The cache sits inside ``search``, below the cascade, so the cascade
     needs no knowledge of it. Every test here runs against the per-test
-    locmem cache installed by the root ``conftest.py``.
+    locmem cache installed by ``tests/conftest.py``.
     """
 
     def _make_client(self, **kwargs):

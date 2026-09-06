@@ -419,7 +419,7 @@ class TestVIAFCaching:
     """VIAF answers the same authority query from the cache on a repeat.
 
     Each test runs against the per-test locmem cache installed by the
-    root ``conftest.py``, so nothing here depends on test order.
+    ``tests/conftest.py``, so nothing here depends on test order.
     """
 
     @patch("sources.viaf.httpx.get")
