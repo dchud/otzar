@@ -612,7 +612,7 @@ class TestHebrewParticles:
         useful, so it is not made. The query הר still reaches הרב, as a
         prefix, but not the ר of ר׳ עקיבא.
         """
-        harav, mountain, rabbi = index_titles("הרב", "הר סיני", "ר׳ עקיבא")
+        harav, mountain, _rabbi = index_titles("הרב", "הר סיני", "ר׳ עקיבא")
         assert result_ids("רב") == [harav.record_id]
         assert set(result_ids("הר")) == {harav.record_id, mountain.record_id}
 
@@ -633,7 +633,7 @@ class TestHebrewParticles:
         strips to דבר and would then match דברים, Deuteronomy. The cost
         is that הספר does not reach ספרים; the base word ספר does.
         """
-        numbers, deuteronomy, books = index_titles("במדבר", "דברים", "ספרים")
+        numbers, _deuteronomy, books = index_titles("במדבר", "דברים", "ספרים")
         assert result_ids("במדבר") == [numbers.record_id]
         assert result_ids("הספר") == []
         assert result_ids("ספר") == [books.record_id]

@@ -6,10 +6,13 @@ and NLI's pattern (Hebrew directly in primary fields like 245, 100).
 """
 
 import json
+import logging
 import re
 import xml.etree.ElementTree as ET
 
 import mrrc
+
+logger = logging.getLogger(__name__)
 
 # --- Namespace handling ---
 
@@ -74,7 +77,9 @@ def extract_marc_records(xml_text: str) -> tuple[int, list[mrrc.Record]]:
             parsed = mrrc.xml_to_record(marc_xml_str)
             records.append(parsed)
         except Exception:
-            # Skip records that mrrc cannot parse.
+            # One unparseable record in a response should not lose the
+            # rest, but a silent skip hides a malformed SRU payload.
+            logger.debug("Skipping record mrrc could not parse", exc_info=True)
             continue
 
     return num_records, records

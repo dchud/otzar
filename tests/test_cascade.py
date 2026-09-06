@@ -48,7 +48,10 @@ _SRU_XML_EMPTY = """\
 
 
 def _make_client(**kwargs) -> SRUClient:
-    defaults = dict(base_url="https://example.com/sru", request_delay=0)
+    defaults = {
+        "base_url": "https://example.com/sru",
+        "request_delay": 0,
+    }
     defaults.update(kwargs)
     return SRUClient(**defaults)
 

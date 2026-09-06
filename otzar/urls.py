@@ -14,7 +14,7 @@ def health_check(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         return JsonResponse({"status": "ok"})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any failure means unhealthy
         return JsonResponse({"status": "error", "detail": str(e)}, status=503)
 
 

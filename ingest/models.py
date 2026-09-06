@@ -1,5 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
+from typing import ClassVar
 from uuid import uuid4
 
 from django.conf import settings
@@ -60,14 +61,14 @@ class ScanResult(models.Model):
     would strand the row with no way back.
     """
 
-    STATUS_CHOICES = [
+    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("awaiting_ocr", "Awaiting OCR"),
         ("pending", "Pending"),
         ("confirmed", "Confirmed"),
         ("discarded", "Discarded"),
     ]
 
-    SCAN_TYPE_CHOICES = [
+    SCAN_TYPE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("isbn", "ISBN/Barcode"),
         ("ocr", "Title Page OCR"),
     ]
@@ -99,7 +100,7 @@ class ScanResult(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering: ClassVar[list[str]] = ["-created_at"]
 
     @property
     def ocr_is_running(self):
@@ -134,7 +135,7 @@ class APIUsageLog(models.Model):
     output_tokens = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering: ClassVar[list[str]] = ["-created_at"]
 
     def __str__(self):
         return f"{self.api} ({self.created_at:%Y-%m-%d %H:%M})"

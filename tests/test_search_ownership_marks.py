@@ -43,7 +43,7 @@ class TestOwnershipMarkSearch:
         # Each field feeds its own FTS column, so a record carrying one
         # mark and not the others still indexes: an empty column is a
         # value, not a missing one.
-        value, term = MARKS[field]
+        value, _term = MARKS[field]
         record = Record.objects.create(title="Unmarked", **{field: value})
         index_record(record)
 

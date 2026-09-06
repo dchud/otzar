@@ -147,8 +147,8 @@ PTBNP_SPLIT = cluster(
     headings=[("Chnéour Zalman, 1745-1813 de Lyadi", ["PTBNP"])],
     source_ids={"PTBNP": "1788306"},
     x400s=[
-        x400([("a", "Shneur Zalman of Lyady‏")], ["PTBNP"]),
-        x400([("a", "Shneur Zalman de Lyadi‏")], ["PTBNP"]),
+        x400([("a", "Shneur Zalman of Lyady\u200f")], ["PTBNP"]),
+        x400([("a", "Shneur Zalman de Lyadi\u200f")], ["PTBNP"]),
     ],
 )
 

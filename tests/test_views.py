@@ -224,9 +224,11 @@ class TestVendoredScripts:
         return found
 
     def test_no_template_loads_assets_from_another_host(self):
-        tag = re.compile(r"<(?:script|link)\b[^>]*>", re.I | re.S)
+        tag = re.compile(
+            r"<(?:script|link)\b[^>]*>", re.IGNORECASE | re.DOTALL
+        )
         external = re.compile(
-            r"""(?:src|href)\s*=\s*["'](?:[a-z]+:)?//""", re.I
+            r"""(?:src|href)\s*=\s*["'](?:[a-z]+:)?//""", re.IGNORECASE
         )
         offenders = []
         for path in self.template_files():

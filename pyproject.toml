@@ -56,14 +56,19 @@ target-version = "py313"
 extend-exclude = [".claude"]
 
 [tool.ruff.lint]
-# Ruff's implicit default rule set varies between releases, so leaving it
-# unnamed makes the lint gate a property of whichever ruff resolved
-# rather than of this project, and turns a linter upgrade into an
-# unrelated code change. These are the rules the gate enforces:
-# pycodestyle errors, Pyflakes, and import sorting.
+# Ruff's default rule set is the gate, plus the pycodestyle families its
+# default omits. The default is curated per rule rather than by linter --
+# it takes E722 and E902 from pycodestyle and leaves the rest -- so E4
+# (import placement), E7 (statement style) and E9 (syntax) are named here
+# to keep checks the project already enforced. Pyflakes and isort (I001)
+# are in the default and need no restating.
 #
-# isort (I) is deliberate rather than inherited: the tree was already
-# almost entirely sorted, so enforcing it ratifies existing practice,
-# and a canonical import order makes the merge conflicts that parallel
-# work produces in shared modules resolve mechanically.
-select = ["E4", "E7", "E9", "F", "I"]
+# The set is a property of the resolved ruff, and uv.lock pins that
+# exactly, so it changes only when a dependency PR moves the lock and
+# shows the new findings.
+extend-select = ["E4", "E7", "E9"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django writes migrations; makemigrations regenerates them and would
+# strip any annotation added by hand.
+"*/migrations/*.py" = ["RUF012"]

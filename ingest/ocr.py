@@ -125,8 +125,8 @@ def extract_metadata_from_image(image_bytes):
                 }
             ],
         )
-    except anthropic.APIError as exc:
-        logger.exception("Claude Vision API error: %s", exc)
+    except anthropic.APIError:
+        logger.exception("Claude Vision API error")
         return None
     except Exception:
         logger.exception("Unexpected error calling Claude Vision API")

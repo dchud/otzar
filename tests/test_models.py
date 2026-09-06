@@ -1,4 +1,5 @@
 import pytest
+from django.db.utils import IntegrityError
 
 from catalog.id_generation import encode_base62, generate_record_id
 from catalog.models import (
@@ -388,7 +389,7 @@ class TestExternalIdentifier:
         ExternalIdentifier.objects.create(
             record=record, identifier_type="ISBN", value="123"
         )
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             ExternalIdentifier.objects.create(
                 record=record, identifier_type="ISBN", value="123"
             )

@@ -208,7 +208,7 @@ def _index_all_records():
             # a usable transaction instead of poisoning the rebuild.
             with transaction.atomic():
                 index_record(record)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - see below
             skipped.append(record.record_id)
             if first_error is None:
                 first_error = error
