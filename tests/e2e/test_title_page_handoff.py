@@ -75,6 +75,51 @@ def _phone_token(user):
 OCR_RELEASE_TIMEOUT = 30
 
 
+def pin_poll(page):
+    """Stop the poll on this page from swapping the cards out.
+
+    The poll replaces the whole card list every few seconds, button and
+    all, and htmx drops a request whose element is no longer in the
+    document. A click that lands in the middle of a tick therefore does
+    nothing at all, silently -- which on a loaded runner is often
+    enough. Serving the poll a 204 leaves the DOM alone, so a button
+    the test needs to press stays the element it resolved.
+
+    Only pin the poll on a device whose view is not what the test is
+    checking. Call it once the cards the test needs are on screen; it
+    waits out a tick already in flight before it takes hold.
+    """
+    page.route(
+        "**/scan-title/poll/",
+        lambda route: route.fulfill(status=204, body=""),
+    )
+    page.wait_for_function(
+        "() => !document.getElementById('title-page-results')"
+        ".classList.contains('htmx-request')"
+    )
+
+
+def watch_ocr_posts(page):
+    """Record this page's run-OCR requests and what they answered.
+
+    A click that issues no request at all and one whose request is
+    refused end in the same silence, and telling those apart is the
+    whole diagnosis. The returned list fills in as the page runs and
+    belongs in the message of whatever assertion the silence breaks.
+    """
+    seen = []
+
+    def note(response):
+        if response.url.endswith("/ocr/"):
+            seen.append(
+                f"{response.request.method} {response.url}"
+                f" -> {response.status}"
+            )
+
+    page.on("response", note)
+    return seen
+
+
 @contextmanager
 def ocr_held_open(mock_ocr):
     """Block the mocked vision call for the body of the ``with``.
@@ -708,13 +753,20 @@ class TestSharedOCRProgress:
             phone_page.locator(f"#title-page-card-{scan.pk}")
         ).to_be_visible(timeout=10000)
 
+        # The phone is only the actor here; the desktop's poll is the
+        # subject and keeps running.
+        pin_poll(phone_page)
+
+        phone_posts = watch_ocr_posts(phone_page)
+
         with ocr_held_open(mock_ocr) as ocr_reached:
             # Phone starts the run and does not wait for it.
             phone_page.click(
                 'button:has(.btn-idle:text-is("Run OCR"))', no_wait_after=True
             )
             assert ocr_reached.wait(timeout=15), (
-                "the phone's request never reached the vision call"
+                "the phone's request never reached the vision call; the "
+                f"phone got back {phone_posts or 'nothing'}"
             )
 
             # Desktop learns about it on its next poll. The run is held
@@ -827,16 +879,16 @@ class TestConcurrentDeviceFeedback:
             desktop_page.locator(f"#title-page-card-{scan.pk}")
         ).to_be_visible(timeout=10000)
 
-        # What is under test is a device acting on a view that has not
-        # caught up yet, so the desktop's poll is pinned at the state it
-        # had before the phone started: 204 tells htmx to leave the DOM
-        # alone. Whether the poll eventually shows the lease is the
-        # sibling test's job; here it would only remove the stale button
-        # this test has to click, on a tick nothing controls.
-        desktop_page.route(
-            "**/scan-title/poll/",
-            lambda route: route.fulfill(status=204, body=""),
-        )
+        # Neither poll is the subject here. What is under test is a
+        # device acting on a view that has not caught up, so the desktop
+        # is held at the state it had before the phone started -- a poll
+        # that caught up would take away the stale button the test has
+        # to click. Whether the desktop's poll does eventually show the
+        # lease is the sibling test's assertion.
+        pin_poll(phone_page)
+        pin_poll(desktop_page)
+
+        phone_posts = watch_ocr_posts(phone_page)
 
         with ocr_held_open(mock_ocr) as ocr_reached:
             # Phone starts the run.
@@ -846,7 +898,8 @@ class TestConcurrentDeviceFeedback:
             # The lease has to be taken before the desktop clicks, or the
             # second click is not the second click.
             assert ocr_reached.wait(timeout=15), (
-                "the phone's request never reached the vision call"
+                "the phone's request never reached the vision call; the "
+                f"phone got back {phone_posts or 'nothing'}"
             )
 
             # Desktop clicks on its stale view. The request is refused,
