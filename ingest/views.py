@@ -17,7 +17,13 @@ from django.views.decorators.http import require_POST
 from catalog.models import Author, Location, Publisher, Record, Series
 from catalog.search import ensure_fts_table, index_record
 from catalog.utils import strip_marc_punctuation
-from ingest.authority import find_author_matches
+from ingest.authority import (
+    candidate_author_forms,
+    find_author_matches,
+    find_candidate_author_matches,
+    resolve_candidate_author,
+    single_strong_match,
+)
 from ingest.forms import RecordForm
 from ingest.models import OCR_LEASE_TIMEOUT, ScanResult
 from ingest.ocr import extract_metadata_from_image
@@ -152,7 +158,7 @@ def _scan_for_repeat_search(user, scan_id):
 
 
 def _create_record_from_candidate(
-    candidate, user, notes="", location_label=""
+    candidate, user, notes="", location_label="", author_choice=None
 ):
     """Build and save a Record from a catalog candidate.
 
@@ -168,6 +174,12 @@ def _create_record_from_candidate(
     routinely carry brackets, copyright marks and ranges. Whatever the
     string was is preserved in the display field when no year parses out
     of it, so nothing is lost on the way in.
+
+    Being the one place a candidate becomes a record, it is also the one
+    place the candidate's author heading is reconciled against the
+    authors the catalog already holds. ``author_choice`` carries what
+    the cataloguer said on the confirm page; without one, the reconciler
+    reuses an unambiguous match and otherwise creates a row.
     """
     date_str = candidate.get("date", "")
     date_int = None
@@ -197,9 +209,8 @@ def _create_record_from_candidate(
     )
     record.save()
 
-    author_name = strip_marc_punctuation(candidate.get("author"))
-    if author_name:
-        author, _ = Author.objects.get_or_create(name=author_name)
+    author = resolve_candidate_author(candidate, author_choice)
+    if author is not None:
         record.authors.add(author)
 
     publisher_name = strip_marc_punctuation(candidate.get("publisher"))
@@ -275,7 +286,14 @@ def select_candidate(request):
 
 @login_required
 def confirm_candidate(request):
-    """Review and confirm a candidate record from catalog lookup."""
+    """Review and confirm a candidate record from catalog lookup.
+
+    The page offers the authors the catalog already holds under any of
+    the candidate's headings, so a person catalogued once from each
+    source ends up as one Author row rather than one per source. With
+    nothing to offer the page is unchanged and the confirm stays a
+    single click.
+    """
     candidate = request.session.get("candidate")
     if not candidate:
         return redirect("ingest")
@@ -286,6 +304,7 @@ def confirm_candidate(request):
             request.user,
             notes=request.POST.get("notes") or "",
             location_label=request.POST.get("location_label", "").strip(),
+            author_choice=request.POST.get("author_choice"),
         )
 
         _close_scan_for_record(
@@ -304,8 +323,19 @@ def confirm_candidate(request):
             slug=record.slug,
         )
 
+    author_matches = find_candidate_author_matches(candidate)
+    default = single_strong_match(author_matches)
+    primary, alternate = candidate_author_forms(candidate)
+
     return render(
-        request, "ingest/confirm_candidate.html", {"candidate": candidate}
+        request,
+        "ingest/confirm_candidate.html",
+        {
+            "candidate": candidate,
+            "author_matches": author_matches,
+            "author_match_default": default.pk if default else None,
+            "candidate_author": primary or alternate,
+        },
     )
 
 

@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 
-from catalog.models import Record
+from catalog.models import Author, Record
 
 
 @pytest.fixture
@@ -477,3 +477,147 @@ class TestScanClosedOnConfirm:
         scan.refresh_from_db()
         assert scan.status == "pending"
         assert scan.created_record is None
+
+
+@pytest.mark.django_db
+class TestConfirmOffersExistingAuthors:
+    """Confirming a candidate must not quietly split one person in two.
+
+    The same person arrives romanized from one catalog and in Hebrew
+    from another, so building the author with the incoming heading alone
+    puts two rows in the catalog for one person and files their books
+    apart in the author browse.
+    """
+
+    LC_AUTHOR = "Shneur Zalman, of Lyady"
+    NLI_AUTHOR = "שניאור זלמן מלאדי"
+
+    def candidate(self, **overrides):
+        candidate = {
+            "title": "Likute amarim (Tanya) /",
+            "title_alternate": "לקוטי אמרים",
+            "author": f"{self.LC_AUTHOR}, 1745-1812.",
+            "author_alternate": self.NLI_AUTHOR,
+            "date": "1984",
+            "language": "heb",
+            "source_catalog": "LC",
+        }
+        candidate.update(overrides)
+        return candidate
+
+    def start_confirm(self, client, candidate):
+        session = client.session
+        session["candidate"] = candidate
+        session.save()
+        return client.get("/ingest/confirm/")
+
+    def test_no_match_stays_silent(self, client_logged_in):
+        Author.objects.create(name="Elliger, Karl")
+        response = self.start_confirm(client_logged_in, self.candidate())
+        assert response.status_code == 200
+        assert response.context["author_matches"] == []
+        assert b'name="author_choice"' not in response.content
+
+    def test_a_single_strong_match_is_offered_preselected(
+        self, client_logged_in
+    ):
+        existing = Author.objects.create(name=self.NLI_AUTHOR)
+        response = self.start_confirm(client_logged_in, self.candidate())
+        assert [a for a, _ in response.context["author_matches"]] == [existing]
+        assert response.context["author_match_default"] == existing.pk
+        assert b'name="author_choice"' in response.content
+
+    def test_a_romanized_match_is_offered(self, client_logged_in):
+        existing = Author.objects.create(
+            name="שניאור זלמן, מלאדי", name_romanized=self.LC_AUTHOR
+        )
+        candidate = self.candidate(
+            author=f"{self.NLI_AUTHOR}.", author_alternate=self.LC_AUTHOR
+        )
+        response = self.start_confirm(client_logged_in, candidate)
+        assert response.context["author_matches"] == [(existing, "romanized")]
+
+    def test_a_variant_match_is_offered_but_not_preselected(
+        self, client_logged_in
+    ):
+        """A variant hit is a suggestion, not a decision."""
+        existing = Author.objects.create(
+            name=self.LC_AUTHOR, variant_names=[self.NLI_AUTHOR]
+        )
+        candidate = self.candidate(
+            author=f"{self.NLI_AUTHOR}.", author_alternate=None
+        )
+        response = self.start_confirm(client_logged_in, candidate)
+        assert response.context["author_matches"] == [(existing, "variant")]
+        assert response.context["author_match_default"] is None
+
+    def test_several_matches_are_offered_without_a_default(
+        self, client_logged_in
+    ):
+        Author.objects.create(name=self.NLI_AUTHOR)
+        Author.objects.create(
+            name="Zalman, Shneur", name_romanized=self.LC_AUTHOR
+        )
+        candidate = self.candidate(
+            author=f"{self.NLI_AUTHOR}.", author_alternate=self.LC_AUTHOR
+        )
+        response = self.start_confirm(client_logged_in, candidate)
+        assert len(response.context["author_matches"]) == 2
+        assert response.context["author_match_default"] is None
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_choosing_an_existing_author_attaches_it(
+        self, _cover, client_logged_in
+    ):
+        """The point of the whole exercise: one row, not two."""
+        existing = Author.objects.create(
+            name=self.LC_AUTHOR, variant_names=[self.NLI_AUTHOR]
+        )
+        candidate = self.candidate(
+            author=f"{self.NLI_AUTHOR}.", author_alternate=None
+        )
+        self.start_confirm(client_logged_in, candidate)
+
+        response = client_logged_in.post(
+            "/ingest/confirm/", {"author_choice": str(existing.pk)}
+        )
+
+        assert response.status_code == 302
+        record = Record.objects.get(title__startswith="Likute")
+        assert list(record.authors.all()) == [existing]
+        assert Author.objects.count() == 1
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_asking_for_a_new_author_still_creates_one(
+        self, _cover, client_logged_in
+    ):
+        existing = Author.objects.create(name=self.NLI_AUTHOR)
+        self.start_confirm(client_logged_in, self.candidate())
+
+        client_logged_in.post("/ingest/confirm/", {"author_choice": "new"})
+
+        record = Record.objects.get(title__startswith="Likute")
+        assert record.authors.first() != existing
+        assert Author.objects.count() == 2
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_the_queue_confirm_takes_a_single_strong_match(
+        self, _cover, client_logged_in, user
+    ):
+        """The inline confirm has no page to ask on, so it takes the match."""
+        from ingest.models import ScanResult
+
+        existing = Author.objects.create(name=self.NLI_AUTHOR)
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[self.candidate()],
+            scanned_by=user,
+        )
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        assert list(scan.created_record.authors.all()) == [existing]
+        assert Author.objects.count() == 1

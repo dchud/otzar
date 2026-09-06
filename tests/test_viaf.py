@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
+from sources.cache import DEFAULT_TTL, EMPTY_TTL, ResponseCache
 from sources.viaf import (
     VIAFClient,
     _build_author_queries,
@@ -400,3 +401,144 @@ class TestViafEnrich:
     def test_enrich_returns_none_for_no_args(self):
         result = viaf_enrich("", author_name_romanized=None)
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Response caching
+# ---------------------------------------------------------------------------
+
+
+def _resp(text=SAMPLE_VIAF_XML):
+    mock_resp = MagicMock()
+    mock_resp.text = text
+    mock_resp.raise_for_status = MagicMock()
+    return mock_resp
+
+
+class TestVIAFCaching:
+    """VIAF answers the same authority query from the cache on a repeat.
+
+    Each test runs against the per-test locmem cache installed by the
+    ``tests/conftest.py``, so nothing here depends on test order.
+    """
+
+    @patch("sources.viaf.httpx.get")
+    def test_second_identical_search_makes_no_request(self, mock_get):
+        mock_get.return_value = _resp()
+        client = VIAFClient(delay=0)
+
+        first = client.search('local.personalNames all "Maimonides"')
+        second = client.search('local.personalNames all "Maimonides"')
+
+        assert mock_get.call_count == 1
+        assert first == SAMPLE_VIAF_XML
+        assert second == first
+
+    @pytest.mark.disable_socket
+    def test_cached_search_succeeds_with_the_network_blocked(self):
+        client = VIAFClient(delay=0)
+        with patch("sources.viaf.httpx.get", return_value=_resp()) as m:
+            client.search('local.personalNames all "blocked"')
+            assert m.call_count == 1
+
+        assert client.search('local.personalNames all "blocked"') == (
+            SAMPLE_VIAF_XML
+        )
+
+    @patch("sources.viaf.time.sleep")
+    @patch("sources.viaf.httpx.get")
+    def test_cache_hit_skips_the_throttle(self, mock_get, mock_sleep):
+        """A hit contacts no server, so it owes the server no wait.
+
+        ``_last_request_time`` is left alone as well, so the next real
+        request still waits the full delay measured from the last real
+        one.
+        """
+        mock_get.return_value = _resp()
+        client = VIAFClient(delay=100)
+
+        client.search('local.personalNames all "throttled"')
+        stamp = client._last_request_time
+        client.search('local.personalNames all "throttled"')
+
+        mock_sleep.assert_not_called()
+        assert client._last_request_time == stamp
+
+    @patch("sources.viaf.httpx.get")
+    def test_different_query_is_a_separate_entry(self, mock_get):
+        mock_get.return_value = _resp()
+        client = VIAFClient(delay=0)
+
+        client.search('local.personalNames all "one"')
+        client.search('local.personalNames all "two"')
+
+        assert mock_get.call_count == 2
+
+    @patch("sources.viaf.httpx.get")
+    def test_failure_is_not_cached(self, mock_get):
+        """VIAF swallows errors into None; None must not be remembered."""
+        mock_get.side_effect = [
+            httpx.ConnectError("connection refused"),
+            _resp(),
+        ]
+        client = VIAFClient(delay=0)
+
+        first = client.search('local.personalNames all "flaky"')
+        second = client.search('local.personalNames all "flaky"')
+
+        assert first is None
+        assert second == SAMPLE_VIAF_XML
+        assert mock_get.call_count == 2
+
+    @patch("sources.viaf.httpx.get")
+    def test_zero_record_response_is_cached(self, mock_get):
+        mock_get.return_value = _resp(SAMPLE_EMPTY_XML)
+        client = VIAFClient(delay=0)
+
+        client.search('local.personalNames all "nobody"')
+        client.search('local.personalNames all "nobody"')
+
+        assert mock_get.call_count == 1
+
+    @patch("sources.viaf.httpx.get")
+    def test_zero_record_response_uses_the_short_ttl(self, mock_get):
+        mock_get.return_value = _resp(SAMPLE_EMPTY_XML)
+        client = VIAFClient(delay=0)
+
+        with patch.object(ResponseCache, "set", autospec=True) as mock_set:
+            client.search('local.personalNames all "nobody"')
+
+        assert mock_set.call_args.kwargs["ttl"] == EMPTY_TTL
+
+    @patch("sources.viaf.httpx.get")
+    def test_response_with_records_uses_the_default_ttl(self, mock_get):
+        mock_get.return_value = _resp()
+        client = VIAFClient(delay=0)
+
+        with patch.object(ResponseCache, "set", autospec=True) as mock_set:
+            client.search('local.personalNames all "somebody"')
+
+        assert mock_set.call_args.kwargs["ttl"] == DEFAULT_TTL
+
+    @patch("sources.viaf.httpx.get")
+    def test_repeated_author_cascade_replays_from_cache(self, mock_get):
+        """The whole author cascade, not just one step, gets reused.
+
+        The first pass misses on the Hebrew heading and matches on the
+        romanized name: two requests. The second pass makes none.
+        """
+        mock_get.side_effect = [_resp(SAMPLE_EMPTY_XML), _resp()]
+        client = VIAFClient(delay=0)
+        name = "משה בן מימון"
+
+        first = client.search_by_author(
+            name, name_romanized="Moshe ben Maimon"
+        )
+        assert mock_get.call_count == 2
+
+        second = client.search_by_author(
+            name, name_romanized="Moshe ben Maimon"
+        )
+
+        assert mock_get.call_count == 2
+        assert [c.viaf_id for c in second] == [c.viaf_id for c in first]

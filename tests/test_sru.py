@@ -7,7 +7,9 @@ import os
 from unittest.mock import patch
 
 import httpx
+import pytest
 
+from sources.cache import DEFAULT_TTL, EMPTY_TTL, ResponseCache
 from sources.sru import (
     SRUClient,
     SRUResult,
@@ -238,3 +240,196 @@ class TestSRUResult:
         assert r.success is False
         assert r.data == ""
         assert r.error == "boom"
+
+
+# --- Response caching ---
+
+FAKE_EMPTY_XML = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <numberOfRecords>0</numberOfRecords>
+  <records/>
+</searchRetrieveResponse>
+"""
+
+
+def _ok(text=FAKE_XML):
+    return httpx.Response(200, text=text, request=FAKE_REQUEST)
+
+
+class TestSearchCaching:
+    """A repeated identical search is answered from the cache.
+
+    The cache sits inside ``search``, below the cascade, so the cascade
+    needs no knowledge of it. Every test here runs against the per-test
+    locmem cache installed by ``tests/conftest.py``.
+    """
+
+    def _make_client(self, **kwargs):
+        defaults = dict(base_url="https://example.com/sru", request_delay=0)
+        defaults.update(kwargs)
+        return SRUClient(**defaults)
+
+    @patch("sources.sru.httpx.get")
+    def test_second_identical_search_makes_no_request(self, mock_get):
+        mock_get.return_value = _ok()
+        client = self._make_client()
+
+        first = client.search("dc.title = test")
+        second = client.search("dc.title = test")
+
+        assert mock_get.call_count == 1
+        assert first.success is True
+        assert second.success is True
+        assert second.data == first.data
+
+    @pytest.mark.disable_socket
+    def test_cached_search_succeeds_with_the_network_blocked(self):
+        """The second call could not reach the network even if it tried.
+
+        The mock is out of scope by then, so anything other than a cache
+        hit would open a real connection and pytest-socket would raise.
+        """
+        client = self._make_client()
+        with patch("sources.sru.httpx.get", return_value=_ok()) as mock_get:
+            client.search("dc.title = blocked")
+            assert mock_get.call_count == 1
+
+        result = client.search("dc.title = blocked")
+
+        assert result.success is True
+        assert "<searchRetrieveResponse" in result.data
+
+    @patch("sources.sru.time.sleep")
+    @patch("sources.sru.httpx.get")
+    def test_cache_hit_skips_the_polite_delay(self, mock_get, mock_sleep):
+        """The delay is politeness to the server; a hit contacts no server.
+
+        This is where nearly all of the saved time is: the delay defaults
+        to three seconds and the request itself is far quicker.
+        """
+        mock_get.return_value = _ok()
+        client = self._make_client(request_delay=3)
+
+        client.search("dc.title = polite")
+        client.search("dc.title = polite")
+
+        mock_sleep.assert_called_once_with(3)
+
+    @patch("sources.sru.httpx.get")
+    def test_different_query_is_a_separate_entry(self, mock_get):
+        mock_get.return_value = _ok()
+        client = self._make_client()
+
+        client.search("dc.title = one")
+        client.search("dc.title = two")
+
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_different_max_records_is_a_separate_entry(self, mock_get):
+        """The key covers every request parameter, not just the query."""
+        mock_get.return_value = _ok()
+        client = self._make_client()
+
+        client.search("dc.title = same", max_records=5)
+        client.search("dc.title = same", max_records=20)
+
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_different_endpoints_do_not_share_entries(self, mock_get):
+        mock_get.return_value = _ok()
+        nli = self._make_client(base_url="https://nli.example/sru")
+        lc = self._make_client(base_url="https://lc.example/sru")
+
+        nli.search("dc.title = shared")
+        lc.search("dc.title = shared")
+
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_timeout_is_not_cached(self, mock_get):
+        """A transient outage must not be remembered for thirty days."""
+        mock_get.side_effect = [httpx.TimeoutException("timed out"), _ok()]
+        client = self._make_client()
+
+        first = client.search("dc.title = flaky")
+        second = client.search("dc.title = flaky")
+
+        assert first.success is False
+        assert second.success is True
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_http_error_is_not_cached(self, mock_get):
+        mock_get.side_effect = [
+            httpx.HTTPStatusError(
+                "server error",
+                request=FAKE_REQUEST,
+                response=httpx.Response(503, text="unavailable"),
+            ),
+            _ok(),
+        ]
+        client = self._make_client()
+
+        assert client.search("dc.title = down").success is False
+        assert client.search("dc.title = down").success is True
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_non_xml_response_is_not_cached(self, mock_get):
+        """A proxy error page is a failure, not an answer worth keeping."""
+        mock_get.side_effect = [
+            httpx.Response(200, text="not xml at all", request=FAKE_REQUEST),
+            _ok(),
+        ]
+        client = self._make_client()
+
+        assert client.search("dc.title = html").success is False
+        assert client.search("dc.title = html").success is True
+        assert mock_get.call_count == 2
+
+    @patch("sources.sru.httpx.get")
+    def test_zero_record_response_is_cached(self, mock_get):
+        """Misses are what make the cascade slow, so they get cached too."""
+        mock_get.return_value = _ok(FAKE_EMPTY_XML)
+        client = self._make_client()
+
+        first = client.search("dc.title = nothing")
+        second = client.search("dc.title = nothing")
+
+        assert mock_get.call_count == 1
+        assert first.success is True
+        assert second.data == first.data
+
+    @patch("sources.sru.httpx.get")
+    def test_zero_record_response_uses_the_short_ttl(self, mock_get):
+        mock_get.return_value = _ok(FAKE_EMPTY_XML)
+        client = self._make_client()
+
+        with patch.object(ResponseCache, "set", autospec=True) as mock_set:
+            client.search("dc.title = nothing")
+
+        assert mock_set.call_args.kwargs["ttl"] == EMPTY_TTL
+
+    @patch("sources.sru.httpx.get")
+    def test_response_with_records_uses_the_default_ttl(self, mock_get):
+        mock_get.return_value = _ok()
+        client = self._make_client()
+
+        with patch.object(ResponseCache, "set", autospec=True) as mock_set:
+            client.search("dc.title = something")
+
+        assert mock_set.call_args.kwargs["ttl"] == DEFAULT_TTL
+
+    @patch("sources.sru.httpx.get")
+    def test_alma_quoting_happens_before_the_key_is_built(self, mock_get):
+        """Quoted and unquoted forms of one query are the same search."""
+        mock_get.return_value = _ok()
+        client = self._make_client(auto_quote_alma=True)
+
+        client.search("alma.title = Talmud Bavli")
+        client.search('alma.title = "Talmud Bavli"')
+
+        assert mock_get.call_count == 1
