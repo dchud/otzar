@@ -84,6 +84,63 @@ class TestRecordModel:
 
 
 @pytest.mark.django_db
+class TestRecordTitleStatement:
+    """The rest of the 245: what part this is, and who did what."""
+
+    def test_fields_default_to_empty(self):
+        record = Record.objects.create(title="Single Volume")
+        record.refresh_from_db()
+        assert record.volume_part_number == ""
+        assert record.volume_part_title == ""
+        assert record.statement_of_responsibility == ""
+
+    def test_volume_part_stored(self):
+        record = Record.objects.create(
+            title="Rashi : the Torah, with Rashi's commentary",
+            volume_part_number="Volume 2",
+            volume_part_title="Sefer Mishpatim",
+        )
+        record.refresh_from_db()
+        assert record.volume_part_number == "Volume 2"
+        assert record.volume_part_title == "Sefer Mishpatim"
+
+    def test_volume_part_title_holds_hebrew(self):
+        record = Record.objects.create(
+            title="Mishneh Torah", volume_part_title="ספר המדע"
+        )
+        record.refresh_from_db()
+        assert record.volume_part_title == "ספר המדע"
+
+    def test_statement_of_responsibility_stored(self):
+        statement = (
+            "translated, annotated, and elucidated by "
+            "Yisrael Isser Zvi Herczeg ; in collaboration with "
+            "Yaakov Petroff and Yoseph Kamenetsky ; "
+            "contributing editor, Avie Gold."
+        )
+        record = Record.objects.create(
+            title="Rashi", statement_of_responsibility=statement
+        )
+        record.refresh_from_db()
+        assert record.statement_of_responsibility == statement
+
+    def test_statement_of_responsibility_has_no_length_ceiling(self):
+        # Transcribed responsibility runs as long as the item's title
+        # page does -- a multi-editor proceedings, a film credit -- and
+        # MARC allows a data field up to 9999 octets. There is no width
+        # worth picking, so the field is text rather than a CharField.
+        statement = "; ".join(
+            f"edited by Editor Number {n}" for n in range(400)
+        )
+        assert len(statement) > 5000
+        record = Record.objects.create(
+            title="Proceedings", statement_of_responsibility=statement
+        )
+        record.refresh_from_db()
+        assert record.statement_of_responsibility == statement
+
+
+@pytest.mark.django_db
 class TestRecordFormProvenance:
     def test_form_saves_provenance(self):
         form = RecordForm(
