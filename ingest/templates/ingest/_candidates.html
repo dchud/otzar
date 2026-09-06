@@ -6,19 +6,48 @@
 <div class="space-y-2">
   <p class="text-sm text-gray-600 dark:text-gray-300">
     Found {{ candidates|length }} candidate{{ candidates|length|pluralize }}{% if isbn %} for ISBN <strong>{{ isbn }}</strong>{% endif %}.
+    {% if scored %}
+    Ordered by agreement with the extracted metadata; ties keep catalog order (NLI first, then LC).
+    {% else %}
     Ordered by source catalog (NLI first, then LC) and by per-catalog relevance.
+    {% endif %}
   </p>
 
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="text-xs text-gray-500 dark:text-gray-400 uppercase">
         <tr class="border-b border-gray-200 dark:border-gray-700">
+          {% if scored %}
+          <th scope="col" class="text-left py-2 pr-3 w-20">Match</th>
+          {% endif %}
           {% include "ingest/_candidate_headings.html" %}
         </tr>
       </thead>
       <tbody>
         {% for item in candidates %}
         <tr class="border-b border-gray-100 dark:border-gray-800 align-top hover:bg-gray-50 dark:hover:bg-gray-800/50">
+          {% if scored %}
+          {% comment %}The reason for the row's position: which fields of
+          the reading this record agreed with, and which it did not. A
+          field neither side could be compared on is left out, so a
+          sparse record shows a short list rather than a list of misses.
+          The score is the sort key, not a decision; the list stays as
+          evidence and nothing is selected.{% endcomment %}
+          <td class="py-2 pr-3">
+            <div class="text-xs font-medium tabular-nums">{{ item.match.percent }}%</div>
+            {% if item.match.verdicts %}
+            <ul class="text-xs mt-0.5">
+              {% for verdict in item.match.verdicts %}
+              <li class="{% if verdict.verdict == 'agreed' %}text-green-700 dark:text-green-400{% elif verdict.verdict == 'partial' %}text-amber-700 dark:text-amber-400{% else %}text-gray-400 dark:text-gray-500 line-through{% endif %}"
+                  title="{{ verdict.field }}: {{ verdict.verdict }}"
+                  data-verdict="{{ verdict.verdict }}">{{ verdict.field }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-xs text-gray-400 dark:text-gray-500">nothing to compare</div>
+            {% endif %}
+          </td>
+          {% endif %}
           {% include "ingest/_candidate_row.html" with item=item counter=forloop.counter %}
           <td class="py-2 text-right">
             <form method="post" action="{% url 'select_candidate' %}" class="inline">
