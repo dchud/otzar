@@ -91,6 +91,46 @@
   <form method="post" class="space-y-4">
     {% csrf_token %}
 
+    {% if author_matches %}
+    <fieldset class="rounded border p-4
+                     {% if author_match_default %}border-gray-200 dark:border-gray-700{% else %}border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20{% endif %}">
+      <legend class="text-sm font-medium px-1">Author</legend>
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+        {% if author_match_default %}
+        The catalog already has this author. Confirming files the book under the existing record.
+        {% else %}
+        The catalog has {{ author_matches|length }} author record{{ author_matches|length|pluralize }} that may be the same person. Choose one, or add a new record.
+        {% endif %}
+      </p>
+      <div class="space-y-1">
+        {% for author, match_type in author_matches %}
+        <label class="flex items-start gap-3 min-h-[44px] px-2 py-2 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+          <input type="radio" name="author_choice" value="{{ author.pk }}"
+                 class="mt-1 h-4 w-4 shrink-0"
+                 {% if author.pk == author_match_default %}checked{% endif %}>
+          <span class="text-sm">
+            <span class="font-medium" dir="auto">{{ author.name }}</span>
+            {% if author.name_romanized %}<span class="text-gray-500 dark:text-gray-400" dir="auto"> / {{ author.name_romanized }}</span>{% endif %}
+            <span class="block text-xs text-gray-500 dark:text-gray-400">
+              {% if match_type == "exact" %}same name{% elif match_type == "romanized" %}same romanized name{% else %}listed as a variant name{% endif %}
+              &middot; {{ author.records.count }} record{{ author.records.count|pluralize }}
+              {% if author.variant_names %}&middot; also {{ author.variant_names|join:", "|truncatechars:80 }}{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+        <label class="flex items-start gap-3 min-h-[44px] px-2 py-2 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+          <input type="radio" name="author_choice" value="new"
+                 class="mt-1 h-4 w-4 shrink-0"
+                 {% if not author_match_default %}checked{% endif %}>
+          <span class="text-sm">
+            None of these &mdash; add <span class="font-medium" dir="auto">{{ candidate_author }}</span> as a new author
+          </span>
+        </label>
+      </div>
+    </fieldset>
+    {% endif %}
+
     <div>
       <label for="id_location_label" class="block text-sm font-medium mb-1">Physical location</label>
       <input type="text" name="location_label" id="id_location_label"
