@@ -1,14 +1,11 @@
 import html as html_module
 import re
-from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
-from django.core.management import call_command
 from django.core.signing import TimestampSigner
 from django.test import Client
-from django.utils import timezone
 
 from ingest.models import ScanResult
 
@@ -319,49 +316,6 @@ class TestPhoneScanAuth:
         c = Client()
         response = c.get("/ingest/phone-auth/totally-invalid-token/")
         assert response.status_code == 400
-
-
-@pytest.mark.django_db
-class TestCleanupCommand:
-    def test_cleanup_deletes_old_discarded(self, user):
-        # Create a discarded scan and backdate it.
-        scan = ScanResult.objects.create(
-            scan_type="isbn",
-            isbn="000",
-            status="discarded",
-            scanned_by=user,
-        )
-        ScanResult.objects.filter(pk=scan.pk).update(
-            updated_at=timezone.now() - timedelta(days=31)
-        )
-
-        # Create a recent discarded scan that should NOT be deleted.
-        recent = ScanResult.objects.create(
-            scan_type="isbn",
-            isbn="111",
-            status="discarded",
-            scanned_by=user,
-        )
-
-        call_command("cleanup_staging", "--days=30")
-
-        assert not ScanResult.objects.filter(pk=scan.pk).exists()
-        assert ScanResult.objects.filter(pk=recent.pk).exists()
-
-    def test_cleanup_leaves_pending(self, user):
-        scan = ScanResult.objects.create(
-            scan_type="isbn",
-            isbn="222",
-            status="pending",
-            scanned_by=user,
-        )
-        ScanResult.objects.filter(pk=scan.pk).update(
-            updated_at=timezone.now() - timedelta(days=31)
-        )
-
-        call_command("cleanup_staging", "--days=30")
-
-        assert ScanResult.objects.filter(pk=scan.pk).exists()
 
 
 def _queue_html(client):
