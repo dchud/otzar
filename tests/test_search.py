@@ -10,6 +10,7 @@ from catalog.models import Author, Record, Subject
 from catalog.search import (
     FTS_TABLE,
     ensure_fts_table,
+    hebrew_stems,
     index_record,
     reindex_all,
     search,
@@ -450,3 +451,218 @@ class TestAdminIndexMaintenance:
         assert response.status_code == 302
         assert search("Yehudah") == []
         assert [r[0] for r in search("Kuzari")] == [record.record_id]
+
+
+def index_titles(*titles):
+    """Create and index one record per title, returning them in order."""
+    records = [Record.objects.create(title=title) for title in titles]
+    for record in records:
+        index_record(record)
+    return records
+
+
+def index_filler(count=6):
+    """Index unrelated records so bm25 has a rarity to weight hits by.
+
+    bm25 scores a phrase by how rare it is across the index. With two
+    records in the index and both matching, the phrase is in every row,
+    its weight rounds to nothing, and the order between the two is
+    arbitrary. A few records that match nothing make the phrase rare
+    enough to rank by, which is the state a real catalog is in.
+    """
+    index_titles(*(f"Unrelated filler {i}" for i in range(count)))
+
+
+def result_ids(query):
+    return [record_id for record_id, _rank in search(query)]
+
+
+@pytest.mark.django_db
+class TestPrefixMatching:
+    """A search word matches every word that begins with it.
+
+    FTS5 supports this natively, but its ranking does not tell a whole
+    word from a longer one: a record carrying the longer word several
+    times outranks the record carrying the word itself. The query has to
+    ask for the whole word as well as the prefix so the exact hit scores
+    on both.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_fts(self):
+        ensure_fts_table()
+
+    def test_a_partial_word_finds_the_whole_word(self):
+        (record,) = index_titles("Rambam on the Torah")
+        assert result_ids("Ramb") == [record.record_id]
+
+    def test_every_word_of_a_query_is_a_prefix(self):
+        (record,) = index_titles("Guide for the Perplexed")
+        assert result_ids("gui perp") == [record.record_id]
+
+    def test_a_prefix_matches_the_start_of_a_word_only(self):
+        index_titles("Rambam")
+        assert result_ids("amba") == []
+
+    def test_every_word_still_has_to_match(self):
+        index_titles("Rambam")
+        assert result_ids("Ramb xyz") == []
+
+    def test_a_partial_hebrew_word_finds_the_whole_word(self):
+        (record,) = index_titles("משנה תורה")
+        assert result_ids("משנ") == [record.record_id]
+
+    def test_the_whole_word_outranks_a_longer_word(self):
+        index_filler()
+        exact, longer = index_titles(
+            "Torah commentary", "Torahs, Torahs and more Torahs"
+        )
+        assert result_ids("Torah") == [exact.record_id, longer.record_id]
+
+    def test_letters_before_gershayim_find_the_abbreviation(self):
+        """The tokenizer splits an abbreviation at the gershayim.
+
+        רמב״ם is indexed as רמב followed by ם, so the letters before
+        the mark reach it as a prefix; the abbreviation typed without
+        the mark does not, because no token is רמבם.
+        """
+        (record,) = index_titles("פירוש הרמב״ם")
+        assert result_ids("רמב") == [record.record_id]
+        assert result_ids("רמב״ם") == [record.record_id]
+        assert result_ids("רמבם") == []
+
+    def test_a_straight_quote_in_a_query_is_not_syntax(self):
+        """A quote typed as an abbreviation mark must not break the query.
+
+        FTS5 delimits phrases with double quotes, so a query carrying
+        one has to escape it rather than raise a syntax error.
+        """
+        (record,) = index_titles('פירוש הרמב"ם')
+        assert result_ids('רמב"ם') == [record.record_id]
+        assert result_ids('"') == []
+
+    def test_a_word_of_punctuation_alone_is_ignored(self):
+        """A word that tokenizes to nothing cannot be required to match."""
+        (record,) = index_titles("Torah commentary")
+        assert result_ids("Torah - commentary") == [record.record_id]
+        assert result_ids("-") == []
+
+
+@pytest.mark.django_db
+class TestHebrewParticles:
+    """Hebrew attaches ב, ה, ו, כ, ל, מ and ש to the front of a word.
+
+    The tokenizer cannot split them off, so every Hebrew word is also
+    indexed with up to two leading particle letters removed, as long as
+    two letters remain, and a query word beginning with those letters
+    is also searched without them. The rule cannot tell a particle from
+    a letter of the word, and the tests below pin where it is wrong as
+    well as where it is right.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_fts(self):
+        ensure_fts_table()
+
+    @pytest.mark.parametrize("particle", list("בהוכלמש"))
+    def test_the_base_word_finds_each_particle(self, particle):
+        (record,) = index_titles(f"{particle}ספר")
+        assert result_ids("ספר") == [record.record_id]
+
+    def test_the_base_word_finds_two_stacked_particles(self):
+        ubasefer, mehasefer, shebikhtav = index_titles(
+            "ובספר", "מהספר", "תורה שבכתב"
+        )
+        assert set(result_ids("ספר")) == {
+            ubasefer.record_id,
+            mehasefer.record_id,
+        }
+        assert result_ids("כתב") == [shebikhtav.record_id]
+
+    def test_only_two_particles_are_stripped(self):
+        index_titles("ולכשיבוא")
+        assert result_ids("יבוא") == []
+
+    def test_a_prefixed_query_finds_the_base_word(self):
+        (record,) = index_titles("כוזרי")
+        assert result_ids("הכוזרי") == [record.record_id]
+
+    def test_a_prefixed_query_finds_another_particle(self):
+        (record,) = index_titles("בספר")
+        assert result_ids("הספר") == [record.record_id]
+
+    def test_the_written_form_outranks_a_stripped_one(self):
+        index_filler()
+        written, article, number = index_titles("ספר", "הספר", "מספר")
+        ids = result_ids("ספר")
+        assert ids[0] == written.record_id
+        assert set(ids[1:]) == {article.record_id, number.record_id}
+
+    def test_stems_are_indexed_from_every_text_field(self):
+        record = Record.objects.create(title="אורות")
+        record.authors.add(Author.objects.create(name="הרב קוק"))
+        record.subjects.add(Subject.objects.create(heading="בפילוסופיה"))
+        index_record(record)
+        assert result_ids("רב קוק") == [record.record_id]
+        assert result_ids("פילוסופיה") == [record.record_id]
+
+    def test_a_stem_keeps_at_least_two_letters(self):
+        """הרב is the rabbi, and needs the stem רב for the bare noun to
+        find it; הר is the mountain, and a stem of ר would match nothing
+        useful, so it is not made. The query הר still reaches הרב, as a
+        prefix, but not the ר of ר׳ עקיבא.
+        """
+        harav, mountain, rabbi = index_titles("הרב", "הר סיני", "ר׳ עקיבא")
+        assert result_ids("רב") == [harav.record_id]
+        assert set(result_ids("הר")) == {harav.record_id, mountain.record_id}
+
+    # Where the rule is wrong.
+
+    def test_a_root_letter_is_taken_for_a_particle(self):
+        """מספר is a number and משה is Moses; neither carries a particle."""
+        number, moses, heaven = index_titles("מספר", "משה", "שמים")
+        assert result_ids("ספר") == [number.record_id]
+        assert result_ids("שה") == [moses.record_id]
+        assert result_ids("מים") == [heaven.record_id]
+
+    def test_a_stripped_query_matches_whole_words_only(self):
+        """Stripping a query word does not also widen it to a prefix.
+
+        A prefix on the stem would turn every word beginning with a
+        particle letter into a broad search: במדבר, the book of Numbers,
+        strips to דבר and would then match דברים, Deuteronomy. The cost
+        is that הספר does not reach ספרים; the base word ספר does.
+        """
+        numbers, deuteronomy, books = index_titles("במדבר", "דברים", "ספרים")
+        assert result_ids("במדבר") == [numbers.record_id]
+        assert result_ids("הספר") == []
+        assert result_ids("ספר") == [books.record_id]
+
+    def test_a_construct_form_is_not_matched(self):
+        """תורת is the construct of תורה; the ending changes, not the start."""
+        index_titles("תורת משה")
+        assert result_ids("תורה") == []
+
+
+class TestHebrewStems:
+    """The stripping rule itself, on single words."""
+
+    @pytest.mark.parametrize(
+        "word, stems",
+        [
+            ("ספר", []),
+            ("הספר", ["ספר"]),
+            ("ובספר", ["בספר", "ספר"]),
+            ("ולכשיבוא", ["לכשיבוא", "כשיבוא"]),
+            ("הרב", ["רב"]),
+            ("הר", []),
+            ("בן", []),
+            ("רמב״ם", []),
+            ("והרמב״ם", ["הרמב״ם", "רמב״ם"]),
+            ("בְּרֵאשִׁית", ["רֵאשִׁית"]),
+            ("Sefer", []),
+            ("", []),
+        ],
+    )
+    def test_stems(self, word, stems):
+        assert hebrew_stems(word) == stems

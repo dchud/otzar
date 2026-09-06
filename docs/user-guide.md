@@ -8,11 +8,39 @@ The search bar is available on the home page and at `/search/`. Type any combina
 
 ### Search tips
 
-- **Hebrew and romanized forms both work.** A record cataloged as "משנה תורה" will also appear when you search for "Mishneh Torah."
-- **Whole words match, across every field.** Searching for "Rambam" finds records carrying that word anywhere — author variant names, subjects, notes. Partial words do not match: "Ramb" finds nothing.
-- **Try alternate spellings.** Hebrew transliteration varies. If "Soloveitchik" returns nothing, try "Solovetchik" or search by the Hebrew form.
-- **Combine terms to narrow results.** Searching "Maimonides philosophy" finds records matching both words.
-- **Known limitation:** The search does not handle Hebrew morphology (prefix particles like -ב, -ה, -ל, or construct forms). Search for base words rather than inflected forms.
+- **Hebrew and romanized forms both work.** A record cataloged as "משנה תורה"
+  will also appear when you search for "Mishneh Torah."
+- **A word matches every word that begins with it, in every field.**
+  Searching for "Ramb" finds records carrying "Rambam" anywhere — author
+  variant names, subjects, notes. The match runs from the start of a word:
+  "amba" does not find "Rambam". A whole-word match counts for more than a
+  prefix match in the ranking, so records carrying the word itself are
+  usually listed before records carrying only a longer one.
+- **Hebrew prefix letters are stripped.** Hebrew attaches ב, ה, ו, כ, ל, מ
+  and ש to the front of a word, and the index cannot tell them from the
+  word. So every Hebrew word is also indexed with up to two of those
+  leading letters removed, as long as two letters remain: a search for
+  "ספר" finds "הספר", "בספר" and "ובספר". A stripped match counts for half
+  a written one, so records with "ספר" as written come first. A search
+  word that begins with those letters is also tried without them, as a
+  whole word: "הכוזרי" finds "כוזרי", and "הספר" finds "ספר" but not
+  "ספרים" — for that, search "ספר".
+- **Where the stripping is wrong.** It cannot tell a prefix from the first
+  letter of a word. "מספר" (a number) is also indexed as "ספר", so a search
+  for "ספר" returns records with "מספר"; "שמים" is also indexed as "מים"
+  and "משה" as "שה". Such records rank below those carrying the word you
+  typed. Stripping stops when fewer than two letters would remain, so "הר"
+  is never reduced to "ר". Construct forms and plurals that change the end
+  of the word ("תורת", "תורות") are not covered: search for the form as
+  written.
+- **Abbreviations split at the geresh or gershayim.** "רמב״ם" is indexed
+  as "רמב" followed by "ם", so it is found by "רמב״ם", by "רמב"ם" with a
+  straight quote, or by "רמב" alone — not by "רמבם".
+- **Try alternate spellings.** Hebrew transliteration varies. If
+  "Soloveitchik" returns nothing, try "Solovetchik" or search by the Hebrew
+  form.
+- **Combine terms to narrow results.** Searching "Maimonides philosophy"
+  finds records matching both words.
 
 ## Browsing the catalog
 
