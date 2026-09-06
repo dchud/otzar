@@ -47,6 +47,26 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Below WhiteNoise and above everything that writes a response body.
+    #
+    # Below WhiteNoise because WhiteNoise answers static requests itself
+    # and never calls what follows it, so the files it already
+    # compressed once at collect time are not compressed again on every
+    # request. Above the rest because compression has to be the last
+    # thing that happens to a body on the way out.
+    #
+    # On BREACH: compressing a response that carries a secret next to
+    # attacker-supplied text leaks the secret through the response
+    # length -- the attacker submits a guess, and a guess that matches
+    # the secret compresses better than one that does not. Django masks
+    # the CSRF token with a fresh random pad on every render, so the
+    # token never appears twice as the same bytes and a guess has
+    # nothing to compress against. Session identifiers travel in
+    # cookies, not in bodies, so the same page carries no other secret
+    # worth extracting. The pages here that mix user-supplied text with
+    # a form -- search results, the catalogue, the ingest workflow --
+    # are covered by that masking, so compression is safe.
+    "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -121,6 +141,22 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Compress static files when they are collected, not when they are
+# served. WhiteNoise writes a .gz (and a .br where brotli is available)
+# beside each collected file and serves whichever the browser accepts,
+# so the compiled stylesheet and the vendored HTMX and Alpine bundles --
+# roughly 130 KB of text between them -- reach a phone at about a
+# quarter of that, and the work is done once per build rather than once
+# per request.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = DATA_DIR / "media"
