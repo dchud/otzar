@@ -41,11 +41,17 @@
 
     The site is available at `http://localhost:8000`. The Django admin is at `/admin/`.
 
-    `just dev` builds the stylesheet before it starts the server, so a fresh clone renders styled without a separate step. The first build downloads the Tailwind CLI (about 80 MB) into `.django_tailwind_cli/` and takes a few seconds; later builds take about a second.
+    `just dev` builds the stylesheet before it starts the server, so a
+    fresh clone renders styled without a separate step. The first build
+    downloads the Tailwind CLI (about 80 MB) into
+    `.django_tailwind_cli/` and takes a few seconds; later builds take
+    about a second.
 
 ## Styling
 
-Tailwind compiles `static/css/tailwind.css` from `static/src/input.css` by scanning the four template directories named with `@source`. The compiled file is generated, not committed: `.gitignore` excludes it.
+Tailwind compiles `static/css/tailwind.css` from `static/src/input.css`
+by scanning the four template directories named with `@source`. The
+compiled file is generated, not committed: `.gitignore` excludes it.
 
 Build it with:
 
@@ -55,10 +61,26 @@ just tailwind
 
 Two consequences worth knowing:
 
-- **A checkout has no stylesheet until something builds one.** `just dev`, `just lan`, `just test`, `just test-e2e` and `./scripts/check.sh` all build it first, and so do both test jobs in CI and the container image. Running `uv run pytest tests/e2e/` directly does not, and `tests/e2e/test_stylesheet.py` fails with an explicit message when the file is absent, rather than letting the rest of the suite pass against an unstyled page.
-- **The build is always forced.** `manage.py tailwind build` on its own rebuilds only when `input.css` is newer than the output, which misses the case that matters: a template adds a class and the compiled file never learns about it. Every place that runs the build passes `--force`.
+- **A checkout has no stylesheet until something builds one.**
+  `just dev`, `just lan`, `just test`, `just test-e2e` and
+  `./scripts/check.sh` all build it first, and so do both test jobs in
+  CI and the container image. Running `uv run pytest tests/e2e/`
+  directly does not, and `tests/e2e/test_stylesheet.py` fails with an
+  explicit message when the file is absent, rather than letting the
+  rest of the suite pass against an unstyled page.
+- **The build is always forced.** `manage.py tailwind build` on its own
+  rebuilds only when `input.css` is newer than the output, which misses
+  the case that matters: a template adds a class and the compiled file
+  never learns about it. Every place that runs the build passes
+  `--force`.
 
-`templates/base.html` links the stylesheet through `versioned_static`, which appends the file's modification time as a `?v=` query string. A rebuild changes the timestamp and so changes the URL, which is what gets a browser -- and the phone used for scanning -- to fetch new CSS instead of reusing what it has. When the file is missing the tag falls back to the unstamped URL rather than raising, so a bare `href` with no `?v=` means nothing built the stylesheet.
+`templates/base.html` links the stylesheet through `versioned_static`,
+which appends the file's modification time as a `?v=` query string. A
+rebuild changes the timestamp and so changes the URL, which is what
+gets a browser -- and the phone used for scanning -- to fetch new CSS
+instead of reusing what it has. When the file is missing the tag falls
+back to the unstamped URL rather than raising, so a bare `href` with no
+`?v=` means nothing built the stylesheet.
 
 ## Project structure
 
@@ -251,7 +273,10 @@ just test -x              # stop on first failure
 just test -k "test_marc"  # run only matching tests
 ```
 
-`just test` and `just test-e2e` build the stylesheet first. Both suites need it: a unit test asserts the stylesheet URL carries a cache-busting stamp, which reads the file from disk, and the browser suite renders real pages.
+`just test` and `just test-e2e` build the stylesheet first. Both suites
+need it: a unit test asserts the stylesheet URL carries a cache-busting
+stamp, which reads the file from disk, and the browser suite renders
+real pages.
 
 ### Fixtures and test data
 
@@ -315,7 +340,9 @@ GitHub Actions runs three jobs on every pull request against `main` and on every
 
 The three jobs always start and always report a result. A required status check that never reports stays pending and blocks the merge, so the skip lives inside the job rather than in a `paths-ignore` filter on the job or the workflow.
 
-`test` and `test-e2e` build the stylesheet before running their suites, and cache the downloaded Tailwind CLI between runs. `lint` does not: nothing it runs renders a page.
+`test` and `test-e2e` build the stylesheet before running their suites,
+and cache the downloaded Tailwind CLI between runs. `lint` does not:
+nothing it runs renders a page.
 
 ## Justfile commands
 

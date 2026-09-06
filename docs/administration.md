@@ -253,7 +253,9 @@ External catalog lookups may fail if upstream services are down or have changed 
 
 Static files are served by WhiteNoise and collected by `collectstatic`. If styles or scripts are missing:
 
-- The Tailwind build step in the Dockerfile may have failed. It runs before `collectstatic` and generates `static/css/tailwind.css`, which is not in the repository. Check the build logs.
+- The Tailwind build step in the Dockerfile may have failed. It runs
+  before `collectstatic` and generates `static/css/tailwind.css`, which
+  is not in the repository. Check the build logs.
 - The `collectstatic` step in the Dockerfile may have failed. Check the build logs.
 - Verify `STATIC_ROOT` points to `staticfiles/` in the project directory.
 
