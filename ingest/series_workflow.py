@@ -8,10 +8,14 @@ Volume designations are normalized to Arabic digits so that records
 writing the same volume differently can be matched to each other.
 """
 
+import logging
 import re
 
 from catalog.models import Record, Series, SeriesVolume
+from catalog.utils import strip_marc_punctuation
 from ingest.authority import normalize_for_comparison
+
+logger = logging.getLogger(__name__)
 
 
 def detect_series_from_marc(parsed_record: dict) -> dict | None:
@@ -279,3 +283,83 @@ def create_series_volumes(
             created.append(sv)
 
     return created
+
+
+def link_record_to_series(
+    record: Record,
+    series_title: str | None,
+    series_volume: str | None = "",
+) -> SeriesVolume | None:
+    """Place *record* in the series its 490/830 names.
+
+    Finds or creates the Series, then gives the record a position in it.
+    Returns the SeriesVolume, or None when there is nothing to link:
+    no series title, or a position already taken by another record.
+
+    A series is identified by its title alone, normalized. The title is
+    the only thing every volume of a set agrees on -- author, publisher,
+    date and extent all vary volume by volume, and an edited set has a
+    different author on every one -- so keying on anything else would
+    produce a Series per record, which is the failure this avoids.
+    Titles are compared with punctuation and case removed, because the
+    punctuation belongs to the cataloger rather than to the set: one
+    catalog writes "ArtScroll series ;" where another writes "ArtScroll
+    series." The cost of title-only identity is that two unrelated sets
+    sharing a generic name merge into one. That is visible on the series
+    page and can be undone by editing; the opposite mistake, one set
+    split across two rows, shows up nowhere.
+
+    The stored title carries no transcribed punctuation, the same way
+    the record's own fields do not. The volume designation is
+    canonicalized to Arabic digits, so "v. 3", "vol. III" and "חלק ג"
+    all name position 3 of the set rather than three positions.
+    """
+    title = strip_marc_punctuation(series_title)
+    if not title:
+        return None
+
+    series = find_matching_series(title)
+    if series is None:
+        series = Series.objects.create(title=title)
+
+    # A record holds one position in a series. Re-confirming the same
+    # candidate, or confirming it under a differently written volume
+    # designation, must not add a second.
+    existing = SeriesVolume.objects.filter(
+        series=series, record=record
+    ).first()
+    if existing is not None:
+        return existing
+
+    volume_number = normalize_volume_number(series_volume)
+
+    occupant = SeriesVolume.objects.filter(
+        series=series, volume_number=volume_number
+    ).first()
+    if occupant is not None:
+        if occupant.record_id is not None:
+            # (series, volume_number) is unique, so the position cannot
+            # hold both. The record stays in the catalog without a
+            # series position, which is the honest answer when two
+            # records claim one place in a set.
+            logger.warning(
+                "Series %s volume %r already held by record %s; "
+                "leaving record %s unplaced",
+                series.pk,
+                volume_number,
+                occupant.record_id,
+                record.pk,
+            )
+            return None
+        # A gap placeholder for a volume not yet held. Fill it.
+        occupant.record = record
+        occupant.held = True
+        occupant.save(update_fields=["record", "held"])
+        return occupant
+
+    return SeriesVolume.objects.create(
+        series=series,
+        record=record,
+        volume_number=volume_number,
+        held=True,
+    )
