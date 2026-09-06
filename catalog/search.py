@@ -24,11 +24,58 @@ FTS_TEXT_COLUMNS = {
 # Columns assembled from related objects rather than a single attribute.
 FTS_RELATED_COLUMNS = ("authors", "subjects", "publishers", "identifiers")
 
+# Columns derived from the other columns rather than from the record:
+# the particle-stripped forms of its Hebrew words.
+FTS_DERIVED_COLUMNS = ("stems",)
+
 # The full column list, in the order the table declares them.
-FTS_COLUMNS = ("record_id", *FTS_TEXT_COLUMNS, *FTS_RELATED_COLUMNS)
+FTS_COLUMNS = (
+    "record_id",
+    *FTS_TEXT_COLUMNS,
+    *FTS_RELATED_COLUMNS,
+    *FTS_DERIVED_COLUMNS,
+)
+
+# bm25 weights by column; a column not listed weighs 1. A stripped form
+# is a guess at the word, so a hit on one counts for half a hit on the
+# text as written. That is what ranks a record carrying ספר above one
+# carrying only הספר or מספר.
+FTS_COLUMN_WEIGHTS = {"record_id": 0.0, "stems": 0.5}
 
 # Punctuation that FTS5 treats as syntax or that MARC leaves as trailing noise
 _PUNCT_RE = re.compile(r"[,;:!?@#$%^&*()\[\]{}<>=/\\|~`]")
+
+# The letters Hebrew attaches to the front of a word (in, the, and, as,
+# to, from, that). The tokenizer keeps them as part of the word, so a
+# search for ספר does not reach הספר unless something strips them.
+HEBREW_PARTICLES = "בהוכלמש"
+
+# How many leading particles to strip -- ובספר carries two -- and how
+# many letters a stripped word has to keep. The article on a two-letter
+# noun is common (הרב, העם, הים), so two letters are enough to index;
+# one is not, or הר would be indexed as ר.
+MAX_PARTICLES = 2
+MIN_STEM_LETTERS = 2
+
+_HEBREW_LETTER = "\u05d0-\u05ea"
+# Vowel points and cantillation. They sit on the letter before them and
+# leave with it. Maqaf, paseq and sof pasuq share the Unicode block but
+# are punctuation, and the tokenizer splits a word at them.
+_HEBREW_MARK = "\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7"
+# Geresh and gershayim, and the straight quotes typed for them. They
+# mark an abbreviation inside a word (רמב״ם), so a stripped form has to
+# keep them for its tokens to fall next to each other the way the
+# written word's do. Maqaf joins two words and is left to split them.
+_HEBREW_ABBREVIATION_MARK = "\u05f3\u05f4\"'"
+
+_HEBREW_LETTER_RE = re.compile(f"[{_HEBREW_LETTER}]")
+_HEBREW_WORD_RE = re.compile(
+    f"[{_HEBREW_LETTER}]"
+    f"[{_HEBREW_LETTER}{_HEBREW_MARK}{_HEBREW_ABBREVIATION_MARK}]*"
+)
+_PARTICLE_RE = re.compile(
+    f"^[{HEBREW_PARTICLES}][{_HEBREW_MARK}]*(?=[{_HEBREW_LETTER}])"
+)
 
 
 def _clean(text):
@@ -36,6 +83,46 @@ def _clean(text):
     if not text:
         return ""
     return _PUNCT_RE.sub(" ", text).strip()
+
+
+def hebrew_stems(word):
+    """Return the forms of a Hebrew word with its leading particles removed.
+
+    Each form drops one more leading particle letter than the one
+    before, up to ``MAX_PARTICLES``, and the series stops as soon as
+    fewer than ``MIN_STEM_LETTERS`` letters would be left. A word that
+    is not Hebrew, or does not begin with a particle letter, yields
+    nothing.
+
+    The rule cannot tell a particle from the first letter of the word:
+    מספר (a number) is stripped to ספר (a book) just as הספר is. That is
+    deliberate. A stripped form is only ever an extra way to match, so
+    a wrong one costs a record a lower-ranked appearance in a result
+    list, where a missing one costs it the search.
+    """
+    stems = []
+    for _ in range(MAX_PARTICLES):
+        stripped = _PARTICLE_RE.sub("", word, count=1)
+        if stripped == word:
+            break
+        if len(_HEBREW_LETTER_RE.findall(stripped)) < MIN_STEM_LETTERS:
+            break
+        stems.append(stripped)
+        word = stripped
+    return stems
+
+
+def _hebrew_stems_text(values):
+    """Return the stripped forms of every Hebrew word in values, as text.
+
+    Each form appears once, whichever fields it came from.
+    """
+    stems = {}
+    for value in values:
+        for word in _HEBREW_WORD_RE.findall(value):
+            for stem in hebrew_stems(word):
+                stems[stem] = None
+    return " ".join(stems)
 
 
 def _table_columns():
@@ -152,6 +239,9 @@ def _row_values(record):
     row["identifiers"] = " ".join(
         ei.value for ei in record.external_identifiers.all()
     )
+    row["stems"] = _hebrew_stems_text(
+        row[column] for column in (*FTS_TEXT_COLUMNS, *FTS_RELATED_COLUMNS)
+    )
     return [row[column] for column in FTS_COLUMNS]
 
 
@@ -178,17 +268,63 @@ def remove_from_index(record_id):
         )
 
 
+def _phrase(word):
+    """Quote a word as an FTS5 string, doubling any quote it carries."""
+    return '"' + word.replace('"', '""') + '"'
+
+
+def _match_group(word):
+    """Return the alternatives one query word may match, as FTS5 syntax.
+
+    The word as written, whole and as a prefix: FTS5's ranking does not
+    tell a whole word from a longer one, so a record carrying the
+    longer word several times would outrank the record carrying the
+    word itself. Asking for both lets the whole-word record score on
+    two phrases and come first.
+
+    Then each particle-stripped form, whole only. A prefix on the stem
+    would turn every Hebrew word beginning with a particle letter into
+    a broad search: במדבר, the book of Numbers, strips to דבר and would
+    match דברים, Deuteronomy.
+    """
+    phrase = _phrase(word)
+    alternatives = [phrase, phrase + "*"]
+    alternatives += [_phrase(stem) for stem in hebrew_stems(word)]
+    return "(" + " OR ".join(alternatives) + ")"
+
+
 def _sanitize_query(query):
-    """Sanitize a query string for FTS5."""
-    cleaned = _clean(query)
-    words = [w.strip() for w in cleaned.split() if w.strip()]
+    """Turn a query string into an FTS5 MATCH expression, or None.
+
+    Every word has to match, each by the alternatives `_match_group`
+    builds. A word with no letter or digit in it tokenizes to nothing,
+    and a phrase of nothing matches nothing, so requiring it would fail
+    the whole query; such words are left out.
+    """
+    words = [
+        word
+        for word in _clean(query).split()
+        if any(char.isalnum() for char in word)
+    ]
     if not words:
         return None
-    return " ".join(f'"{w}"' for w in words)
+    return " AND ".join(_match_group(word) for word in words)
+
+
+def _rank_expression():
+    """Return the bm25 call that scores a row, with the column weights."""
+    weights = ", ".join(
+        repr(float(FTS_COLUMN_WEIGHTS.get(column, 1.0)))
+        for column in FTS_COLUMNS
+    )
+    return f"bm25({FTS_TABLE}, {weights})"
 
 
 def search(query, limit=50):
-    """Search the FTS index. Returns a list of (record_id, rank) tuples."""
+    """Search the FTS index. Returns a list of (record_id, rank) tuples.
+
+    Lower rank is better, as with FTS5's own ``rank`` column.
+    """
     ensure_fts_table()
     if not query or not query.strip():
         return []
@@ -200,10 +336,10 @@ def search(query, limit=50):
     with connection.cursor() as cursor:
         cursor.execute(
             f"""
-            SELECT record_id, rank
+            SELECT record_id, {_rank_expression()} AS score
             FROM {FTS_TABLE}
             WHERE {FTS_TABLE} MATCH %s
-            ORDER BY rank
+            ORDER BY score
             LIMIT %s
             """,
             [sanitized, limit],
