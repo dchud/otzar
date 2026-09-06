@@ -1,3 +1,4 @@
+from typing import Any, ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -250,7 +251,7 @@ class TestCandidateRecordCreation:
     an integer was stored by one path and dropped by the other.
     """
 
-    CANDIDATE = {
+    CANDIDATE: ClassVar[dict[str, Any]] = {
         "title": "Biblia Hebraica Stuttgartensia /",
         "title_alternate": "Torah, Nevi'im u-Khetuvim",
         "author": "Elliger, Karl",
@@ -353,7 +354,7 @@ class TestScanClosedOnConfirm:
     queue, both already catalogued.
     """
 
-    CANDIDATE = {
+    CANDIDATE: ClassVar[dict[str, str]] = {
         "title": "Mishneh Torah",
         "author": "Maimonides",
         "date": "1862",
@@ -641,7 +642,7 @@ class TestTitleStatementSurvivesConfirm:
         "translated, annotated, and elucidated by Yisrael Isser Zvi Herczeg."
     )
 
-    CANDIDATE = {
+    CANDIDATE: ClassVar[dict[str, str]] = {
         "title": "Rashi : the Torah, with Rashi's commentary /",
         "volume_part_number": "Volume 2,",
         "volume_part_title": "Sefer Mishpatim /",
@@ -651,7 +652,7 @@ class TestTitleStatementSurvivesConfirm:
         "source_catalog": "LC",
     }
 
-    PLAIN_CANDIDATE = {
+    PLAIN_CANDIDATE: ClassVar[dict[str, str]] = {
         "title": "Halakhic man /",
         "author": "Soloveitchik, Joseph Dov,",
         "date": "2007",

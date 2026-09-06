@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django import forms
 
 from catalog.models import Record
@@ -26,7 +28,7 @@ class RecordForm(forms.ModelForm):
 
     class Meta:
         model = Record
-        fields = [
+        fields: ClassVar[list[str]] = [
             "title",
             "title_romanized",
             "subtitle",
@@ -40,7 +42,7 @@ class RecordForm(forms.ModelForm):
             "dedication_text",
             "stamp_text",
         ]
-        widgets = {
+        widgets: ClassVar[dict[str, forms.Widget]] = {
             "title": forms.TextInput(
                 attrs={"class": INPUT_CLASSES, "dir": "auto"}
             ),

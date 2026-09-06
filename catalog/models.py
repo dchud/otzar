@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
@@ -114,7 +116,7 @@ class Record(models.Model):
     )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering: ClassVar[list[str]] = ["-created_at"]
 
     def __str__(self):
         return f"{self.record_id}: {self.title}"
@@ -148,7 +150,7 @@ class Author(models.Model):
     variant_names = models.JSONField(default=list, blank=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering: ClassVar[list[str]] = ["name"]
 
     def __str__(self):
         if self.name_romanized:
@@ -166,7 +168,7 @@ class Subject(models.Model):
     )
 
     class Meta:
-        ordering = ["heading"]
+        ordering: ClassVar[list[str]] = ["heading"]
 
     def __str__(self):
         return self.heading
@@ -178,7 +180,7 @@ class Publisher(models.Model):
     place = models.CharField(max_length=255, blank=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering: ClassVar[list[str]] = ["name"]
 
     def __str__(self):
         if self.place:
@@ -199,7 +201,7 @@ class Series(models.Model):
     )
 
     class Meta:
-        ordering = ["title"]
+        ordering: ClassVar[list[str]] = ["title"]
         verbose_name_plural = "series"
 
     def __str__(self):
@@ -221,8 +223,10 @@ class SeriesVolume(models.Model):
     held = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["volume_number"]
-        unique_together = [("series", "volume_number")]
+        ordering: ClassVar[list[str]] = ["volume_number"]
+        unique_together: ClassVar[list[tuple[str, str]]] = [
+            ("series", "volume_number")
+        ]
 
     def __str__(self):
         status = "" if self.held else " (not held)"
@@ -233,14 +237,14 @@ class Location(models.Model):
     label = models.CharField(max_length=255, unique=True)
 
     class Meta:
-        ordering = ["label"]
+        ordering: ClassVar[list[str]] = ["label"]
 
     def __str__(self):
         return self.label
 
 
 class ExternalIdentifier(models.Model):
-    IDENTIFIER_TYPES = [
+    IDENTIFIER_TYPES: ClassVar[list[tuple[str, str]]] = [
         ("ISBN", "ISBN"),
         ("LCCN", "LCCN"),
         ("LCC", "LC Classification"),
@@ -257,8 +261,10 @@ class ExternalIdentifier(models.Model):
     value = models.CharField(max_length=100)
 
     class Meta:
-        unique_together = [("record", "identifier_type", "value")]
-        ordering = ["identifier_type", "value"]
+        unique_together: ClassVar[list[tuple[str, str, str]]] = [
+            ("record", "identifier_type", "value")
+        ]
+        ordering: ClassVar[list[str]] = ["identifier_type", "value"]
 
     def __str__(self):
         return f"{self.identifier_type}: {self.value}"
@@ -277,7 +283,7 @@ class TitlePageImage(models.Model):
     staged = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["-uploaded_at"]
+        ordering: ClassVar[list[str]] = ["-uploaded_at"]
 
     def __str__(self):
         if self.record:
@@ -300,7 +306,7 @@ class SeriesClaim(models.Model):
     with it.
     """
 
-    STATUS_CHOICES = [
+    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("pending", "Pending"),
         ("committed", "Committed"),
         ("cancelled", "Cancelled"),
@@ -334,7 +340,7 @@ class SeriesClaim(models.Model):
     )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering: ClassVar[list[str]] = ["-created_at"]
 
     def __str__(self):
         title = self.series.title if self.series else "unassigned series"
@@ -349,7 +355,7 @@ class SeriesClaimRow(models.Model):
     single field keeps the two from contradicting each other.
     """
 
-    SEARCH_STATUS_CHOICES = [
+    SEARCH_STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("pending", "Pending"),
         ("searching", "Searching"),
         ("found", "Found"),
@@ -379,8 +385,10 @@ class SeriesClaimRow(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["volume_number"]
-        unique_together = [("claim", "volume_number")]
+        ordering: ClassVar[list[str]] = ["volume_number"]
+        unique_together: ClassVar[list[tuple[str, str]]] = [
+            ("claim", "volume_number")
+        ]
 
     def __str__(self):
         return f"vol. {self.volume_number} ({self.search_status})"

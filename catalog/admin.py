@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import ClassVar
+
 from django.contrib import admin
 from django.db.models import Count
 
@@ -134,15 +137,18 @@ class TitlePageImageInline(admin.TabularInline):
 
 @admin.register(Record)
 class RecordAdmin(IndexedAdmin):
-    list_display = [
+    list_display: ClassVar[list[str]] = [
         "record_id",
         "title",
         "date_of_publication",
         "source_catalog",
         "created_at",
     ]
-    list_filter = ["source_catalog", LanguageFilter]
-    search_fields = [
+    list_filter: ClassVar[list[str | type[admin.SimpleListFilter]]] = [
+        "source_catalog",
+        LanguageFilter,
+    ]
+    search_fields: ClassVar[list[str]] = [
         "title",
         "title_romanized",
         "record_id",
@@ -151,9 +157,21 @@ class RecordAdmin(IndexedAdmin):
         "dedication_text",
         "stamp_text",
     ]
-    readonly_fields = ["record_id", "created_at", "updated_at"]
-    filter_horizontal = ["authors", "subjects", "publishers", "locations"]
-    inlines = [ExternalIdentifierInline, TitlePageImageInline]
+    readonly_fields: ClassVar[list[str]] = [
+        "record_id",
+        "created_at",
+        "updated_at",
+    ]
+    filter_horizontal: ClassVar[list[str]] = [
+        "authors",
+        "subjects",
+        "publishers",
+        "locations",
+    ]
+    inlines: ClassVar[list[type[admin.TabularInline]]] = [
+        ExternalIdentifierInline,
+        TitlePageImageInline,
+    ]
 
     def indexed_record_ids(self, obj):
         return [obj.record_id]
@@ -161,10 +179,19 @@ class RecordAdmin(IndexedAdmin):
 
 @admin.register(Author)
 class AuthorAdmin(IndexedAdmin):
-    list_display = ["name", "name_romanized", "viaf_id", "record_count"]
-    search_fields = ["name", "name_romanized", "viaf_id"]
-    list_filter = [OrphanFilter]
-    actions = [delete_orphans]
+    list_display: ClassVar[list[str]] = [
+        "name",
+        "name_romanized",
+        "viaf_id",
+        "record_count",
+    ]
+    search_fields: ClassVar[list[str]] = [
+        "name",
+        "name_romanized",
+        "viaf_id",
+    ]
+    list_filter: ClassVar[list[type[admin.SimpleListFilter]]] = [OrphanFilter]
+    actions: ClassVar[list[Callable[..., None]]] = [delete_orphans]
 
     def get_queryset(self, request):
         return (
@@ -180,10 +207,18 @@ class AuthorAdmin(IndexedAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(IndexedAdmin):
-    list_display = ["heading", "heading_romanized", "source", "record_count"]
-    list_filter = ["source", OrphanFilter]
-    search_fields = ["heading", "heading_romanized"]
-    actions = [delete_orphans]
+    list_display: ClassVar[list[str]] = [
+        "heading",
+        "heading_romanized",
+        "source",
+        "record_count",
+    ]
+    list_filter: ClassVar[list[str | type[admin.SimpleListFilter]]] = [
+        "source",
+        OrphanFilter,
+    ]
+    search_fields: ClassVar[list[str]] = ["heading", "heading_romanized"]
+    actions: ClassVar[list[Callable[..., None]]] = [delete_orphans]
 
     def get_queryset(self, request):
         return (
@@ -199,10 +234,19 @@ class SubjectAdmin(IndexedAdmin):
 
 @admin.register(Publisher)
 class PublisherAdmin(IndexedAdmin):
-    list_display = ["name", "name_romanized", "place", "record_count"]
-    search_fields = ["name", "name_romanized", "place"]
-    list_filter = [OrphanFilter]
-    actions = [delete_orphans]
+    list_display: ClassVar[list[str]] = [
+        "name",
+        "name_romanized",
+        "place",
+        "record_count",
+    ]
+    search_fields: ClassVar[list[str]] = [
+        "name",
+        "name_romanized",
+        "place",
+    ]
+    list_filter: ClassVar[list[type[admin.SimpleListFilter]]] = [OrphanFilter]
+    actions: ClassVar[list[Callable[..., None]]] = [delete_orphans]
 
     def get_queryset(self, request):
         return (
@@ -218,17 +262,22 @@ class PublisherAdmin(IndexedAdmin):
 
 @admin.register(Series)
 class SeriesAdmin(admin.ModelAdmin):
-    list_display = ["title", "title_romanized", "total_volumes", "publisher"]
-    search_fields = ["title", "title_romanized"]
-    inlines = [SeriesVolumeInline]
+    list_display: ClassVar[list[str]] = [
+        "title",
+        "title_romanized",
+        "total_volumes",
+        "publisher",
+    ]
+    search_fields: ClassVar[list[str]] = ["title", "title_romanized"]
+    inlines: ClassVar[list[type[admin.TabularInline]]] = [SeriesVolumeInline]
 
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ["label", "record_count"]
-    search_fields = ["label"]
-    list_filter = [OrphanFilter]
-    actions = [delete_orphans]
+    list_display: ClassVar[list[str]] = ["label", "record_count"]
+    search_fields: ClassVar[list[str]] = ["label"]
+    list_filter: ClassVar[list[type[admin.SimpleListFilter]]] = [OrphanFilter]
+    actions: ClassVar[list[Callable[..., None]]] = [delete_orphans]
 
     def get_queryset(self, request):
         return (
