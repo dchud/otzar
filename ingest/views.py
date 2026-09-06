@@ -30,6 +30,7 @@ from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import create_series_volumes
 from sources.cascade import isbn_lookup, search_lc, search_nli
 from sources.covers import fetch_cover_url
+from sources.score import rank_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ def _notice(request, message, status=200):
     )
 
 
-def _candidates_with_json(candidates):
+def _candidates_with_json(candidates, matches=None):
     """Pair each candidate with the JSON payload its row posts back.
 
     The candidate travels to ``select_candidate`` verbatim rather than
@@ -131,8 +132,16 @@ def _candidates_with_json(candidates):
     into a textarea under autoescaping: the browser resolves the
     character references when it reads the field back, so the JSON
     arrives intact and a title carrying markup cannot close the tag.
+
+    *matches*, when given, runs parallel to *candidates* and carries
+    each one's :class:`sources.score.Match`. It rides on the item rather
+    than in the candidate, so the score is shown beside the row but
+    never posted back or stored as part of the record.
     """
-    return [{"data": c, "json": json.dumps(c)} for c in candidates or []]
+    items = [{"data": c, "json": json.dumps(c)} for c in candidates or []]
+    for item, match in zip(items, matches or ()):
+        item["match"] = match
+    return items
 
 
 def _scan_for_repeat_search(user, scan_id):
@@ -602,9 +611,19 @@ def title_page_upload(request):
         except Exception:
             logger.exception("LC cascade search failed")
 
-        # Store what the search found, so the scan carries the same
-        # record the ISBN path stores and a candidate index means
-        # something on the way back through confirm.
+        # Order by agreement with what was read off the page, across
+        # catalogs. Each cascade returns its rows in that catalog's own
+        # relevance order, which knows nothing about the photograph, and
+        # a title-only fallback query returns every edition of a work
+        # in no useful order at all.
+        ranked = rank_candidates(metadata, candidates)
+        candidates = [candidate for candidate, _ in ranked]
+        matches = [match for _, match in ranked]
+
+        # Store what the search found, in the order it was shown, so
+        # the scan carries the same record the ISBN path stores and a
+        # candidate index means something on the way back through
+        # confirm.
         scan_id = _parse_int(request.POST.get("scan_id"))
         if scan_id:
             ScanResult.objects.filter(pk=scan_id).update(
@@ -615,7 +634,8 @@ def title_page_upload(request):
             request,
             "ingest/_candidates.html",
             {
-                "candidates": _candidates_with_json(candidates),
+                "candidates": _candidates_with_json(candidates, matches),
+                "scored": True,
                 "metadata": metadata,
                 "scan_id": scan_id,
             },
