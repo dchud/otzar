@@ -19,6 +19,16 @@ RUN uv sync --frozen --no-dev
 # Copy application code
 COPY . .
 
+# Build the stylesheet. Tailwind derives it from the templates, so it is
+# generated rather than committed, and the image has to produce its own.
+# It belongs here rather than in the entrypoint: the templates are fixed
+# once the image is built, so rebuilding at container start would repeat
+# identical work, pull the Tailwind CLI down on every start, and give
+# each container a different file timestamp -- which is what the
+# stylesheet URL's cache-busting stamp is read from, so browsers would
+# refetch unchanged CSS after every restart.
+RUN uv run python manage.py tailwind build --force
+
 # Collect static files (uses whitenoise, no volume needed)
 RUN DATABASE_URL=sqlite:////tmp/throwaway.db \
     uv run python manage.py collectstatic --noinput

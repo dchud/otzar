@@ -13,6 +13,7 @@ db.sqlite3*
 media/
 cache/
 staticfiles/
+static/css/tailwind.css
 tmp/
 docs/
 *.md

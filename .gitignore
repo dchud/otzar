@@ -229,5 +229,13 @@ db.sqlite3-shm
 .django_tailwind_cli/
 .playwright-mcp/
 
+# Tailwind compiles this from static/src/input.css by scanning the
+# templates, so it is a product of the tree rather than a part of it.
+# Tracking it lets a template add a class the checked-in file never
+# compiled -- the page then renders unstyled and nothing fails -- and
+# makes every branch that rebuilds conflict in a minified single line
+# no one can merge by reading it. Build it with `just tailwind`.
+static/css/tailwind.css
+
 # Agent worktrees and local harness state
 .claude/worktrees/
