@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# `static/css/tailwind.css` is generated from the templates rather than
+# committed, so both test jobs build it before they run anything. The
+# unit suite asserts the stylesheet URL carries a cache-busting stamp,
+# which reads the file from disk; the browser suite renders real pages,
+# and without the stylesheet most of it passes against an unstyled
+# application, which looks like coverage and is not.
+#
 # `lint`, `test` and `test-e2e` are required status checks on `main`. A
 # required check that never reports is not treated as passing: it sits
 # pending and the pull request cannot merge. So a workflow-level or
@@ -108,6 +115,19 @@ jobs:
           SITE_PASSWORD=
           EOF
 
+      - name: Cache the Tailwind CLI
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .django_tailwind_cli
+          key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            tailwind-cli-${{ runner.os }}-
+
+      - name: Build the stylesheet
+        if: steps.relevant.outputs.run == 'true'
+        run: uv run python manage.py tailwind build --force
+
       - name: Run unit tests
         if: steps.relevant.outputs.run == 'true'
         run: uv run pytest --ignore=tests/e2e
@@ -179,6 +199,19 @@ jobs:
           RECORD_ID_PREFIX=otzar-
           SITE_PASSWORD=
           EOF
+
+      - name: Cache the Tailwind CLI
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .django_tailwind_cli
+          key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            tailwind-cli-${{ runner.os }}-
+
+      - name: Build the stylesheet
+        if: steps.relevant.outputs.run == 'true'
+        run: uv run python manage.py tailwind build --force
 
       - name: Cache Playwright browsers
         if: steps.relevant.outputs.run == 'true'
