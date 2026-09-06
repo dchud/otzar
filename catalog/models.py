@@ -15,6 +15,31 @@ class Record(models.Model):
     title = models.CharField(max_length=500)
     title_romanized = models.CharField(max_length=500, blank=True)
     subtitle = models.CharField(max_length=500, blank=True)
+    volume_part_number = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=(
+            "Designation of the part of a multi-part title this record "
+            'describes, from MARC 245 $n: "Volume 2", "Bd. 4, T. 2".'
+        ),
+    )
+    volume_part_title = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=(
+            'Name of that part, from MARC 245 $p: "Sefer Mishpatim". '
+            "A part title, so it is as long as any other title."
+        ),
+    )
+    statement_of_responsibility = models.TextField(
+        blank=True,
+        help_text=(
+            "Responsibility for the work as transcribed from the item, "
+            "from MARC 245 $c. Where the added entries carry no relator "
+            "term, this is the only record of which contributor did "
+            "what."
+        ),
+    )
     date_of_publication = models.IntegerField(
         null=True, blank=True, db_index=True
     )

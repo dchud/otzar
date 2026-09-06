@@ -40,6 +40,16 @@
     {% if record.subtitle %}
     <p class="text-lg text-gray-500 dark:text-gray-300 mt-1" dir="auto">{{ record.subtitle|bidi_text }}</p>
     {% endif %}
+    {% comment %}The part of a multi-part title, which is what tells one
+    volume of a set from the next. ISBD punctuation is supplied here
+    because the stored values have their transcribed punctuation
+    stripped, the same as every other field on the record.{% endcomment %}
+    {% if record.volume_part_number or record.volume_part_title %}
+    <p class="text-lg font-medium text-gray-700 dark:text-gray-200 mt-1" dir="auto">{{ record.volume_part_number|bidi_text }}{% if record.volume_part_number and record.volume_part_title %} : {% endif %}{{ record.volume_part_title|bidi_text }}</p>
+    {% endif %}
+    {% if record.statement_of_responsibility %}
+    <p class="text-base italic text-gray-600 dark:text-gray-300 mt-2" dir="auto">{{ record.statement_of_responsibility|bidi_text }}</p>
+    {% endif %}
   </header>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

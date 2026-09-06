@@ -693,3 +693,221 @@ class TestSubjectHeadings:
             "Jews",
             "Passover -- Juvenile literature.",
         ]
+
+
+# ---------------------------------------------------------------------------
+# Tests: the rest of the 245 -- part designation and responsibility
+# ---------------------------------------------------------------------------
+
+
+def _record_with_245(subfields: str) -> mrrc.Record:
+    """Parse a one-record SRU envelope whose 245 holds *subfields*.
+
+    *subfields* is the MARCXML ``<subfield>`` run to put in the field, so
+    a test can vary one part of the 245 without restating a record.
+    """
+    xml = f"""\
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/">
+<zs:version>1.1</zs:version>
+<zs:numberOfRecords>1</zs:numberOfRecords>
+<zs:records>
+<zs:record>
+<zs:recordData>
+<record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>01000cam a2200265 i 4500</leader>
+  <controlfield tag="001">2001531851</controlfield>
+  <datafield tag="245" ind1="1" ind2="0">
+{subfields}
+  </datafield>
+</record>
+</zs:recordData>
+</zs:record>
+</zs:records>
+</zs:searchRetrieveResponse>
+"""
+    _, records = extract_marc_records(xml)
+    return records[0]
+
+
+# A multi-volume set as LC catalogues one. The part is designated in
+# 245 $n and named in $p, and every contributor's role is written out in
+# $c because the 700 fields carry neither a $e relator term nor a $4
+# relator code -- so $c is the only place those roles exist.
+MULTIVOLUME_SRU_XML = """\
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/">
+<zs:version>1.1</zs:version>
+<zs:numberOfRecords>1</zs:numberOfRecords>
+<zs:records>
+<zs:record>
+<zs:recordSchema>marcxml</zs:recordSchema>
+<zs:recordPacking>xml</zs:recordPacking>
+<zs:recordData>
+<record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>02100cam a2200421 a 4500</leader>
+  <controlfield tag="001">2001531851</controlfield>
+  <controlfield tag="008">010801s1999    nyu           000 0 eng  </controlfield>
+  <datafield tag="245" ind1="1" ind2="0">
+    <subfield code="a">Rashi :</subfield>
+    <subfield code="b">the Torah, with Rashi's commentary /</subfield>
+    <subfield code="n">Volume 2,</subfield>
+    <subfield code="p">Sefer Mishpatim /</subfield>
+    <subfield code="c">translated, annotated, and elucidated by Yisrael Isser Zvi Herczeg ; in collaboration with Yaakov Petroff and Yoseph Kamenetsky ; contributing editor, Avie Gold.</subfield>
+  </datafield>
+  <datafield tag="490" ind1="1" ind2=" ">
+    <subfield code="a">ArtScroll series ;</subfield>
+    <subfield code="v">v. 2</subfield>
+  </datafield>
+  <datafield tag="700" ind1="1" ind2=" ">
+    <subfield code="a">Herczeg, Yisrael Isser Zvi.</subfield>
+  </datafield>
+  <datafield tag="700" ind1="1" ind2=" ">
+    <subfield code="a">Petroff, Yaakov.</subfield>
+  </datafield>
+  <datafield tag="700" ind1="1" ind2=" ">
+    <subfield code="a">Kamenetzky, Yosef.</subfield>
+  </datafield>
+  <datafield tag="700" ind1="1" ind2=" ">
+    <subfield code="a">Gold, Avie.</subfield>
+  </datafield>
+</record>
+</zs:recordData>
+<zs:recordPosition>1</zs:recordPosition>
+</zs:record>
+</zs:records>
+</zs:searchRetrieveResponse>
+"""
+
+
+class TestParseRecordVolumePart:
+    @pytest.fixture()
+    def parsed(self):
+        _, records = extract_marc_records(MULTIVOLUME_SRU_XML)
+        return parse_record(records[0])
+
+    def test_part_number(self, parsed):
+        assert parsed["volume_part_number"] == "Volume 2,"
+
+    def test_part_title(self, parsed):
+        assert parsed["volume_part_title"] == "Sefer Mishpatim /"
+
+    def test_title_keeps_only_a_and_b(self, parsed):
+        assert (
+            parsed["title"] == "Rashi : the Torah, with Rashi's commentary /"
+        )
+
+    def test_series_statement_still_read(self, parsed):
+        # 245 $n numbers the part within this title; 490 $v numbers the
+        # item within a set. Both are read, because they can disagree.
+        assert parsed["series_title"] == "ArtScroll series ;"
+        assert parsed["series_volume"] == "v. 2"
+
+    def test_number_without_name(self):
+        record = _record_with_245(
+            '    <subfield code="a">Collected works /</subfield>\n'
+            '    <subfield code="n">Volume 3.</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["volume_part_number"] == "Volume 3."
+        assert parsed["volume_part_title"] is None
+
+    def test_name_without_number(self):
+        record = _record_with_245(
+            '    <subfield code="a">Collected works.</subfield>\n'
+            '    <subfield code="p">Letters /</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["volume_part_number"] is None
+        assert parsed["volume_part_title"] == "Letters /"
+
+    def test_neither_present(self):
+        record = _record_with_245(
+            '    <subfield code="a">Collected works /</subfield>\n'
+            '    <subfield code="b">an anthology.</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["volume_part_number"] is None
+        assert parsed["volume_part_title"] is None
+        assert parsed["title"] == "Collected works / an anthology."
+
+    def test_repeated_subfields_joined(self):
+        record = _record_with_245(
+            '    <subfield code="a">Talmud Bavli.</subfield>\n'
+            '    <subfield code="n">Seder 1,</subfield>\n'
+            '    <subfield code="p">Zeraim.</subfield>\n'
+            '    <subfield code="n">Masekhet 2,</subfield>\n'
+            '    <subfield code="p">Peah.</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["volume_part_number"] == "Seder 1, Masekhet 2,"
+        assert parsed["volume_part_title"] == "Zeraim. Peah."
+
+    def test_hebrew_part_name(self):
+        record = _record_with_245(
+            '    <subfield code="a">Mishneh Torah.</subfield>\n'
+            '    <subfield code="p">\u05e1\u05e4\u05e8 \u05d4\u05de\u05d3\u05e2</subfield>'
+        )
+        parsed = parse_record(record)
+        assert has_hebrew(parsed["volume_part_title"])
+
+    def test_non_sorting_delimiters_stripped(self):
+        # Every path that reads a data field goes through the same
+        # cleaning, so a DNB record's delimiters cannot leak in here.
+        record = _record_with_245(
+            '    <subfield code="a">Gesammelte Werke.</subfield>\n'
+            '    <subfield code="n">\u0098Der\u009c zweite Band,</subfield>\n'
+            '    <subfield code="p">\u0098Die\u009c Briefe</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["volume_part_number"] == "Der zweite Band,"
+        assert parsed["volume_part_title"] == "Die Briefe"
+
+
+class TestParseRecordStatementOfResponsibility:
+    @pytest.fixture()
+    def parsed(self):
+        _, records = extract_marc_records(MULTIVOLUME_SRU_XML)
+        return parse_record(records[0])
+
+    def test_transcribed_whole(self, parsed):
+        assert parsed["statement_of_responsibility"] == (
+            "translated, annotated, and elucidated by "
+            "Yisrael Isser Zvi Herczeg ; in collaboration with "
+            "Yaakov Petroff and Yoseph Kamenetsky ; "
+            "contributing editor, Avie Gold."
+        )
+
+    def test_the_added_entries_carry_no_role(self, parsed):
+        # The 700 fields have neither $e nor $4, so the added entries
+        # are a flat list of names and the roles survive only as prose.
+        assert parsed["additional_authors"] == [
+            "Herczeg, Yisrael Isser Zvi.",
+            "Petroff, Yaakov.",
+            "Kamenetzky, Yosef.",
+            "Gold, Avie.",
+        ]
+
+    def test_absent_when_the_field_has_no_c(self):
+        record = _record_with_245(
+            '    <subfield code="a">Anonymous treatise.</subfield>'
+        )
+        parsed = parse_record(record)
+        assert parsed["statement_of_responsibility"] is None
+
+    def test_non_sorting_delimiters_stripped(self):
+        record = _record_with_245(
+            '    <subfield code="a">Klavieretuden /</subfield>\n'
+            '    <subfield code="c">herausgegeben von \u0098der\u009c Redaktion.</subfield>'
+        )
+        parsed = parse_record(record)
+        assert (
+            parsed["statement_of_responsibility"]
+            == "herausgegeben von der Redaktion."
+        )
+
+    def test_absent_from_a_record_that_carries_no_c(self):
+        _, records = extract_marc_records(LC_SRU_XML)
+        parsed = parse_record(records[0])
+        assert parsed["statement_of_responsibility"] is None
+        assert "Halakhic man" in parsed["title"]

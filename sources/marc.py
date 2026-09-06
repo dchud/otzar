@@ -234,6 +234,12 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     - ``title`` -- from 245$a + 245$b
     - ``title_alternate`` -- from 880 linked to 245, or from 245 itself
       if the primary title already contains Hebrew (NLI pattern)
+    - ``volume_part_number`` -- from 245$n, the designation of a part
+      within the title ("Volume 2", "Bd. 4, T. 2")
+    - ``volume_part_title`` -- from 245$p, the name of that part
+      ("Sefer Mishpatim")
+    - ``statement_of_responsibility`` -- from 245$c, transcribed as the
+      cataloger wrote it
     - ``author`` -- from 100$a
     - ``author_alternate`` -- from 880 linked to 100, or from 100 itself
       if the primary author already contains Hebrew
@@ -268,6 +274,23 @@ def parse_record(marc_record: mrrc.Record) -> dict:
         # there is no separate alternate.
         alt_title = title
     result["title_alternate"] = alt_title
+
+    # The rest of the title statement. $n designates a part of this
+    # title and $p names it; both are repeatable, so a nested part
+    # ("Seder 1, Masekhet 2") arrives as several subfields and is joined
+    # in the order the field carries them. They are kept out of ``title``
+    # so the part is a datum of its own, which is what lets a display
+    # put it where a reader looks for it.
+    result["volume_part_number"] = get_field_value(marc_record, "245", ["n"])
+    result["volume_part_title"] = get_field_value(marc_record, "245", ["p"])
+
+    # $c is the statement of responsibility, transcribed from the item.
+    # Where the 700 fields carry no $e relator term and no $4 relator
+    # code -- common in LC copy -- it is the only place the record says
+    # which contributor did what, so it is kept whole and unparsed.
+    result["statement_of_responsibility"] = get_field_value(
+        marc_record, "245", ["c"]
+    )
 
     # --- Author ---
     author = get_field_value(marc_record, "100", ["a"])

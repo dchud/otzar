@@ -33,6 +33,21 @@
         <p class="text-lg text-gray-800 dark:text-gray-200" dir="auto">{{ candidate.title_alternate }}</p>
         {% endif %}
 
+        {% comment %}The part designation and its name, straight from the
+        245. The values keep the cataloger's own punctuation, which
+        already separates one subfield from the next, so they are joined
+        with a space rather than given punctuation of their own.
+        {% endcomment %}
+        {% if candidate.volume_part_number or candidate.volume_part_title %}
+        <p class="text-xl font-medium text-gray-900 dark:text-gray-100" dir="auto">
+          {{ candidate.volume_part_number|default:"" }} {{ candidate.volume_part_title|default:"" }}
+        </p>
+        {% endif %}
+
+        {% if candidate.statement_of_responsibility %}
+        <p class="text-base italic text-gray-700 dark:text-gray-300" dir="auto">{{ candidate.statement_of_responsibility }}</p>
+        {% endif %}
+
         <div class="text-lg text-gray-900 dark:text-gray-100 space-y-1">
           {% if candidate.author %}
           <p><span class="font-medium">Author:</span> {{ candidate.author }}
