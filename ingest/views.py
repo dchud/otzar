@@ -27,7 +27,11 @@ from ingest.authority import (
 from ingest.forms import RecordForm
 from ingest.models import OCR_LEASE_TIMEOUT, ScanResult
 from ingest.ocr import extract_metadata_from_image
-from ingest.series_workflow import create_series_volumes
+from ingest.series_workflow import (
+    create_series_volumes,
+    detect_series_from_marc,
+    link_record_to_series,
+)
 from sources.cascade import isbn_lookup, search_lc, search_nli
 from sources.covers import fetch_cover_url
 from sources.score import rank_candidates
@@ -189,6 +193,10 @@ def _create_record_from_candidate(
     authors the catalog already holds. ``author_choice`` carries what
     the cataloguer said on the confirm page; without one, the reconciler
     reuses an unambiguous match and otherwise creates a row.
+
+    It is likewise the one place a candidate's series statement becomes
+    a position in a set, so volumes catalogued one at a time end up on
+    one Series rather than one apiece.
     """
     date_str = candidate.get("date", "")
     date_int = None
@@ -204,6 +212,15 @@ def _create_record_from_candidate(
         title=strip_marc_punctuation(candidate.get("title")),
         title_romanized=strip_marc_punctuation(
             candidate.get("title_alternate")
+        ),
+        volume_part_number=strip_marc_punctuation(
+            candidate.get("volume_part_number")
+        ),
+        volume_part_title=strip_marc_punctuation(
+            candidate.get("volume_part_title")
+        ),
+        statement_of_responsibility=strip_marc_punctuation(
+            candidate.get("statement_of_responsibility")
         ),
         date_of_publication=date_int,
         date_of_publication_display=strip_marc_punctuation(str(date_str))
@@ -235,6 +252,14 @@ def _create_record_from_candidate(
         record.locations.add(location)
 
     _attach_from_candidate(record, candidate)
+
+    series_info = detect_series_from_marc(candidate)
+    if series_info:
+        link_record_to_series(
+            record,
+            series_info["series_title"],
+            series_info["series_volume"],
+        )
 
     # Best-effort; a missing cover must not cost the user the record.
     try:

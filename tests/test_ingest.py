@@ -621,3 +621,331 @@ class TestConfirmOffersExistingAuthors:
         scan.refresh_from_db()
         assert list(scan.created_record.authors.all()) == [existing]
         assert Author.objects.count() == 1
+
+
+@pytest.mark.django_db
+class TestTitleStatementSurvivesConfirm:
+    """The rest of the 245 has to reach the record it describes.
+
+    A candidate card shows the part designation (245 $n), the part title
+    (245 $p) and the statement of responsibility (245 $c). Confirming
+    the candidate built a Record without them, so what the cataloger
+    read on the card was gone from the record a moment later.
+
+    The stored values carry no transcribed punctuation. The record page
+    supplies its own ISBD colon between the part number and the part
+    title, so a comma or a slash left on the end would print twice over.
+    """
+
+    STATEMENT = (
+        "translated, annotated, and elucidated by Yisrael Isser Zvi Herczeg."
+    )
+
+    CANDIDATE = {
+        "title": "Rashi : the Torah, with Rashi's commentary /",
+        "volume_part_number": "Volume 2,",
+        "volume_part_title": "Sefer Mishpatim /",
+        "statement_of_responsibility": STATEMENT,
+        "author": "Rashi,",
+        "date": "1999",
+        "source_catalog": "LC",
+    }
+
+    PLAIN_CANDIDATE = {
+        "title": "Halakhic man /",
+        "author": "Soloveitchik, Joseph Dov,",
+        "date": "2007",
+        "source_catalog": "NLI",
+    }
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_the_review_page_confirm_keeps_all_three(
+        self, _cover, client_logged_in
+    ):
+        session = client_logged_in.session
+        session["candidate"] = self.CANDIDATE
+        session.save()
+
+        client_logged_in.post("/ingest/confirm/")
+
+        record = Record.objects.get(title__startswith="Rashi")
+        assert record.volume_part_number == "Volume 2"
+        assert record.volume_part_title == "Sefer Mishpatim"
+        assert record.statement_of_responsibility == (
+            "translated, annotated, and elucidated by "
+            "Yisrael Isser Zvi Herczeg"
+        )
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_the_queue_confirm_keeps_all_three(
+        self, _cover, client_logged_in, user
+    ):
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        record = scan.created_record
+        assert record.volume_part_number == "Volume 2"
+        assert record.volume_part_title == "Sefer Mishpatim"
+        assert record.statement_of_responsibility.endswith("Herczeg")
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_candidate_carrying_none_of_them_stores_blanks(
+        self, _cover, client_logged_in
+    ):
+        """The fields are blank-not-null, so absence has to read as ''."""
+        session = client_logged_in.session
+        session["candidate"] = self.PLAIN_CANDIDATE
+        session.save()
+
+        client_logged_in.post("/ingest/confirm/")
+
+        record = Record.objects.get(title__startswith="Halakhic")
+        assert record.volume_part_number == ""
+        assert record.volume_part_title == ""
+        assert record.statement_of_responsibility == ""
+
+
+@pytest.mark.django_db
+class TestSeriesOnConfirm:
+    """Confirming a candidate has to place it in its series.
+
+    The parser reads 490/830 into ``series_title`` and ``series_volume``
+    and the card shows both, but nothing wrote them, so a set catalogued
+    one volume at a time never became a set.
+
+    A series is identified by its normalized title, because that is the
+    only thing every volume of a set agrees on. The volume designation
+    is normalized to Arabic digits, so "v. 1" and "חלק א" name the same
+    position.
+    """
+
+    @staticmethod
+    def candidate(title, series_title, series_volume):
+        return {
+            "title": title,
+            "author": "Rashi,",
+            "date": "1999",
+            "source_catalog": "LC",
+            "series_title": series_title,
+            "series_volume": series_volume,
+        }
+
+    @staticmethod
+    def confirm(client, candidate):
+        session = client.session
+        session["candidate"] = candidate
+        session.save()
+        client.post("/ingest/confirm/")
+        return Record.objects.order_by("-id").first()
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_first_confirm_creates_the_series_and_the_volume(
+        self, _cover, client_logged_in
+    ):
+        from catalog.models import Series, SeriesVolume
+
+        record = self.confirm(
+            client_logged_in,
+            self.candidate("Bereshit /", "ArtScroll series ;", "v. 1"),
+        )
+
+        series = Series.objects.get()
+        assert series.title == "ArtScroll series"
+
+        volume = SeriesVolume.objects.get()
+        assert volume.series == series
+        assert volume.record == record
+        assert volume.volume_number == "1"
+        assert volume.held is True
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_second_volume_joins_the_series_the_first_made(
+        self, _cover, client_logged_in
+    ):
+        """The same set catalogued twice is one series, not two.
+
+        The two records come from catalogs that punctuate the series
+        statement differently and write the volume number differently.
+        Neither difference is about the set, so neither may split it.
+        """
+        from catalog.models import Series, SeriesVolume
+
+        first = self.confirm(
+            client_logged_in,
+            self.candidate("Bereshit /", "ArtScroll series ;", "v. 1"),
+        )
+        second = self.confirm(
+            client_logged_in,
+            self.candidate("Shemot /", "Artscroll Series.", "vol. II"),
+        )
+
+        assert Series.objects.count() == 1
+        series = Series.objects.get()
+        assert SeriesVolume.objects.filter(series=series).count() == 2
+        assert sorted(v.volume_number for v in series.volumes.all()) == [
+            "1",
+            "2",
+        ]
+        assert series.volumes.get(volume_number="1").record == first
+        assert series.volumes.get(volume_number="2").record == second
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_confirm_claims_a_gap_left_for_the_volume(
+        self, _cover, client_logged_in
+    ):
+        """A placeholder for a volume not yet held is filled, not doubled."""
+        from catalog.models import Series, SeriesVolume
+        from ingest.series_workflow import create_series_volumes
+
+        series = Series.objects.create(title="ArtScroll series")
+        create_series_volumes(series, "1-3")
+
+        record = self.confirm(
+            client_logged_in,
+            self.candidate("Vayikra /", "ArtScroll series ;", "v. 3"),
+        )
+
+        assert SeriesVolume.objects.count() == 3
+        volume = series.volumes.get(volume_number="3")
+        assert volume.record == record
+        assert volume.held is True
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_candidate_with_no_series_confirms_cleanly(
+        self, _cover, client_logged_in
+    ):
+        from catalog.models import Series, SeriesVolume
+
+        record = self.confirm(
+            client_logged_in,
+            {
+                "title": "Halakhic man /",
+                "author": "Soloveitchik, Joseph Dov,",
+                "date": "2007",
+                "source_catalog": "NLI",
+                "series_title": None,
+                "series_volume": None,
+            },
+        )
+
+        assert record is not None
+        assert Series.objects.count() == 0
+        assert SeriesVolume.objects.count() == 0
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_the_queue_confirm_places_the_record_too(
+        self, _cover, client_logged_in, user
+    ):
+        from catalog.models import Series, SeriesVolume
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[
+                self.candidate("Bamidbar /", "ArtScroll series ;", "v. 4")
+            ],
+            scanned_by=user,
+        )
+
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        series = Series.objects.get()
+        volume = SeriesVolume.objects.get()
+        assert volume.series == series
+        assert volume.record == scan.created_record
+        assert volume.volume_number == "4"
+
+
+@pytest.mark.django_db
+class TestLinkRecordToSeries:
+    """The helper both confirm paths run through."""
+
+    @pytest.fixture
+    def record(self, user):
+        return Record.objects.create(title="Bereshit", created_by=user)
+
+    def test_linking_twice_leaves_one_volume(self, record):
+        from catalog.models import SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        first = link_record_to_series(record, "ArtScroll series ;", "v. 1")
+        second = link_record_to_series(record, "ArtScroll series ;", "v. 1")
+
+        assert first == second
+        assert SeriesVolume.objects.count() == 1
+
+    def test_a_record_offered_a_second_number_keeps_its_place(self, record):
+        """One record holds one position in a series, not two."""
+        from catalog.models import SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        link_record_to_series(record, "ArtScroll series", "v. 1")
+        link_record_to_series(record, "ArtScroll series", "v. 2")
+
+        assert SeriesVolume.objects.filter(record=record).count() == 1
+
+    def test_no_title_links_nothing(self, record):
+        from catalog.models import Series, SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        assert link_record_to_series(record, "", "v. 1") is None
+        assert link_record_to_series(record, None, "") is None
+        assert Series.objects.count() == 0
+        assert SeriesVolume.objects.count() == 0
+
+    def test_an_unnumbered_volume_still_joins_the_series(self, record):
+        """A 490 with no $v is common; the link is still worth having."""
+        from catalog.models import SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        volume = link_record_to_series(record, "Sifriyat Dorot", "")
+
+        assert volume is not None
+        assert volume.volume_number == ""
+        assert SeriesVolume.objects.get().record == record
+
+    def test_a_second_unnumbered_volume_does_not_displace_the_first(
+        self, record, user
+    ):
+        """(series, volume_number) is unique, so the empty slot holds one.
+
+        The second record keeps its own row in the catalog; it simply
+        gets no series position, which is the honest answer when the
+        source gave no number to tell the two apart by.
+        """
+        from catalog.models import SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        other = Record.objects.create(title="Shemot", created_by=user)
+        link_record_to_series(record, "Sifriyat Dorot", "")
+
+        assert link_record_to_series(other, "Sifriyat Dorot", "") is None
+        assert SeriesVolume.objects.count() == 1
+        assert SeriesVolume.objects.get().record == record
+
+    def test_two_spellings_of_one_number_are_one_position(self, record, user):
+        """Gematria and a Roman numeral for three are the same volume."""
+        from catalog.models import SeriesVolume
+        from ingest.series_workflow import link_record_to_series
+
+        other = Record.objects.create(title="Shemot", created_by=user)
+        link_record_to_series(record, "Mishneh Torah", "vol. III")
+
+        assert link_record_to_series(other, "Mishneh Torah", "חלק ג") is None
+        assert SeriesVolume.objects.count() == 1
+        assert SeriesVolume.objects.get().volume_number == "3"
