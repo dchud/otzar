@@ -9,8 +9,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}otzar{% endblock %}</title>
   <link rel="stylesheet" href="{% versioned_static 'css/tailwind.css' %}">
-  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-  <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
+  {% comment %}
+    Vendored, not fetched from a CDN: these two drive every interactive
+    part of the site, and cataloguing happens on whatever wifi is at the
+    shelves. A CDN that does not answer leaves the page rendered and
+    inert, with nothing a user can see or retry. The version is in the
+    filename, so an upgrade changes the URL; static/vendor/SOURCES.md
+    records where each file came from.
+  {% endcomment %}
+  <script src="{% static 'vendor/htmx-2.0.4.min.js' %}" defer></script>
+  <script src="{% static 'vendor/alpine-3.14.8.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:text-gray-900 dark:focus:bg-gray-800 dark:focus:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:rounded">Skip to content</a>

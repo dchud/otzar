@@ -1,6 +1,9 @@
+import logging
 import re
 
-from django.db import connection
+from django.db import connection, transaction
+
+logger = logging.getLogger(__name__)
 
 FTS_TABLE = "catalog_fts"
 
@@ -66,18 +69,22 @@ def ensure_fts_table():
     themselves. That is what makes a change to the column list take
     effect on a catalog already in use, and not only in a database
     created from scratch.
+
+    The shape is the only thing this can compare cheaply -- it runs
+    ahead of every search, so it cannot go counting records -- and a
+    table with the right columns and no rows looks exactly like one
+    that is up to date. `reindex_all` is what keeps that state from
+    arising: it recreates and fills the table in a single transaction,
+    so an interruption between the two rolls back to the table that was
+    working, which fails the comparison here and gets rebuilt on the
+    next call.
     """
-    existing = _table_columns()
-    if existing == list(FTS_COLUMNS):
+    if _table_columns() == list(FTS_COLUMNS):
         return
-
-    stale = bool(existing)
-    rebuild_fts_table()
-    if stale:
-        _index_all_records()
+    reindex_all()
 
 
-def rebuild_fts_table():
+def _rebuild_fts_table():
     """Drop and recreate the FTS table, leaving it empty."""
     with connection.cursor() as cursor:
         cursor.execute(f"DROP TABLE IF EXISTS {FTS_TABLE}")
@@ -85,13 +92,46 @@ def rebuild_fts_table():
 
 
 def _index_all_records():
-    """Index every record in the catalog into an empty FTS table."""
+    """Index every record in the catalog into an empty FTS table.
+
+    A record the index cannot hold is skipped and reported rather than
+    aborting the rebuild: the index serves discovery, and one record
+    whose text the index chokes on should not cost the catalog its
+    search. A rebuild that indexes nothing at all is a different
+    failure -- systematic, not per-record -- so the first error is
+    raised rather than swallowed.
+
+    Returns ``(indexed, skipped)``: the number of records indexed and
+    the ids of the ones that were not.
+    """
     from catalog.models import Record
+
+    indexed = 0
+    skipped = []
+    first_error = None
 
     for record in Record.objects.prefetch_related(
         "authors", "subjects", "publishers", "external_identifiers"
     ).all():
-        index_record(record)
+        try:
+            # A savepoint per record, so a database error rolls back to
+            # a usable transaction instead of poisoning the rebuild.
+            with transaction.atomic():
+                index_record(record)
+        except Exception as error:
+            skipped.append(record.record_id)
+            if first_error is None:
+                first_error = error
+            logger.warning(
+                "Could not index record %s: %s", record.record_id, error
+            )
+        else:
+            indexed += 1
+
+    if skipped and not indexed:
+        raise first_error
+
+    return indexed, skipped
 
 
 def _row_values(record):
@@ -187,6 +227,42 @@ def search_records(query, limit=50):
 
 
 def reindex_all():
-    """Rebuild the entire FTS index from all records."""
-    rebuild_fts_table()
-    _index_all_records()
+    """Rebuild the entire FTS index from all records, in one transaction.
+
+    Returns ``(indexed, skipped)``: the number of records indexed and
+    the ids of the ones that were not.
+    """
+    with transaction.atomic():
+        _rebuild_fts_table()
+        return _index_all_records()
+
+
+def reindex_records(record_ids):
+    """Bring the index into line with the named records.
+
+    Each id is reindexed from the record that holds it, or dropped from
+    the index if no record holds it any more. One call therefore covers
+    an edit, a delete, and a change to an author, subject or publisher
+    whose text the record's index entry is built from.
+    """
+    from catalog.models import Record
+
+    record_ids = list(dict.fromkeys(record_ids))
+    if not record_ids:
+        return
+
+    ensure_fts_table()
+    records = {
+        record.record_id: record
+        for record in Record.objects.filter(
+            record_id__in=record_ids
+        ).prefetch_related(
+            "authors", "subjects", "publishers", "external_identifiers"
+        )
+    }
+    for record_id in record_ids:
+        record = records.get(record_id)
+        if record is None:
+            remove_from_index(record_id)
+        else:
+            index_record(record)
