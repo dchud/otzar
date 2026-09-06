@@ -123,9 +123,14 @@ Rebuilds the full-text search index (`catalog_fts`) from the catalog records.
 uv run python manage.py reindex
 ```
 
-No arguments. It drops the index table, recreates it and fills it from every record in one transaction, then reports how many records it indexed. A record it cannot index is skipped and listed by record id rather than aborting the rebuild.
+No arguments. It drops the index table, recreates it and fills it from
+every record in one transaction, then reports how many records it
+indexed. A record it cannot index is skipped and listed by record id
+rather than aborting the rebuild.
 
-The application rebuilds the index by itself when the set of indexed fields changes, so this is for recovery: after restoring a database, or when search returns nothing for queries that should match.
+The application rebuilds the index by itself when the set of indexed
+fields changes, so this is for recovery: after restoring a database, or
+when search returns nothing for queries that should match.
 
 ### `cleanup_staging`
 
@@ -202,7 +207,9 @@ Gunicorn writes access and error logs to stdout and stderr (`--access-logfile -`
 
 ### Search returns nothing
 
-Search reads the `catalog_fts` index rather than the record table, so an empty index and an empty catalog look the same from the search page.
+Search reads the `catalog_fts` index rather than the record table, so
+an empty index and an empty catalog look the same from the search
+page.
 
 Check whether the catalog holds records and the index does not:
 
@@ -210,7 +217,10 @@ Check whether the catalog holds records and the index does not:
 uv run python manage.py shell -c "from catalog.models import Record; from django.db import connection; c = connection.cursor(); c.execute('select count(*) from catalog_fts'); print(Record.objects.count(), c.fetchone()[0])"
 ```
 
-If the record count is non-zero and the index count is zero, run `uv run python manage.py reindex`. Check the application logs for `Could not index record` warnings, which name records the rebuild had to skip.
+If the record count is non-zero and the index count is zero, run
+`uv run python manage.py reindex`. Check the application logs for
+`Could not index record` warnings, which name records the rebuild had
+to skip.
 
 ### Database locked errors
 
