@@ -1,6 +1,7 @@
 """Shared fixtures for end-to-end Playwright tests."""
 
 import os
+from unittest.mock import patch
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
@@ -17,6 +18,41 @@ from catalog.models import (
     Subject,
 )
 from catalog.search import ensure_fts_table, index_record
+
+# The suite blocks sockets, and the live-server fixture these tests run
+# against needs a real one on the loopback interface. Allowing the two
+# loopback addresses keeps that working while an outbound call from the
+# Python side still fails, which is the reason the block exists.
+#
+# It does not constrain the browser. Playwright drives it in a separate
+# process, so a page that fetches an off-origin asset is invisible here;
+# test_asset_delivery.py covers that by aborting off-origin requests
+# through the browser context and asserting none were attempted.
+_LOOPBACK = ["127.0.0.1", "::1"]
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        item.add_marker(pytest.mark.allow_hosts(_LOOPBACK))
+
+
+@pytest.fixture(autouse=True)
+def no_cover_lookup():
+    """Keep the confirm path from reaching Open Library.
+
+    ``confirm_scan`` calls ``fetch_cover_url``, which issues a live GET
+    to covers.openlibrary.org. No end-to-end test asserts anything about
+    a cover, so every one of them was paying for a request to a third
+    party -- and the ones that remembered to patch it were the only
+    thing keeping the rest of the suite polite.
+
+    Patching here rather than per test makes the rule uniform: an
+    end-to-end test does not fetch covers. A test that ever needs a real
+    one overrides this fixture rather than being the exception that
+    quietly works.
+    """
+    with patch("ingest.views.fetch_cover_url", return_value=""):
+        yield
 
 
 @pytest.fixture
