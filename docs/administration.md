@@ -115,6 +115,18 @@ uv run python manage.py load_test_data
 
 No arguments. Uses `get_or_create`, so running it again does not duplicate data.
 
+### `reindex`
+
+Rebuilds the full-text search index (`catalog_fts`) from the catalog records.
+
+```bash
+uv run python manage.py reindex
+```
+
+No arguments. It drops the index table, recreates it and fills it from every record in one transaction, then reports how many records it indexed. A record it cannot index is skipped and listed by record id rather than aborting the rebuild.
+
+The application rebuilds the index by itself when the set of indexed fields changes, so this is for recovery: after restoring a database, or when search returns nothing for queries that should match.
+
 ### `cleanup_staging`
 
 Deletes old discarded scan results and orphaned staging images.
@@ -164,7 +176,7 @@ Media files are ordinary files. Copy `media/` with `rsync` or an equivalent tool
 The FTS index (`catalog_fts`) is a table in the same database file, so it comes back with the restore. If search returns nothing after a restore, rebuild it:
 
 ```bash
-uv run python manage.py shell -c "from catalog.search import reindex_all; reindex_all()"
+uv run python manage.py reindex
 ```
 
 Check a restore by comparing the record count against what the source held, opening a known record, and running a search that should return hits.
@@ -187,6 +199,18 @@ Gunicorn writes access and error logs to stdout and stderr (`--access-logfile -`
 
 
 ## Troubleshooting
+
+### Search returns nothing
+
+Search reads the `catalog_fts` index rather than the record table, so an empty index and an empty catalog look the same from the search page.
+
+Check whether the catalog holds records and the index does not:
+
+```bash
+uv run python manage.py shell -c "from catalog.models import Record; from django.db import connection; c = connection.cursor(); c.execute('select count(*) from catalog_fts'); print(Record.objects.count(), c.fetchone()[0])"
+```
+
+If the record count is non-zero and the index count is zero, run `uv run python manage.py reindex`. Check the application logs for `Could not index record` warnings, which name records the rebuild had to skip.
 
 ### Database locked errors
 
