@@ -13,9 +13,26 @@ Context:
   {% if item.data.title_alternate and item.data.title_alternate != item.data.title %}
   <div class="text-xs text-gray-500 dark:text-gray-400" dir="auto">{{ item.data.title_alternate }}</div>
   {% endif %}
+  {% comment %}The part designation sits with the title because that is
+  what it belongs to: 245 $n and $p name a part of this title, while the
+  series column names the set the item sits in and its number there. The
+  two often agree and sometimes do not, so both are shown.{% endcomment %}
+  {% if item.data.volume_part_number or item.data.volume_part_title %}
+  <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5" dir="auto">
+    {{ item.data.volume_part_number|default:"" }} {{ item.data.volume_part_title|default:"" }}
+  </div>
+  {% endif %}
   {% if item.data.author %}
   <div class="text-xs text-gray-700 dark:text-gray-300 mt-0.5" dir="auto">
     {{ item.data.author }}{% if item.data.additional_authors %} <span class="text-gray-500 dark:text-gray-400">+{{ item.data.additional_authors|length }}</span>{% endif %}
+  </div>
+  {% endif %}
+  {% comment %}Enough of the statement of responsibility to tell one
+  translation or edition from another. The whole of it is on the record
+  page; a scanning table is not the place for a paragraph.{% endcomment %}
+  {% if item.data.statement_of_responsibility %}
+  <div class="text-xs italic text-gray-500 dark:text-gray-400 mt-0.5" dir="auto">
+    {{ item.data.statement_of_responsibility|truncatechars:120 }}
   </div>
   {% endif %}
 </td>

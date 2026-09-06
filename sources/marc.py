@@ -279,7 +279,8 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     # title and $p names it; both are repeatable, so a nested part
     # ("Seder 1, Masekhet 2") arrives as several subfields and is joined
     # in the order the field carries them. They are kept out of ``title``
-    # because a set's parts otherwise differ only in a buried numeral.
+    # so the part is a datum of its own, which is what lets a display
+    # put it where a reader looks for it.
     result["volume_part_number"] = get_field_value(marc_record, "245", ["n"])
     result["volume_part_title"] = get_field_value(marc_record, "245", ["p"])
 
