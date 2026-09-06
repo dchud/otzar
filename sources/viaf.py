@@ -14,7 +14,13 @@ from dataclasses import dataclass, field
 
 import httpx
 
+from sources.cache import ResponseCache, ttl_for_response
+
 logger = logging.getLogger(__name__)
+
+# Shared with every client instance; entries are keyed on endpoint plus
+# parameters. See the note in sources/sru.py.
+_response_cache = ResponseCache()
 
 SRW_NS = "http://www.loc.gov/zing/srw/"
 VIAF_NS = "http://viaf.org/viaf/terms#"
@@ -74,12 +80,28 @@ class VIAFClient:
                 time.sleep(remaining)
 
     def search(self, query: str, max_records: int = 10) -> str | None:
-        """Execute an SRU search against VIAF, returning raw XML or None."""
+        """Execute an SRU search against VIAF, returning raw XML or None.
+
+        A response already cached for these parameters is returned without
+        contacting VIAF, and without waiting out the throttle: the wait is
+        owed to VIAF for the load a request puts on it, and a cache hit
+        puts none there. ``_last_request_time`` is deliberately left alone
+        on a hit, so the next real request still spaces itself against the
+        last real one.
+
+        Only successful responses are stored. This method turns every
+        failure into ``None``, and ``None`` is never cached, so an outage
+        is retried rather than remembered.
+        """
         params = {
             "query": query,
             "maximumRecords": str(max_records),
             "recordSchema": "VIAF",
         }
+        cached = _response_cache.get(self.base_url, params)
+        if cached is not None:
+            return cached
+
         url = f"{self.base_url}?{urllib.parse.urlencode(params)}"
         headers = {
             "Accept": "application/xml",
@@ -91,12 +113,17 @@ class VIAFClient:
                 url, headers=headers, follow_redirects=True, timeout=30
             )
             resp.raise_for_status()
+            text = resp.text
             self._last_request_time = time.monotonic()
-            return resp.text
         except Exception:
             logger.exception("VIAF search failed for query: %s", query)
             self._last_request_time = time.monotonic()
             return None
+
+        _response_cache.set(
+            self.base_url, params, text, ttl=ttl_for_response(text)
+        )
+        return text
 
     def search_by_author(
         self,
