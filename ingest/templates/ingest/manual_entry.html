@@ -176,6 +176,21 @@
       {{ form.provenance }}
       <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">{{ form.provenance.help_text }}</p>
     </div>
+    <div>
+      <label for="id_bookplate_text" class="block text-sm font-medium mb-1">Bookplate</label>
+      {{ form.bookplate_text }}
+      <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">{{ form.bookplate_text.help_text }}</p>
+    </div>
+    <div>
+      <label for="id_dedication_text" class="block text-sm font-medium mb-1">Dedication</label>
+      {{ form.dedication_text }}
+      <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">{{ form.dedication_text.help_text }}</p>
+    </div>
+    <div>
+      <label for="id_stamp_text" class="block text-sm font-medium mb-1">Stamp</label>
+      {{ form.stamp_text }}
+      <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">{{ form.stamp_text.help_text }}</p>
+    </div>
   </fieldset>
 
   <div class="flex gap-4 pt-4">

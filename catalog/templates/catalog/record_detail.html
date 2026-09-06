@@ -193,11 +193,42 @@
       </div>
       {% endif %}
 
-      {# Provenance #}
-      {% if record.provenance %}
+      {# Provenance: the ownership history in prose, and the marks this
+         copy itself carries. One heading, because a reader asking whose
+         copy this was wants them together, and four separate headings
+         for a line of transcription each would swamp the bibliographic
+         description above. The labels keep the three kinds of mark
+         apart, which is what a printed label, a handwritten
+         inscription and an institutional stamp need. #}
+      {% if record.provenance or record.bookplate_text or record.dedication_text or record.stamp_text %}
       <div>
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Provenance</h2>
-        <p class="mt-1 whitespace-pre-line" dir="auto">{{ record.provenance }}</p>
+        <dl class="mt-1 space-y-2">
+          {% if record.provenance %}
+          <div>
+            <dt class="font-medium text-gray-600 dark:text-gray-300">Ownership history</dt>
+            <dd class="whitespace-pre-line" dir="auto">{{ record.provenance }}</dd>
+          </div>
+          {% endif %}
+          {% if record.bookplate_text %}
+          <div>
+            <dt class="font-medium text-gray-600 dark:text-gray-300">Bookplate</dt>
+            <dd class="whitespace-pre-line" dir="auto">{{ record.bookplate_text }}</dd>
+          </div>
+          {% endif %}
+          {% if record.dedication_text %}
+          <div>
+            <dt class="font-medium text-gray-600 dark:text-gray-300">Dedication</dt>
+            <dd class="whitespace-pre-line" dir="auto">{{ record.dedication_text }}</dd>
+          </div>
+          {% endif %}
+          {% if record.stamp_text %}
+          <div>
+            <dt class="font-medium text-gray-600 dark:text-gray-300">Stamp</dt>
+            <dd class="whitespace-pre-line" dir="auto">{{ record.stamp_text }}</dd>
+          </div>
+          {% endif %}
+        </dl>
       </div>
       {% endif %}
 
