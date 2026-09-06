@@ -240,11 +240,20 @@ dropping or false-checking an item. `Closes #NNN` near the top when the bead was
 elevated. `Bead: bd-XXXX` at the bottom. Keep the body current as you push
 follow-up commits.
 
-**Do not hard-wrap GitHub-rendered Markdown.** Bead descriptions, issue and PR
-bodies, and comments use one long line per paragraph with blank lines between.
-GitHub collapses single line breaks, and manual wraps produce noisy diffs.
-Exceptions: fenced code blocks, commit message bodies (~72), and files with a
-tooling-enforced column limit.
+**Markdown wrapping depends on where the text lives, not on what renders it.**
+
+Text submitted through GitHub — bead descriptions, issue and PR bodies,
+comments — is not hard-wrapped: one long line per paragraph, blank lines
+between. GitHub collapses single line breaks, and a manual wrap there produces
+noisy diffs and awkward mobile rendering.
+
+Markdown files in the repository are hard-wrapped at 79 columns, like the
+Python. They are source files: they are reviewed as diffs line by line, and an
+edited sentence in an unwrapped paragraph rewrites the whole paragraph in the
+diff. That GitHub also renders them does not make them the first case.
+
+Exceptions in both: fenced code blocks, tables, and long URLs, none of which are
+broken to fit. Commit message bodies wrap at ~72.
 
 ## Issue tracking
 
