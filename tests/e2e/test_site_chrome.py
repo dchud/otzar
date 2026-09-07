@@ -3,9 +3,53 @@
 import pytest
 from playwright.sync_api import expect
 
+from ingest.models import ScanResult
 from otzar.build_info import GITHUB_URL, BuildInfo
+from tests.e2e.conftest import login
 
 REPO_LINK = "otzar on GitHub, opens in a new tab"
+
+
+def _overflow_offenders(page):
+    """Elements whose right edge falls outside the content box.
+
+    Not ``scrollWidth`` minus ``clientWidth``. ``clientWidth`` excludes
+    a vertical scrollbar, and whether one takes layout width is a
+    property of the platform rather than of the page: Windows and
+    Linux draw a classic scrollbar that does, macOS, iOS and Android
+    draw an overlay one that does not. That subtraction therefore
+    reports which machine ran the test.
+
+    Asking the layout instead works on every platform, and naming the
+    offending element is more use than a pixel count.
+
+    A descendant of an element that scrolls on its own -- an
+    ``overflow-x: auto`` or ``scroll`` wrapper around a wide table, for
+    instance -- is not page overflow. It is walked past by checking
+    every ancestor, not skipped outright: the wrapper's own presence
+    does not clear an *unrelated* sibling that really does escape the
+    viewport.
+    """
+    return page.evaluate("""() => {
+        const limit = document.documentElement.clientWidth;
+        const hasScrollableAncestor = (el) => {
+            for (let node = el.parentElement; node; node = node.parentElement) {
+                const overflowX = getComputedStyle(node).overflowX;
+                if (overflowX === 'auto' || overflowX === 'scroll') {
+                    return true;
+                }
+            }
+            return false;
+        };
+        return [...document.querySelectorAll('body *')]
+            .map(el => ({el, r: el.getBoundingClientRect()}))
+            .filter(({r}) => r.width > 0 && r.right > limit + 1)
+            .filter(({el}) => !hasScrollableAncestor(el))
+            .map(({el, r}) => `${el.tagName.toLowerCase()}`
+                + `.${(el.className || '').toString().split(' ')[0]}`
+                + ` right=${Math.round(r.right)} limit=${limit}`)
+            .slice(0, 5);
+    }""")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -92,26 +136,7 @@ class TestHeaderSearch:
 
         expect(self._search_box(page)).to_be_visible()
 
-        # Not scrollWidth minus clientWidth. clientWidth excludes a
-        # vertical scrollbar, and whether one takes layout width is a
-        # property of the platform rather than of the page: Windows and
-        # Linux draw a classic scrollbar that does, macOS, iOS and
-        # Android draw an overlay one that does not. That subtraction
-        # therefore reports which machine ran the test.
-        #
-        # Ask the layout instead. Any element whose right edge falls
-        # outside the content box is real overflow on every platform,
-        # and naming it is more use than a pixel count.
-        offenders = page.evaluate("""() => {
-            const limit = document.documentElement.clientWidth;
-            return [...document.querySelectorAll('body *')]
-                .map(el => ({el, r: el.getBoundingClientRect()}))
-                .filter(({r}) => r.width > 0 && r.right > limit + 1)
-                .map(({el, r}) => `${el.tagName.toLowerCase()}`
-                    + `.${(el.className || '').toString().split(' ')[0]}`
-                    + ` right=${Math.round(r.right)} limit=${limit}`)
-                .slice(0, 5);
-        }""")
+        offenders = _overflow_offenders(page)
         assert not offenders, (
             "content extends past the viewport: " + "; ".join(offenders)
         )
@@ -178,6 +203,12 @@ class TestNothingScrollsSideways:
 
     320px is an iPhone SE, which is current hardware, not a museum
     piece.
+
+    Signed in as staff, not anonymous: the header's utility row grows
+    an Admin link, a username and a Log out control only for a
+    signed-in staff user, and that row is the widest the header ever
+    gets. An anonymous visitor's header is a strict subset of it, so
+    covering the signed-in case covers the anonymous one too.
     """
 
     PAGES = ("/", "/search/?q=test")
@@ -185,20 +216,50 @@ class TestNothingScrollsSideways:
     @pytest.mark.parametrize("width", [320, 360, 375, 414])
     @pytest.mark.parametrize("path", PAGES)
     def test_content_stays_inside_the_viewport(
-        self, page, live_server, width, path
+        self, page, live_server, width, path, staff_user
     ):
         page.set_viewport_size({"width": width, "height": 800})
+        login(page, live_server)
         page.goto(f"{live_server.url}{path}")
 
-        offenders = page.evaluate("""() => {
-            const limit = document.documentElement.clientWidth;
-            return [...document.querySelectorAll('body *')]
-                .map(el => ({el, r: el.getBoundingClientRect()}))
-                .filter(({r}) => r.width > 0 && r.right > limit + 1)
-                .map(({el, r}) => `${el.tagName.toLowerCase()}`
-                    + `.${(el.className || '').toString().split(' ')[0]}`
-                    + ` right=${Math.round(r.right)} limit=${limit}`)
-                .slice(0, 5);
-        }""")
+        offenders = _overflow_offenders(page)
 
         assert not offenders, f"{path} at {width}px: " + "; ".join(offenders)
+
+    @pytest.mark.parametrize("width", [320, 360, 375, 414])
+    def test_review_queue_stays_inside_the_viewport(
+        self, page, live_server, width, staff_user
+    ):
+        """The candidate table is wrapped in ``overflow-x-auto`` and is
+        deliberately wider than a phone screen -- it scrolls on its
+        own, so it must not be mistaken for the page itself escaping
+        the viewport."""
+        ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="0875847625",
+            candidate_records=[
+                {
+                    "title": "The social life of information /",
+                    "author": "Brown, John Seely",
+                    "additional_authors": ["Duguid, Paul,"],
+                    "publisher": "Harvard Business School Press,",
+                    "place": "Boston :",
+                    "date": "c2000.",
+                    "isbn": "0875847625",
+                    "lccn": "99049068",
+                    "oclc": "42475952",
+                    "series_title": "Long Enough Series Title",
+                    "series_volume": "12",
+                    "source_catalog": "NLI",
+                }
+            ],
+            scanned_by=staff_user,
+        )
+        page.set_viewport_size({"width": width, "height": 800})
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/")
+
+        expect(page.get_by_role("table")).to_be_visible()
+        offenders = _overflow_offenders(page)
+
+        assert not offenders, f"/ingest/ at {width}px: " + "; ".join(offenders)
