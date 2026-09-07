@@ -162,3 +162,43 @@ class TestBuildIndicator:
         expect(page.locator('footer a[href*="/commit/"]')).to_have_count(0)
         expect(page.get_by_role("link", name=REPO_LINK)).to_be_visible()
         assert errors == [], f"Console errors in the footer: {errors}"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestNothingScrollsSideways:
+    """A search form must fit the narrowest phone still in use.
+
+    A flex item defaults to ``min-width: auto``, so it will not shrink
+    below its content's intrinsic width. An input's is roughly twenty
+    characters, so a ``flex-1`` field stops shrinking and pushes the
+    submit button out of the row instead. It is invisible at desktop
+    widths and on whichever machine happens to render the button
+    narrowest, which is why it survived until a Linux runner disagreed
+    with a Mac about a font.
+
+    320px is an iPhone SE, which is current hardware, not a museum
+    piece.
+    """
+
+    PAGES = ("/", "/search/?q=test")
+
+    @pytest.mark.parametrize("width", [320, 360, 375, 414])
+    @pytest.mark.parametrize("path", PAGES)
+    def test_content_stays_inside_the_viewport(
+        self, page, live_server, width, path
+    ):
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(f"{live_server.url}{path}")
+
+        offenders = page.evaluate("""() => {
+            const limit = document.documentElement.clientWidth;
+            return [...document.querySelectorAll('body *')]
+                .map(el => ({el, r: el.getBoundingClientRect()}))
+                .filter(({r}) => r.width > 0 && r.right > limit + 1)
+                .map(({el, r}) => `${el.tagName.toLowerCase()}`
+                    + `.${(el.className || '').toString().split(' ')[0]}`
+                    + ` right=${Math.round(r.right)} limit=${limit}`)
+                .slice(0, 5);
+        }""")
+
+        assert not offenders, f"{path} at {width}px: " + "; ".join(offenders)
