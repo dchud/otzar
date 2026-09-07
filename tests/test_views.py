@@ -9,7 +9,7 @@ from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
 from django.test import Client
 
-from catalog.models import Author, Record
+from catalog.models import Author, Record, Subject
 
 
 @pytest.fixture
@@ -89,6 +89,74 @@ class TestRecordDetailView:
         content = response.content.decode()
         assert "245" in content
         assert "View source MARC" in content
+
+
+@pytest.mark.django_db
+class TestRecordDetailSameSubject:
+    """Records sharing a subject heading with this one, ranked by how
+    many subjects they share -- the next most useful related list
+    after series siblings, for a collection organized by subject."""
+
+    def _url(self, record):
+        return f"/catalog/{record.record_id}/{record.slug}/"
+
+    @pytest.fixture
+    def record(self, db):
+        record = Record.objects.create(title="Guide for the Perplexed")
+        subject_a = Subject.objects.create(heading="Jewish philosophy")
+        subject_b = Subject.objects.create(heading="Medieval philosophy")
+        record.subjects.add(subject_a, subject_b)
+        return record, subject_a, subject_b
+
+    def test_lists_a_record_sharing_a_subject(self, client, record):
+        record, subject_a, _subject_b = record
+        other = Record.objects.create(title="Mishneh Torah")
+        other.subjects.add(subject_a)
+
+        response = client.get(self._url(record))
+
+        assert other in list(response.context["same_subject"])
+        assert "Other works on the same subjects" in response.content.decode()
+
+    def test_excludes_the_record_itself(self, client, record):
+        record, _subject_a, _subject_b = record
+
+        response = client.get(self._url(record))
+
+        assert record not in list(response.context["same_subject"])
+
+    def test_orders_by_number_of_shared_subjects(self, client, record):
+        record, subject_a, subject_b = record
+        shares_both = Record.objects.create(title="Shares both subjects")
+        shares_both.subjects.add(subject_a, subject_b)
+        shares_one = Record.objects.create(title="Shares one subject")
+        shares_one.subjects.add(subject_a)
+
+        response = client.get(self._url(record))
+
+        same_subject = list(response.context["same_subject"])
+        assert same_subject.index(shares_both) < same_subject.index(shares_one)
+
+    def test_omits_the_section_for_a_record_without_subjects(self, client, db):
+        record = Record.objects.create(title="No subjects assigned")
+
+        response = client.get(self._url(record))
+
+        assert "same_subject" in response.context
+        assert len(response.context["same_subject"]) == 0
+        assert (
+            "Other works on the same subject" not in response.content.decode()
+        )
+
+    def test_caps_the_list_at_ten(self, client, record):
+        record, subject_a, _subject_b = record
+        for i in range(12):
+            other = Record.objects.create(title=f"Related work {i}")
+            other.subjects.add(subject_a)
+
+        response = client.get(self._url(record))
+
+        assert len(response.context["same_subject"]) == 10
 
 
 @pytest.mark.django_db

@@ -3,6 +3,8 @@
 import pytest
 from playwright.sync_api import expect
 
+from catalog.models import Record
+
 
 @pytest.mark.django_db(transaction=True)
 class TestHomePage:
@@ -16,9 +18,9 @@ class TestHomePage:
 
     def test_browse_links_present(self, page, live_server):
         page.goto(live_server.url)
-        expect(page.locator("text=Authors")).to_be_visible()
-        expect(page.locator("text=Titles")).to_be_visible()
-        expect(page.locator("text=Subjects")).to_be_visible()
+        expect(page.get_by_role("link", name="Authors")).to_be_visible()
+        expect(page.get_by_role("link", name="Titles")).to_be_visible()
+        expect(page.get_by_role("link", name="Subjects")).to_be_visible()
 
     def test_recent_additions_shown(self, page, live_server, sample_record):
         page.goto(live_server.url)
@@ -167,3 +169,37 @@ class TestRecordDetail:
     def test_record_detail_404(self, page, live_server, sample_record):
         resp = page.goto(f"{live_server.url}/catalog/otzar-nonexistent/")
         assert resp.status == 404
+
+
+@pytest.mark.django_db(transaction=True)
+class TestRecordDetailSameSubject:
+    def test_shows_and_links_to_a_record_sharing_a_subject(
+        self, page, live_server, sample_record
+    ):
+        subject = sample_record.subjects.get(heading="Information society")
+        related = Record.objects.create(title="Community of Practice")
+        related.subjects.add(subject)
+
+        page.goto(
+            f"{live_server.url}/catalog/{sample_record.record_id}/{sample_record.slug}/"
+        )
+
+        expect(
+            page.get_by_role(
+                "heading", name="Other works on the same subjects"
+            )
+        ).to_be_visible()
+
+        page.get_by_role("link", name="Community of Practice").click()
+        expect(page.locator("h1")).to_contain_text("Community of Practice")
+
+    def test_omits_the_section_when_nothing_shares_a_subject(
+        self, page, live_server, sample_record
+    ):
+        page.goto(
+            f"{live_server.url}/catalog/{sample_record.record_id}/{sample_record.slug}/"
+        )
+
+        expect(
+            page.get_by_role("heading", name="Other works on the same subject")
+        ).to_have_count(0)
