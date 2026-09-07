@@ -5,7 +5,7 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import pdist
 from sklearn.metrics import adjusted_mutual_info_score as ami
 
-HERE = pathlib.Path(__file__).parent
+HERE = pathlib.Path("tmp/vagf")
 RNG = np.random.default_rng(20260907)
 data = json.loads((HERE / "features.json").read_text())
 rows = data["rows"]

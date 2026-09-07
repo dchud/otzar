@@ -29,6 +29,8 @@ partition computed once on the whole corpus, which shifts the
 chance-adjustment upward and can leave a point estimate a thousandth
 below its own lower bound, as `040$a` does here.
 
+![Adjusted mutual information with each label](figures/fig9-ami.svg)
+
 The features carrying that separation are administrative. NLI's
 clusters are marked by `903`, `939`, `919`, `964` and Alma's
 non-numeric `AVE`; LC's by `906` with its `$b` through `$g`; DNB's by

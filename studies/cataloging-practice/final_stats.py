@@ -3,7 +3,7 @@ import collections, json, math, pathlib
 import xml.etree.ElementTree as ET
 import numpy as np
 from scipy.stats import chi2_contingency
-HERE = pathlib.Path(__file__).parent
+HERE = pathlib.Path("tmp/vagf")
 M = "{http://www.loc.gov/MARC21/slim}"
 
 def wilson(k, n, z=1.959964):

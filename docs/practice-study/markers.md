@@ -86,6 +86,8 @@ exceptionless field pattern:
 | blank (K10plus) | 825 | 22% | 7% | 22% | 0% | 3% |
 | blank (DNB) | 638 | 2% | 13% | 26% | 0% | 1% |
 
+![What each leader/19 value carries](figures/fig8-leader19-mechanisms.svg)
+
 The three values do not merely differ in degree. They use different
 mechanisms and do not overlap:
 
@@ -220,6 +222,8 @@ association between the marker and the catalog.
 | 880 linked script | 0% | 23% | 15% | 2% | 62% | 0.51 |
 | 300 `$c` dimensions | 64% | 19% | 88% | 67% | 90% | 0.57 |
 | 020 ISBN | 69% | 26% | 56% | 37% | 33% | 0.32 |
+
+![Marker prevalence by catalog](figures/fig1-marker-heatmap.svg)
 
 ![Forest plot of marker prevalence](figures/fig2-forest.svg)
 

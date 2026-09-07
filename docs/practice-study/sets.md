@@ -43,6 +43,8 @@ the other side K10plus declares 314 of 501 and DNB 97 of 291. In 19 of
 the 22 works a PICA catalog declares per-volume records while none of
 the other three does.
 
+![Four mechanisms by catalog](figures/fig6-set-mechanisms.svg)
+
 ## Work by work
 
 Records naming the work, with declared dependent parts in bold.
@@ -71,6 +73,8 @@ Records naming the work, with declared dependent parts in bold.
 | Arukh ha-Shulhan | 2 | 5 | 33 | — | 5 (**4**) |
 | Schottenstein Talmud | 2 | — | 14 | 1 | 2 |
 | Entsiklopedyah talmudit | 1 | 2 | 22 | — | 31 (**30**) |
+
+![Declared per-volume records by work](figures/fig7-declared-by-work.svg)
 
 **Entsiḳlopedyah talmudit is the sharpest contrast.** The Library of
 Congress describes the whole encyclopedia with **one record**, extent

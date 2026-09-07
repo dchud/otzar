@@ -89,4 +89,7 @@ A claim with no footnote is counted.
   catalogs, field by field, with identifiers.
 - [What follows for otzar](implications.md) — the practices, each
   traced to the pattern it rests on.
+- [Reading the numbers](reading-the-numbers.md) — what the intervals,
+  Cramér's V, adjusted mutual information and the precision figures
+  mean, in plain terms.
 - [The data](data.md) — what is published, and where the scripts live.

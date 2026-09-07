@@ -12,8 +12,10 @@ path inside them is written relative to it:
 uv run --with httpx python studies/cataloging-practice/draw_corpus.py
 ```
 
-They read and write `tmp/vagf/`, the scratch directory the corpus was
-drawn into. That directory is not in the repository. The corpus and the
+They read and write `tmp/vagf/`, named directly in each script as
+`HERE`. That constant is the only thing changed from the scripts as
+they ran: six of them resolved it relative to their own file, which
+broke when they moved out of the directory they were written in. That directory is not in the repository. The corpus and the
 derived feature vector are distributed as a separate archive; unpack it
 to `tmp/vagf/` before running anything downstream of the draw.
 
@@ -79,7 +81,10 @@ whether it answers.
 
 | Script | Produces |
 |---|---|
-| `charts.py` | The five SVG figures in `docs/practice-study/figures/` |
+| `charts.py` | The nine SVG figures in `docs/practice-study/figures/`. Reads `final_stats.json`, `set_summary.json`, `confidence.json` and the corpus |
+| `set_cases.py` | `tmp/vagf/set_cases.json` — the set survey: 22 multi-volume works asked of all five catalogs by title |
+| `set_report.py` | `tmp/vagf/set_summary.json` and the published `set-survey.csv`, filtering each response to records whose `245` names the work |
+| `tradition.py` | Whether the clusters track a cataloging tradition rather than an institution |
 | `build_data.py` | The three published files in `docs/practice-study/data/` |
 
 ## Reading them

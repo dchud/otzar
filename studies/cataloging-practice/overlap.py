@@ -2,7 +2,7 @@
 import collections, json, pathlib, re, unicodedata
 import xml.etree.ElementTree as ET
 M = "{http://www.loc.gov/MARC21/slim}"
-HERE = pathlib.Path(__file__).parent
+HERE = pathlib.Path("tmp/vagf")
 
 def isbn_norm(v):
     s = re.sub(r"[^0-9Xx]", "", (v or "").split("(")[0])[:13]
