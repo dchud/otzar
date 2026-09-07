@@ -1,0 +1,134 @@
+catalog,query,draw_axis,draw_domain,draw_year,records_first_seen_here
+dnb,MAT=books and JHR=1950,control,control,1950,50
+dnb,MAT=books and JHR=1995,control,control,1995,50
+dnb,MAT=books and JHR=2015,control,control,2015,50
+dnb,SPR=heb and JHR=1900,language+year,judaica,1900,17
+dnb,SPR=heb and JHR=1925,language+year,judaica,1925,50
+dnb,SPR=heb and JHR=1950,language+year,judaica,1950,49
+dnb,SPR=heb and JHR=1965,language+year,judaica,1965,6
+dnb,SPR=heb and JHR=1980,language+year,judaica,1980,12
+dnb,SPR=heb and JHR=1995,language+year,judaica,1995,50
+dnb,SPR=heb and JHR=2005,language+year,judaica,2005,50
+dnb,SPR=heb and JHR=2015,language+year,judaica,2015,50
+dnb,SPR=heb and JHR=2022,language+year,judaica,2022,50
+dnb,SPR=yid and JHR=1950,language+year,judaica,1950,9
+dnb,SPR=yid and JHR=1995,language+year,judaica,1995,50
+dnb,SPR=yid and JHR=2015,language+year,judaica,2015,19
+dnb,SW=Judentum and JHR=1900,subject+year,judaica,1900,1
+dnb,SW=Judentum and JHR=1925,subject+year,judaica,1925,5
+dnb,SW=Judentum and JHR=1950,subject+year,judaica,1950,2
+dnb,SW=Judentum and JHR=1965,subject+year,judaica,1965,6
+dnb,SW=Judentum and JHR=1980,subject+year,judaica,1980,7
+dnb,SW=Judentum and JHR=1995,subject+year,judaica,1995,50
+dnb,SW=Judentum and JHR=2005,subject+year,judaica,2005,47
+dnb,SW=Judentum and JHR=2015,subject+year,judaica,2015,50
+dnb,SW=Judentum and JHR=2022,subject+year,judaica,2022,49
+k10plus,pica.slw=Judentum and pica.jah=1900,subject+year,judaica,1900,50
+k10plus,pica.slw=Judentum and pica.jah=1925,subject+year,judaica,1925,50
+k10plus,pica.slw=Judentum and pica.jah=1950,subject+year,judaica,1950,49
+k10plus,pica.slw=Judentum and pica.jah=1965,subject+year,judaica,1965,50
+k10plus,pica.slw=Judentum and pica.jah=1980,subject+year,judaica,1980,50
+k10plus,pica.slw=Judentum and pica.jah=1995,subject+year,judaica,1995,50
+k10plus,pica.slw=Judentum and pica.jah=2005,subject+year,judaica,2005,50
+k10plus,pica.slw=Judentum and pica.jah=2015,subject+year,judaica,2015,49
+k10plus,pica.slw=Judentum and pica.jah=2022,subject+year,judaica,2022,49
+k10plus,pica.slw=Physik and pica.jah=1950,control,control,1950,50
+k10plus,pica.slw=Physik and pica.jah=1995,control,control,1995,50
+k10plus,pica.slw=Physik and pica.jah=2015,control,control,2015,50
+k10plus,pica.spr=heb and pica.jah=1900,language+year,judaica,1900,50
+k10plus,pica.spr=heb and pica.jah=1925,language+year,judaica,1925,47
+k10plus,pica.spr=heb and pica.jah=1950,language+year,judaica,1950,50
+k10plus,pica.spr=heb and pica.jah=1965,language+year,judaica,1965,49
+k10plus,pica.spr=heb and pica.jah=1980,language+year,judaica,1980,50
+k10plus,pica.spr=heb and pica.jah=1995,language+year,judaica,1995,49
+k10plus,pica.spr=heb and pica.jah=2005,language+year,judaica,2005,50
+k10plus,pica.spr=heb and pica.jah=2015,language+year,judaica,2015,50
+k10plus,pica.spr=heb and pica.jah=2022,language+year,judaica,2022,50
+k10plus,pica.spr=yid and pica.jah=1950,language+year,judaica,1950,48
+k10plus,pica.spr=yid and pica.jah=1995,language+year,judaica,1995,50
+k10plus,pica.spr=yid and pica.jah=2015,language+year,judaica,2015,39
+lc,"dc.subject=""Agriculture"" and dc.date=1950",control,control,1950,47
+lc,"dc.subject=""Agriculture"" and dc.date=1995",control,control,1995,50
+lc,"dc.subject=""Agriculture"" and dc.date=2015",control,control,2015,50
+lc,"dc.subject=""Hebrew literature"" and dc.date=1900",subject+year,judaica,1900,2
+lc,"dc.subject=""Hebrew literature"" and dc.date=1925",subject+year,judaica,1925,4
+lc,"dc.subject=""Hebrew literature"" and dc.date=1950",subject+year,judaica,1950,1
+lc,"dc.subject=""Hebrew literature"" and dc.date=1965",subject+year,judaica,1965,1
+lc,"dc.subject=""Hebrew literature"" and dc.date=1980",subject+year,judaica,1980,5
+lc,"dc.subject=""Hebrew literature"" and dc.date=1995",subject+year,judaica,1995,5
+lc,"dc.subject=""Hebrew literature"" and dc.date=2005",subject+year,judaica,2005,12
+lc,"dc.subject=""Hebrew literature"" and dc.date=2015",subject+year,judaica,2015,5
+lc,"dc.subject=""Hebrew literature"" and dc.date=2022",subject+year,judaica,2022,15
+lc,"dc.subject=""Jews"" and dc.date=1900",subject+year,judaica,1900,46
+lc,"dc.subject=""Jews"" and dc.date=1925",subject+year,judaica,1925,46
+lc,"dc.subject=""Jews"" and dc.date=1950",subject+year,judaica,1950,50
+lc,"dc.subject=""Jews"" and dc.date=1965",subject+year,judaica,1965,50
+lc,"dc.subject=""Jews"" and dc.date=1980",subject+year,judaica,1980,47
+lc,"dc.subject=""Jews"" and dc.date=1995",subject+year,judaica,1995,50
+lc,"dc.subject=""Jews"" and dc.date=2005",subject+year,judaica,2005,49
+lc,"dc.subject=""Jews"" and dc.date=2015",subject+year,judaica,2015,50
+lc,"dc.subject=""Jews"" and dc.date=2022",subject+year,judaica,2022,47
+lc,"dc.subject=""Judaism"" and dc.date=1900",subject+year,judaica,1900,13
+lc,"dc.subject=""Judaism"" and dc.date=1925",subject+year,judaica,1925,24
+lc,"dc.subject=""Judaism"" and dc.date=1950",subject+year,judaica,1950,25
+lc,"dc.subject=""Judaism"" and dc.date=1965",subject+year,judaica,1965,44
+lc,"dc.subject=""Judaism"" and dc.date=1980",subject+year,judaica,1980,49
+lc,"dc.subject=""Judaism"" and dc.date=1995",subject+year,judaica,1995,47
+lc,"dc.subject=""Judaism"" and dc.date=2005",subject+year,judaica,2005,49
+lc,"dc.subject=""Judaism"" and dc.date=2015",subject+year,judaica,2015,50
+lc,"dc.subject=""Judaism"" and dc.date=2022",subject+year,judaica,2022,49
+lc,"dc.subject=""Physics"" and dc.date=1950",control,control,1950,50
+lc,"dc.subject=""Physics"" and dc.date=1995",control,control,1995,50
+lc,"dc.subject=""Physics"" and dc.date=2015",control,control,2015,50
+lc,"dc.subject=""Rabbinical literature"" and dc.date=1965",subject+year,judaica,1965,1
+lc,"dc.subject=""Rabbinical literature"" and dc.date=1980",subject+year,judaica,1980,9
+lc,"dc.subject=""Rabbinical literature"" and dc.date=1995",subject+year,judaica,1995,17
+lc,"dc.subject=""Rabbinical literature"" and dc.date=2005",subject+year,judaica,2005,16
+lc,"dc.subject=""Rabbinical literature"" and dc.date=2015",subject+year,judaica,2015,5
+lc,"dc.subject=""Rabbinical literature"" and dc.date=2022",subject+year,judaica,2022,5
+nli,alma.language=eng AND alma.main_pub_date=1900,language+year,judaica,1900,50
+nli,alma.language=eng AND alma.main_pub_date=1925,language+year,judaica,1925,45
+nli,alma.language=eng AND alma.main_pub_date=1950,language+year,judaica,1950,27
+nli,alma.language=eng AND alma.main_pub_date=1965,language+year,judaica,1965,50
+nli,alma.language=eng AND alma.main_pub_date=1980,language+year,judaica,1980,50
+nli,alma.language=eng AND alma.main_pub_date=1995,language+year,judaica,1995,45
+nli,alma.language=eng AND alma.main_pub_date=2005,language+year,judaica,2005,50
+nli,alma.language=eng AND alma.main_pub_date=2015,language+year,judaica,2015,50
+nli,alma.language=eng AND alma.main_pub_date=2022,language+year,judaica,2022,50
+nli,alma.language=heb AND alma.main_pub_date=1900,language+year,judaica,1900,47
+nli,alma.language=heb AND alma.main_pub_date=1925,language+year,judaica,1925,50
+nli,alma.language=heb AND alma.main_pub_date=1950,language+year,judaica,1950,50
+nli,alma.language=heb AND alma.main_pub_date=1965,language+year,judaica,1965,46
+nli,alma.language=heb AND alma.main_pub_date=1980,language+year,judaica,1980,42
+nli,alma.language=heb AND alma.main_pub_date=1995,language+year,judaica,1995,49
+nli,alma.language=heb AND alma.main_pub_date=2005,language+year,judaica,2005,40
+nli,alma.language=heb AND alma.main_pub_date=2015,language+year,judaica,2015,46
+nli,alma.language=heb AND alma.main_pub_date=2022,language+year,judaica,2022,50
+nli,alma.language=yid AND alma.main_pub_date=1900,language+year,judaica,1900,50
+nli,alma.language=yid AND alma.main_pub_date=1925,language+year,judaica,1925,50
+nli,alma.language=yid AND alma.main_pub_date=1950,language+year,judaica,1950,48
+nli,alma.language=yid AND alma.main_pub_date=1965,language+year,judaica,1965,45
+nli,alma.language=yid AND alma.main_pub_date=1980,language+year,judaica,1980,48
+nli,alma.language=yid AND alma.main_pub_date=1995,language+year,judaica,1995,50
+nli,alma.language=yid AND alma.main_pub_date=2005,language+year,judaica,2005,49
+nli,alma.language=yid AND alma.main_pub_date=2015,language+year,judaica,2015,49
+nli,alma.language=yid AND alma.main_pub_date=2022,language+year,judaica,2022,50
+nli,"alma.publisher=""ArtScroll""",publisher,judaica,,50
+nli,"alma.publisher=""Feldheim""",publisher,judaica,,50
+nli,"alma.publisher=""Mossad Harav Kook""",publisher,judaica,,6
+nli,"alma.publisher=""מוסד הרב קוק""",publisher,judaica,,50
+oxford,alma.language=eng AND alma.main_pub_date=1950,control,control,1950,50
+oxford,alma.language=eng AND alma.main_pub_date=1995,control,control,1995,50
+oxford,alma.language=eng AND alma.main_pub_date=2015,control,control,2015,50
+oxford,alma.language=heb AND alma.main_pub_date=1900,language+year,judaica,1900,50
+oxford,alma.language=heb AND alma.main_pub_date=1925,language+year,judaica,1925,50
+oxford,alma.language=heb AND alma.main_pub_date=1950,language+year,judaica,1950,50
+oxford,alma.language=heb AND alma.main_pub_date=1965,language+year,judaica,1965,50
+oxford,alma.language=heb AND alma.main_pub_date=1980,language+year,judaica,1980,50
+oxford,alma.language=heb AND alma.main_pub_date=1995,language+year,judaica,1995,50
+oxford,alma.language=heb AND alma.main_pub_date=2005,language+year,judaica,2005,50
+oxford,alma.language=heb AND alma.main_pub_date=2015,language+year,judaica,2015,50
+oxford,alma.language=heb AND alma.main_pub_date=2022,language+year,judaica,2022,50
+oxford,alma.language=yid AND alma.main_pub_date=1950,language+year,judaica,1950,50
+oxford,alma.language=yid AND alma.main_pub_date=1995,language+year,judaica,1995,18
+oxford,alma.language=yid AND alma.main_pub_date=2015,language+year,judaica,2015,9

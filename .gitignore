@@ -219,7 +219,9 @@ __marimo__/
 
 # otzar project
 .abacus/
-data/
+# Anchored: a runtime data directory at the repo root, not every
+# directory named data. The study publishes docs/practice-study/data/.
+/data/
 cache/
 media/
 staticfiles/
