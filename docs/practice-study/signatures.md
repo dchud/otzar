@@ -1,5 +1,14 @@
 # Institutional signatures
 
+**Pattern 2. House style is a property of the institution, and survives
+holding the cataloging tradition constant.**
+
+This is the pattern that disagrees with [pattern 1](sets.md). There,
+three catalogs converge completely on how they treat a set. Here, the
+same three separate from one another on general record structure at
+AMI 0.394. Both hold: the part-whole mechanism travels with the
+tradition, and everything else stays local.
+
 ## Every field included: the clusters are the catalogs
 
 Clustering all 5,252 records on all 725 structural features recovers
@@ -19,6 +28,8 @@ narrow and slightly optimistic: they resample records against a
 partition computed once on the whole corpus, which shifts the
 chance-adjustment upward and can leave a point estimate a thousandth
 below its own lower bound, as `040$a` does here.
+
+![Adjusted mutual information with each label](figures/fig9-ami.svg)
 
 The features carrying that separation are administrative. NLI's
 clusters are marked by `903`, `939`, `919`, `964` and Alma's
@@ -77,9 +88,9 @@ That is the second possible outcome sitting alongside the third: the
 treatments are real enough to show up, and not sharp enough to sort
 records by.
 
-The [marker chapter](markers.md) shows the same taxonomy declared
-explicitly in leader/19 at K10plus and DNB, and expressed there almost
-without exception by two fields that are in this vector, `773` and
+The [set chapter](sets.md) shows the same taxonomy coded explicitly in
+leader/19 at K10plus and DNB, and expressed there almost without
+exception by two fields that are in this vector, `773` and
 `245 $n`/`$p`. The clustering does not organise on them. Scored against
 these partitions and restricted to those two catalogs, adjusted mutual
 information with leader/19 is 0.000: all 287 dependent-part records fall
@@ -142,10 +153,11 @@ resamples at 80% of the corpus, mean best Jaccard recovery:
 Both rows are the k=8 partition, the only cut at which stability was
 measured.
 
-The k=8 partitions are reproducible under subsampling. A recovery
-below about 0.5 would mean a partition dissolves on a resample; none
-of these come close to that. This says nothing about the choice of k
-itself, which was made after seeing the results.
+The k=8 partitions are reproducible under subsampling. Against the
+usual convention — below 0.75 unstable, 0.85 and above highly stable
+([Hennig 2007](references.md)) — all of these count as highly stable.
+That says nothing about the choice of k itself, which was made after
+seeing the results.
 
 The caveat is what stability does *not* establish. A partition can be
 perfectly reproducible and still correspond to nothing of interest —
@@ -166,3 +178,30 @@ within an institution.
     [marker chapter](markers.md). The counts and the AMI values are
     computed; that the feature difference is the cause is an
     explanation consistent with them rather than a tested one.
+
+## The tradition is not the unit, except for sets
+
+Grouping the five catalogs into two traditions — LC, Oxford and NLI
+against DNB and K10plus — and scoring the partitions against that
+label instead of against the catalog:
+
+| Cut | catalog | tradition |
+|---|---|---|
+| k=8, all fields | **0.803** | 0.595 |
+| k=8, standard only | **0.353** | 0.196 |
+| k=12, standard only | **0.346** | 0.188 |
+
+The catalog wins at every cut. Clustering *within* one tradition, where
+a pure two-tradition account predicts its members should be
+indistinguishable:
+
+| Subset | Catalogs | Records | AMI with catalog, k=8 |
+|---|---|---|---|
+| LC, Oxford, NLI | 3 | 3,294 | 0.394 |
+| DNB, K10plus | 2 | 1,958 | 0.217 |
+
+They stay distinguishable. So on general record structure the unit of
+variation is the institution, and the [set survey](sets.md) finding
+that three of them never code leader/19 is specific to that one
+position rather than a general convergence — their set-level extent
+rates differ widely, at 61%, 50% and 24%.

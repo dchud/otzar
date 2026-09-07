@@ -14,7 +14,7 @@ import pathlib
 import xml.etree.ElementTree as ET
 
 M = "{http://www.loc.gov/MARC21/slim}"
-HERE = pathlib.Path(__file__).parent
+HERE = pathlib.Path("tmp/vagf")
 MIN_FRAC, MAX_FRAC = 0.02, 0.98
 
 

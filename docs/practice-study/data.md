@@ -1,6 +1,6 @@
 # The data
 
-Three files carry the record-level data the study measured. They are
+Four files carry the record-level data the study measured. They are
 published so the tables can be checked, and they are frozen: nothing
 here is revised after publication.
 
@@ -15,6 +15,7 @@ are not — those need the 725-feature vector, which is not published.
 | [`corpus-features.csv`](data/corpus-features.csv) | 1.3 MB | 5,252 rows, one per record |
 | [`queries.csv`](data/queries.csv) | 10 KB | 133 of the 136 SRU queries that drew the corpus |
 | [`case-records.xml`](data/case-records.xml) | 205 KB | 21 MARCXML records: the six matched items |
+| [`set-survey.csv`](data/set-survey.csv) | 6 KB | 110 rows: how each catalog describes each of 22 multi-volume works |
 
 ## Why derived data rather than the records
 
@@ -152,6 +153,42 @@ did not record per query, would be needed for that.
 And "first" depends on the order the draw ran, which was a shuffle
 seeded with `0` to interleave the servers, while this file is sorted by
 catalog and query. The run order cannot be reconstructed from the file.
+
+## `set-survey.csv`
+
+One row per work and catalog, 22 works by 5 catalogs. Every table in
+the [set chapter](sets.md) is computed from this file.
+
+| Column | Meaning |
+|---|---|
+| `work`, `catalog` | The work as named in the survey; `lc`, `oxford`, `nli`, `dnb`, `k10plus` |
+| `returned` | Records in the SRU response, before any filter |
+| `named` | Of those, records whose `245` begins with the work's name. A title query returns books *about* a work as well as editions of it |
+| `monograph` | Of those, records with `leader/07` `m`. The remainder are archival subunits, journal articles and analytic entries |
+| `vendor_online` | Of the monographs, records whose `300 $a` says "online resource". Publisher-supplied e-records, counted separately because a run of them imitates per-volume library cataloging |
+| `library` | `monograph` minus `vendor_online`. This is the denominator for every rate in the set chapter |
+| `l19_a`, `l19_b`, `l19_c` | Library records coding leader/19 as a set, a part with an independent title, or a part with a dependent title |
+| `t773` | Records carrying a host item entry |
+| `np` | Records enumerating a part in `245 $n` or `$p` |
+| `t505` | Records carrying a contents note |
+| `extent_counted` | `300 $a` states a number of volumes: `3 v.`, `9 Bände` |
+| `extent_open` | `300 $a` is open-ended: `v.`, `volumes`, `v. <1-27, 29-53>`. An earlier version of this study missed 168 LC records by requiring a leading digit |
+| `set_level_extent` | The two above summed: records whose extent says the description covers a whole set |
+| `truncated` | 1 where the response hit the fifty-record cap, so the row is a floor. 66 of the 110 rows are truncated |
+
+Query forms differ per catalog — Hebrew at NLI, romanized elsewhere,
+German forms at DNB — so `returned` and `library` are not comparable
+holdings figures between catalogs. They support comparison of *rates
+within* a catalog.
+
+The queries are in `set_cases.py`; the title patterns and filters in
+`set_report.py`, both under
+[`studies/cataloging-practice/`](https://github.com/dchud/otzar/tree/main/studies/cataloging-practice).
+
+The works were chosen by hand as the multi-volume works a Torah-study
+collection is built from. That makes the file evidence that both
+treatments occur widely on works every catalog holds, and not an
+estimate of prevalence in any population.
 
 ## `case-records.xml`
 
