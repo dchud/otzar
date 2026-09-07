@@ -15,6 +15,7 @@ are not — those need the 725-feature vector, which is not published.
 | [`corpus-features.csv`](data/corpus-features.csv) | 1.3 MB | 5,252 rows, one per record |
 | [`queries.csv`](data/queries.csv) | 10 KB | 133 of the 136 SRU queries that drew the corpus |
 | [`case-records.xml`](data/case-records.xml) | 205 KB | 21 MARCXML records: the six matched items |
+| [`set-survey.csv`](data/set-survey.csv) | 4 KB | 110 rows: how each catalog describes each of 22 multi-volume works |
 
 ## Why derived data rather than the records
 
@@ -152,6 +153,32 @@ did not record per query, would be needed for that.
 And "first" depends on the order the draw ran, which was a shuffle
 seeded with `0` to interleave the servers, while this file is sorted by
 catalog and query. The run order cannot be reconstructed from the file.
+
+## `set-survey.csv`
+
+One row per work and catalog, 22 works by 5 catalogs. Every table in
+the [set chapter](sets.md) is computed from this file.
+
+| Column | Meaning |
+|---|---|
+| `work` | The work as named in the survey |
+| `catalog` | `lc`, `oxford`, `nli`, `dnb`, `k10plus` |
+| `records_naming_work` | Records returned whose `245` matches the work. A title query returns more than the work asked for, so this is the filtered count, not the catalog's hit total |
+| `leader19_b`, `leader19_c` | Records declaring a part with an independent title, and with a dependent title |
+| `has_773` | Records carrying a host item entry |
+| `has_245_n_or_p` | Records enumerating a part in `245 $n` or `$p` |
+| `has_300_volume_count` | Records whose `300 $a` states a number of volumes, which marks a set-level description |
+| `has_505` | Records carrying a contents note |
+| `response_truncated` | 1 where the catalog returned the fifty-record cap, so the row is a floor rather than a count |
+
+The queries are in `set_cases.py`; the title-matching patterns that
+filter each response are in `set_report.py`, both under
+[`studies/cataloging-practice/`](https://github.com/dchud/otzar/tree/main/studies/cataloging-practice).
+
+The works were chosen by hand as the multi-volume works a Torah-study
+collection is built from. That makes the file evidence that both
+treatments occur widely on works every catalog holds, and not an
+estimate of prevalence in any population.
 
 ## `case-records.xml`
 

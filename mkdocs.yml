@@ -45,6 +45,7 @@ nav:
   - MARC in practice: marc-in-practice.md
   - Cataloging practice study:
     - Overview: practice-study/index.md
+    - How catalogs describe a set: practice-study/sets.md
     - Institutional signatures: practice-study/signatures.md
     - Part-whole markers: practice-study/markers.md
     - Six items side by side: practice-study/cases.md

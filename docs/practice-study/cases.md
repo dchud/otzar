@@ -1,9 +1,20 @@
-# Six items, side by side
+# Items held in common
+
+**Patterns 5, 7 and 8: records propagate between catalogs; script
+placement has four mechanisms; name identifiers take four shapes.**
 
 The aggregate tables compare catalogs holding different books, so a
 difference in prevalence could be a difference in the material rather
 than in the cataloging. These six items remove that ambiguity: each is
 one work, held by two to four of the catalogs, matched on ISBN.
+
+**All six are single-volume books.** Matching on ISBN finds modern
+trade publications, not multi-volume sets, which often carry no ISBN or
+one per volume and frequently predate the ISBN entirely. Nothing in
+this chapter bears on how a set is described; that is the
+[set survey](sets.md), which reaches its material by title instead.
+What these items do show is what a single record looks like when four
+institutions describe the same object.
 
 Every record is cited by its `001` control number, its `003` control
 number identifier where present, and its leader, so the comparisons can
@@ -233,10 +244,11 @@ The aggregate tables report that catalogs differ. These records show
    together at DNB, and no identifier at all at NLI, for the same two
    people.
 
-None of the six shows a leader/19 value, because none of the six is a
-volume of a multipart resource. The mechanism the
-[marker chapter](markers.md) finds most reliable is not visible in
-these items, and the aggregate tables are the evidence for it.
+None of the six shows a `leader/19` value, and none carries a `773`, a
+`245 $n`/`$p` or a volume count in `300`. That is not an accident of
+selection but a property of it: ISBN matching cannot reach the material
+where those fields live. The [set survey](sets.md) reaches it by
+querying titles, and finds all four mechanisms in use.
 
 [^six]: **Not verified here.** That `(2` is the MARC-8 escape for the
     Hebrew character set and `Hebr` the ISO 15924 script code, and that

@@ -1,5 +1,14 @@
 # Institutional signatures
 
+**Pattern 2. House style is a property of the institution, and survives
+holding the cataloging tradition constant.**
+
+This is the pattern that disagrees with [pattern 1](sets.md). There,
+three catalogs converge completely on how they treat a set. Here, the
+same three separate from one another on general record structure at
+AMI 0.394. Both hold: the part-whole mechanism travels with the
+tradition, and everything else stays local.
+
 ## Every field included: the clusters are the catalogs
 
 Clustering all 5,252 records on all 725 structural features recovers
@@ -166,3 +175,29 @@ within an institution.
     [marker chapter](markers.md). The counts and the AMI values are
     computed; that the feature difference is the cause is an
     explanation consistent with them rather than a tested one.
+
+## The tradition is not the unit, except for sets
+
+Grouping the five catalogs into two traditions — LC, Oxford and NLI
+against DNB and K10plus — and scoring the partitions against that
+label instead of against the catalog:
+
+| Cut | catalog | tradition |
+|---|---|---|
+| k=8, all fields | **0.803** | 0.595 |
+| k=8, standard only | **0.353** | 0.196 |
+| k=12, standard only | **0.346** | 0.188 |
+
+The catalog wins at every cut. Clustering *within* one tradition, where
+a pure two-tradition account predicts its members should be
+indistinguishable:
+
+| Subset | Catalogs | Records | AMI with catalog, k=8 |
+|---|---|---|---|
+| LC, Oxford, NLI | 3 | 3,294 | 0.394 |
+| DNB, K10plus | 2 | 1,958 | 0.217 |
+
+They stay distinguishable. So on general record structure the unit of
+variation is the institution, and the [set survey](sets.md) finding
+that three of them behave identically is specific to the part-whole
+mechanism rather than a general convergence.

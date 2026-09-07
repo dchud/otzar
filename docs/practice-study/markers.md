@@ -242,7 +242,9 @@ not that a set exists.
 
 `773` runs from none at all at LC (0 of 1,164) and 6 records at Oxford
 to 35% at K10plus. `245$n`/`$p` runs from 1% at LC and NLI to 18% at
-K10plus. `440` is 10% at LC and
+K10plus — though for Oxford that figure is an artifact of the draw, and
+the [set survey](sets.md) finds it at 19% once multi-volume works are
+asked for by name. `440` is 10% at LC and
 0% everywhere else. It was made obsolete in 2008 and only LC's
 unconverted legacy records carry it here; the German catalogs never
 emitted it, since their MARC output postdates the change, so their zero
@@ -266,6 +268,41 @@ records dimensions on 19% of books where LC and Oxford record them on
 `800`/`810`/`811`, the traced name-title series added entry, is at or
 below 3% everywhere. Whatever otzar does about sets, this is not the
 field the material uses.
+
+## What this corpus cannot see
+
+**Pattern 6. A corpus drawn on non-title axes under-samples the volumes
+of sets, and every figure in this chapter is affected.**
+
+The draw axes — language, subject heading, publisher, year — say
+nothing about which fields a record carries, which is what makes the
+sample usable for the questions above. They also say nothing about
+whether a record describes a volume of a set, and volumes of sets are a
+small fraction of any catalog. Nothing in the draw sought them out.
+
+The [set survey](sets.md) asked the same catalogs for 22 multi-volume
+works by name. Where the two disagree, they disagree in a measurable
+direction:
+
+| | This corpus | Targeted at 22 sets |
+|---|---|---|
+| Oxford, `245 $n`/`$p` | 15 of 662 books (2%) | 40 of 215 records (19%) |
+| Oxford, `245 $n`/`$p` on one set | — | 31 of 37 records for *Die Mischna* (84%) |
+| K10plus, `leader/19=c` | 195 of 1,090 books (18%) | 314 of 501 records (63%) |
+
+The 2% figure for Oxford is correct about Oxford's books in general and
+badly misleading as a statement about how Oxford handles a set. On a
+multi-volume work Oxford enumerates volumes routinely.
+
+Two consequences. Prevalence figures in this chapter describe *these
+catalogs' holdings as sampled*, not their treatment of any particular
+kind of material — the material-type table above is the same warning in
+a different form. And a marker that is rare overall can be the normal
+mechanism within the material that matters: 3% of a catalog is a large
+fraction of its multi-volume sets.
+
+Where a claim in this chapter is about sets specifically, the set
+survey supersedes it.
 
 ## Change over publication era
 

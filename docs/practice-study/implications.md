@@ -1,76 +1,86 @@
 # What follows for otzar
 
-## A set arrives as one record or as many, depending on the catalog
+Each practice below names the pattern it rests on and how strong that
+pattern is. A weak pattern earns a cautious practice.
 
-The largest practical finding is not which field marks a volume. It is
-that the same eight-volume commentary reaches otzar as **nine records
-from K10plus and one record from LC**.[^onemany]
+## Expect one record or thirty for the same set
 
-The two PICA catalogs, K10plus and DNB, create a record per volume and
-declare it in leader/19, multipart resource record level: `a` for the
-set, `b` for a part with its own title, `c` for a part whose title
-depends on the set. LC, NLI and Oxford create one comprehensive record
-for the set, with the extent in `300 $a` and the parts listed in `505`.
-Books carrying a volume count in `300 $a` run 3.3-6.2% at the three
-Anglo-American catalogs against 0-0.5% at the two PICA ones.
+*From [pattern 1](sets.md). Strong.*
 
-Anything in otzar that reconciles records across catalogs has to handle
-a one-to-many correspondence, not a one-to-one one. That is a data-model
-consequence, not a parsing one, and it is worth settling before the
-identity rules are written.
+The [set survey](sets.md) asked five catalogs for 22 multi-volume works
+by name. The Library of Congress describes *Entsiḳlopedyah talmudit*
+with **one** record; K10plus describes it with **31**, thirty of them
+declared volumes. *Torah Shelemah* is 48 records at K10plus and 5 at
+LC. *Encyclopaedia Judaica* is declared 42 times at K10plus and 38 at
+DNB, against 10 records at LC.
 
-## Where leader/19 is present, it is decisive
+Any identity rule that assumes records correspond one-to-one across
+sources will be wrong on precisely the material otzar exists to
+catalogue. This is a data-model consequence, not a parsing one, and it
+belongs in the design before the matching rules are written.
 
-Where a catalog populates leader/19 the three values carry three
-separate mechanisms: dependent parts take `773` plus `245 $n`/`$p`,
-parts with independent titles take `490` and usually `830` and never
-`773`, and set records take neither, though they may carry a `490` or
-`830` of their own since a set can belong to a series.
+## Read leader/19 where it is present, and expect it from two sources
 
-Used as a test, "`773` present and `245 $n` or `$p` present" identifies
-a declared dependent part with 272 true positives, no false positives
-and one false negative. Two cautions come with that figure. The rule was
-read from and scored against the same records, so it describes this
-corpus rather than predicting the next. And the two catalogs are the two
-running PICA — the fields are written together by one family of export
-software, so this measures internal consistency of that output, not two
-traditions agreeing.[^pica]
+*From [pattern 1](sets.md). Strong for its absence, weaker for its
+presence.*
 
-In practice the test adds nothing where leader/19 is present, since it
-matches exactly the records that declare it, and it matches nothing
-where leader/19 is absent. Its use is as a cross-check, and as a
-fallback for PICA-derived records that reach otzar with the leader
-position stripped.
+Leader position 19 declares multipart resource level: `a` set, `b` part
+with an independent title, `c` part with a dependent title. Where a
+catalog populates it the value is exact and comes with `773` and
+`245 $n`/`$p`.
 
-## Elsewhere the distinction is expressed, but differently
+It will arrive from K10plus and DNB. Across 22 multi-volume works held
+by LC, Oxford and NLI, it appears on **0 of 1,180 records**. That
+absence is well supported: the three catalogs share no software and
+converge anyway. Its presence rests on two catalogs that share PICA and
+may amount to one observation.
 
-It is not true that the other catalogs fail to record the relationship.
-They record it in at least two other idioms:
+## Absence of a link is not absence of a set
 
-- **A set-level record**, at LC, NLI and Oxford, with the volume count
-  in `300 $a` and the parts in `505`. There is no per-volume record to
-  find because none was made.
-- **A monograph-level link at NLI.** Of its 108 language-material
-  records carrying `773`, 25 are `leader/07=m` records using Alma's
-  related-record form — `$w` pointing at a parent on 19 of them, `$4
-  ANA` on 8, `$4 UP` on 6, `$g` part numbering on 10 — with some
-  carrying `490`/`830` numbering for the same volume.
+*From [pattern 1](sets.md). Strong.*
 
-So a rule keyed to any one of these misses the other two. `773` alone
-conflates set volumes with articles and runs from none at all at LC to
-35% at K10plus. `leader/07=d` reaches 4 records out of 4,449, all at
-NLI, and MARC defines it for archival units described collectively
-elsewhere,[^l07d] which is what those four are. `800`/`810`/`811` is at or
-below 3% everywhere.
+An LC record with no `773`, no `leader/19` and no series statement is
+very often the set-level record for a multi-volume work, with the
+volumes listed in `505` and the extent in `300 $a`. Across the survey
+LC carries 176 volume counts and 122 contents notes against a single
+`773`.
 
-The only markers that appear at comparable rates in every catalog are
-`490` (13-26%, V=0.10), `830` (10-16%, V=0.08) and `130`/`240` (6-9%,
-V=0.04, the one row where the chi-square test does not reject
-independence). Those are what a catalog-independent rule can rest on —
-and `490` is the weakest kind of evidence, since a transcribed series
-statement claims only that words appeared on a piece.
+Treating those records as standalone books is the most likely
+first-order error. Where the Anglo-American catalogs describe a set,
+the contents note is the volume list, and it is the only
+machine-readable one on offer.
+
+## `773` is not one kind of evidence
+
+*From [pattern 1](sets.md) and [pattern 3](markers.md). Strong.*
+
+`773` carries at least three different meanings in this material:
+
+- At K10plus and DNB, on a record declaring `leader/19=c`, it links a
+  volume to its set.
+- At K10plus it also appears on 177 `leader/07=a` component parts —
+  articles inside a host, not volumes inside a set. The leader tells
+  them apart; the field alone does not.
+- At NLI it appears on 116 of 444 survey records with nothing declared
+  at all, in Alma's related-record form with `$4 ANA` or `$4 UP`.
+- On archival and image material it is near-universal — 97% of mixed
+  material — and means a component of a collection.
+
+Read on its own it will over-match. Read together with `leader/06`,
+`leader/07` and `leader/19` it is precise.
+
+## Parse `505` for volume lists
+
+*From [pattern 1](sets.md). Strong.*
+
+122 records at LC, 123 at NLI and 79 at Oxford carry a contents note
+across the survey. For those sources it is where the volumes are named.
+An enhanced note carrying `$t` is rare — under 1% of the corpus — so
+expect to parse running text rather than structured subfields.
 
 ## Condition on the catalog, because it is free
+
+*From [pattern 2](signatures.md). Strong.*
 
 Which catalog answered is known at the moment a record arrives: it is
 which client returned it. Conditioning costs nothing and changes the
@@ -86,6 +96,8 @@ now with sizes attached: build per-catalog evidence weights, not
 fallback chains that try one field and move to the next.
 
 ## Read the Hebrew title from a different field per catalog
+
+*From [pattern 7](cases.md). Strong on prevalence.*
 
 `880` prevalence in books: Oxford 62%, K10plus 23%, LC 15%, NLI 2%,
 DNB under 1%. At Oxford the romanized form is in `245` and the Hebrew is in
@@ -104,6 +116,8 @@ misses at NLI is not the Hebrew but the absence of any romanized
 form.
 
 ## Series identity: the evidence is unevenly recorded
+
+*From [pattern 8](cases.md). Weak: one worked example.*
 
 For one series across four records, the ISSN appeared once, `$w`
 bibliographic-record links appeared twice pointing at four different
@@ -130,6 +144,8 @@ Consequences for matching two records to one set:
 
 ## Branch on material type with care
 
+*From [pattern 3](markers.md). Strong.*
+
 The same physical item is language material at one catalog and notated
 music at two others. Any logic keyed to leader/06 takes different paths
 for one object depending on which record it reads.
@@ -141,6 +157,8 @@ and image material uses `leader/07=d` and `773` almost universally and
 `490`/`830` not at all.
 
 ## Do not classify records into named treatment types
+
+*From [pattern 2](signatures.md), qualified by [pattern 1](sets.md).*
 
 Structure predicts declared bibliographic level in two catalogs of five
 and fails to in the other three, where it predicts the descriptive
@@ -154,6 +172,8 @@ weights conditioned on catalog and era, than as a type a record is
 sorted into.
 
 ## Copy cataloging limits what "institutional practice" means
+
+*From [pattern 5](cases.md). Weak: one observed pair.*
 
 Two of the five catalogs were found holding literally the same record
 for one item, acquired through a shared cataloging network and
@@ -188,7 +208,21 @@ findings about catalogs.
 **The matched items are illustrations, not a sample.** Thirty-five
 ISBNs appear in more than one catalog. The six shown demonstrate
 mechanisms the aggregate tables measure; they do not independently
-estimate anything.
+estimate anything. All six are single-volume books, which is why the
+[set survey](sets.md) exists.
+
+**The set survey is a convenience sample of works, chosen by hand.**
+The 22 works were picked as the multi-volume works a Torah-study
+collection is built from. A different list would give different
+figures. What the survey establishes is that the two treatments both
+occur, widely, on works every catalog holds — not their prevalence in
+any population.
+
+**Several survey cells hit the fifty-record response cap**, so those
+counts are records examined rather than exhaustive. The zero for
+`leader/19` across LC, Oxford and NLI is a zero among 1,180 records
+examined, not a proof that no such record exists anywhere in those
+catalogs.
 
 **Two catalogs are absent for avoidable reasons.** A UK union catalog
 refused every request from this network, and one large research
