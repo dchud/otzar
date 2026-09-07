@@ -1,10 +1,24 @@
 # MARC as these catalogs actually send it
 
-otzar reads records from three SRU endpoints, and what they send differs
-from what a reading of the MARC specification predicts. This records what
-a survey of real responses found, so that decisions about which fields to
-read rest on measurement rather than on inference from the format
-documentation.
+**The problem this answers is the multi-volume set.** A Judaica
+collection is full of works that arrive in many physical volumes: a
+Talmud in eighteen, a Mishnah Berurah in six, a Miqraot Gedolot one book
+of the Bible at a time. For every record it takes in, otzar has to decide
+which set the volume belongs to, which volume of that set it is, and
+whether some other record already described the same set under a
+different name.
+
+MARC has fields for saying all of that, and a reading of the
+specification suggests which ones to use. The trouble is that the answer
+changes depending on which catalog sent the record and when it was made,
+and several of the fields the specification points at turn out not to be
+there at all.
+
+So this is a count. 1,027 real records from three SRU endpoints, measured
+rather than reasoned about, so that decisions about which fields to read
+rest on what the catalogs send. The absences matter more than the
+frequencies: a field that never appears is one no amount of careful
+parsing will find.
 
 ## There is no single pattern, and there will not be one
 
@@ -43,9 +57,18 @@ the Sapirstein Rashi.
 Read the numbers as "what this kind of material looks like", not as
 catalog-wide statistics. Three cautions apply throughout:
 
-The sample is not random. It is one subject area, reached through title
-searches, and a title search finds what is catalogued under the title
-searched for.
+**The sample is skewed, and it is skewed in the direction that
+matters.** Every query was a title search for a work named in advance --
+`alma.title="תלמוד בבלי"` and its like. That returns records catalogued
+under the title searched for, and misses the ones expressing the same
+work differently: a record whose `245` reads something else entirely,
+and whose only statement of the work is a `130` uniform title, is
+precisely the case this survey exists to find and precisely the case a
+title search will not return.
+
+The corpus therefore undercounts the variation it set out to measure.
+Treat the figures for the rarer treatments as lower bounds, not as
+estimates, and do not quote any of them as a population figure.
 
 The DNB results are not comparable to the other two. Its `773` rate is
 high because the queries returned journal articles and digitised items --
@@ -57,52 +80,103 @@ Where a field appears zero times across the whole corpus, that is worth
 more than where it appears often. A field absent from 1,027 records of
 exactly the material otzar exists to hold is not a field to build on.
 
-## What changed between eras
+## Two dates, and they explain different things
 
-Records carrying at least one instance of each field, by date of
-publication from `008`. 279 records predate 1945, 248 fall between 1945
-and 1989, and 446 are from 1990 or later; 54 carry no usable date.
+A MARC record carries two dates and they are not the same. `008/07-10`
+is when the **book** was published. `008/00-05` is when the **record**
+was made. In this corpus the median gap between them is 19 years, and
+274 records of 973 were catalogued fifty or more years after the book was
+printed -- the legacy of retrospective conversion, which moved card
+catalogs into MARC through the 1980s and 1990s and gave old books modern
+records.
 
-| Field | pre-1945 | 1945-89 | 1990+ | Carries |
-|---|---:|---:|---:|---|
-| `245` | 100% | 100% | 100% | Title statement |
-| `300` | 94% | 92% | 93% | Extent |
-| `260` | 93% | 93% | 40% | Publication, pre-RDA |
-| `100` | 53% | 60% | 54% | Main entry, personal name |
-| `130` | **34%** | 26% | 24% | Main entry, uniform title |
-| `630` | 29% | 31% | 45% | Subject added entry, uniform title |
-| `246` | 24% | 13% | 48% | Varying form of title |
-| `751` | 19% | 19% | 34% | Added entry, geographic name |
-| `740` | 17% | 22% | 12% | Added entry, uncontrolled title |
-| `730` | 13% | 13% | 26% | Added entry, uniform title |
-| `240` | 11% | 9% | 12% | Uniform title under a 1XX |
-| `773` | 11% | 11% | 19% | Host item entry |
-| `505` | 11% | 12% | 29% | Contents note |
-| `880` | 8% | 4% | 14% | Alternate graphic representation |
-| `264` | 6% | 4% | 54% | Publication, RDA |
-| `250` | 6% | 13% | 29% | Edition statement |
-| `490` | **3%** | 8% | 24% | Series statement, transcribed |
-| `830` | **3%** | 6% | 17% | Series added entry, authorized |
-| `440` | **0%** | **3%** | **0%** | Series statement, obsolete |
-| `020` | **0%** | 13% | 46% | ISBN |
-| `800` `810` `811` | **0%** | **0%** | **0%** | Series added entry under a name |
+Splitting on one date and not the other hides the mechanism. Splitting on
+both shows which is doing the work.
 
-Three readings of that table matter more than the rest.
+### By publication date
 
-**A pre-1945 set has no ISBN.** Not rarely -- never, in 279 records. Any
-path that begins with a barcode or an ISBN lookup is unavailable for the
-older half of a collection like this, and identification has to come from
-the title page and from matching on title, author and imprint.
+Boundaries at 1970, when ISO 2108 made the ten-digit ISBN an
+international standard, and at 2007, when the thirteen-digit form became
+mandatory.
 
-**The fields that name a series are a modern habit.** `490` and `830`
-stand at 3% before 1945 and 24% and 17% after 1990. The material where
-set membership is hardest to establish is the material least likely to
-state it in the fields set membership is normally read from.
+| Field | pre-1970 | 1970-2006 | 2007+ |
+|---|---:|---:|---:|
+| `020` ISBN | **0%** | 39% | 45% |
+| `260` publication, pre-RDA | 95% | 85% | 18% |
+| `264` publication, RDA | 4% | 12% | 74% |
+| `246` varying title | 18% | 37% | 46% |
+| `130` uniform title | **30%** | 29% | 21% |
+| `240` uniform title under a 1XX | 10% | 11% | 13% |
+| `730` added uniform title | 11% | 24% | 25% |
+| `740` uncontrolled title | 15% | 29% | 6% |
+| `505` contents note | 9% | 26% | 27% |
+| `490` series statement | **4%** | 14% | 28% |
+| `830` series added entry | **2%** | 14% | 18% |
+| `773` host item | 11% | 11% | 22% |
+| `440` obsolete series | 0% | 3% | 0% |
+| `880` alternate script | 6% | 10% | 14% |
 
-**The uniform title runs the other way.** `130` is at its most common on
-the oldest records, 34%, and stays around a quarter throughout. For this
-material it is the most reliable statement that two volumes belong to one
-work, and it is more reliable the older the record is.
+### By record-creation date
+
+Boundaries at 1981, when the Library of Congress implemented AACR2, and
+at 2013, when the national libraries implemented RDA.
+
+| Field | pre-1981 | 1981-2012 | 2013+ |
+|---|---:|---:|---:|
+| `020` ISBN | 18% | 19% | 31% |
+| `260` publication, pre-RDA | 96% | 93% | 28% |
+| `264` publication, RDA | **3%** | **3%** | **64%** |
+| `246` varying title | 3% | 28% | 41% |
+| `130` uniform title | 30% | 33% | 17% |
+| `730` added uniform title | 6% | 20% | 20% |
+| `505` contents note | 6% | 20% | 18% |
+| `490` series statement | 18% | 10% | 18% |
+| `440` obsolete series | **9%** | 1% | 0% |
+| `773` host item | 3% | 8% | 25% |
+| `880` alternate script | 0% | 8% | 13% |
+
+Records created before 1981 number only 33, so that column is indicative
+rather than solid.
+
+### What each table is good for
+
+**ISBN presence follows the book.** Zero before 1970 and nothing will
+change that: ISO 2108 postdates the printing. By record date the same
+field reads 18%, 19%, 31% -- smeared, because when somebody catalogued a
+book says nothing about whether it has an ISBN.
+
+**RDA encoding follows the record.** `264` reads 3%, 3%, 64% by record
+date, which is the 2013 implementation showing up as a step. By
+publication date it looks gradual, and the gradient is an artifact:
+recently published books tend to have recently made records.
+
+**`440` was a cataloger's field, not an era's.** By record date it runs
+9%, 1%, 0%. It was valid from the late 1960s until 2008, so books printed
+long before it exist and records using it do not.
+
+**One field can follow both.** ISBN presence follows the book; ISBN
+*format* follows the record. Forty-one books published before 2000 carry
+a thirteen-digit ISBN, a form that did not exist until 2007 -- because
+the record was made or revised afterwards, and the number was converted.
+Presence and shape are different questions with different answers.
+
+The practical consequence: when a field is missing, ask which date
+explains it. A field the book is too old for will never appear. A field
+the record is too old for may arrive whenever that record is next
+touched.
+
+### Standards these boundaries come from
+
+| Year | What |
+|---|---|
+| 1967 | Nine-digit SBN in use in the United Kingdom |
+| 1970 | ISO 2108, the ten-digit ISBN |
+| 1975 | ISO 3297, the ISSN |
+| 1978 | AACR2 published; LC implemented it in 1981 |
+| 1980s-90s | Retrospective conversion of card catalogs into MARC |
+| 2007 | Thirteen-digit ISBN mandatory |
+| 2008 | `440` made obsolete |
+| 2010 | RDA published; the national libraries implemented it in 2013 |
 
 ## What differs between catalogs
 
@@ -210,9 +284,9 @@ already marked as parallel forms.
 
 ## The contents note is rarely structured
 
-`505` appears on 185 records and 6 of them use the enhanced form with
-`$t` per volume -- none at all before 1945. The rest put everything in a
-single `$a`:
+`505` appears on 191 records and 6 of them use the enhanced form with
+`$t` per volume: none at all before 1970, two between 1970 and 2006, and
+four since. The other 185 put everything in a single `$a`:
 
 ```
 505 8# $a [1] Berakhot, Peʼah, Demai, Kilayim, Sheviʻit, Terumot ...
@@ -236,11 +310,11 @@ three catalogs and three eras. A series added entry under a personal,
 corporate or meeting name is a real MARC treatment and is not one these
 endpoints send for this material.
 
-**`440` is a mid-century field, not an old one.** It stands at 0% before
-1945, 3% between 1945 and 1989, and 0% after 1990. It was valid from the
-late 1960s until 2008, and the records that use it are the ones
-catalogued during that window and never reconverted. Expecting older copy
-to be full of it has the shape of the argument right and the era wrong.
+**`440` belongs to a generation of catalogers, not to a generation of
+books.** By record-creation date it runs 9%, 1%, 0%. It was valid from
+the late 1960s until 2008, so books printed long before it exist in
+quantity and records using it do not. Expecting older copy to be full of
+it has the shape of the argument right and the date wrong.
 
 **`245 $n` and `$p` are rare**, on 23 records in the whole corpus. The
 part-in-the-title treatment is real, but the uniform title expresses the
@@ -259,8 +333,9 @@ host by control number alone:
 773 18 $w 990010551080205171
 ```
 
-Eleven of the fifteen `$w`-only host entries in the corpus are on
-pre-1945 records. A reader expecting `$t` and `$g` finds neither.
+Eleven of the fifteen `$w`-only host entries are on books published
+before 1970, and none are on books published since 2007. A reader
+expecting `$t` and `$g` finds neither.
 
 ## Reproducing this
 
