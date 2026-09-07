@@ -11,6 +11,7 @@ import pytest
 from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
+from ingest.models import ScanResult
 from tests.e2e.conftest import login
 
 INGEST_PAGES = [
@@ -93,3 +94,55 @@ class TestIngestModeNav:
         assert "{#" not in body
         assert "#}" not in body
         assert "{% comment %}" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+class TestQueueCountInNav:
+    """The bar's Queue item carries the count of pending scans, so a
+    cataloger standing on the scan page right after scanning can tell
+    whether it landed without navigating away to look."""
+
+    def test_shows_zero_when_nothing_is_pending(
+        self, page, live_server, staff_user
+    ):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+
+        nav = page.get_by_role("navigation", name="Ingest method")
+        expect(nav.get_by_role("link", name="Queue 0")).to_be_visible()
+
+    def test_count_tracks_what_is_pending(self, page, live_server, staff_user):
+        ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="0875847625",
+            candidate_records=[],
+            scanned_by=staff_user,
+        )
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+
+        nav = page.get_by_role("navigation", name="Ingest method")
+        expect(nav.get_by_role("link", name="Queue 1")).to_be_visible()
+
+    def test_count_is_visible_at_phone_width(
+        self, page, live_server, staff_user
+    ):
+        ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="0875847625",
+            candidate_records=[],
+            scanned_by=staff_user,
+        )
+        page.set_viewport_size({"width": 375, "height": 812})
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+
+        nav = page.get_by_role("navigation", name="Ingest method")
+        expect(nav.get_by_role("link", name="Queue 1")).to_be_visible()
+
+        overflow = page.evaluate(
+            "() => document.documentElement.scrollWidth"
+            " - document.documentElement.clientWidth"
+        )
+        assert overflow <= 0, f"page scrolls sideways by {overflow}px"

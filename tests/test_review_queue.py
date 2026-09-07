@@ -19,13 +19,6 @@ def user(db):
 
 
 @pytest.fixture
-def staff_user(db):
-    return User.objects.create_user(
-        username="staff", password="testpass123", is_staff=True
-    )
-
-
-@pytest.fixture
 def client_logged_in(user):
     c = Client()
     c.login(username="cataloger", password="testpass123")
@@ -157,20 +150,53 @@ class TestReviewQueue:
         assert response.status_code == 200
         assert b"Sample Book" in response.content
 
-    def test_hides_other_users_scans(self, db, pending_isbn_scan):
+    def test_shows_scans_made_by_other_users(self, db, pending_isbn_scan):
+        """Several people scan while one reviews; the reviewer needs
+        the whole queue, not just what they scanned themselves."""
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
         c.login(username="other", password="testpass123")
         response = c.get("/ingest/queue/")
         assert response.status_code == 200
-        assert b"978-0-13-110362-7" not in response.content
-
-    def test_staff_sees_all_scans(self, staff_user, pending_isbn_scan):
-        c = Client()
-        c.login(username="staff", password="testpass123")
-        response = c.get("/ingest/queue/")
-        assert response.status_code == 200
         assert b"978-0-13-110362-7" in response.content
+
+    def test_ingest_root_renders_the_same_queue(
+        self, client_logged_in, pending_isbn_scan
+    ):
+        response = client_logged_in.get("/ingest/")
+        assert response.status_code == 200
+        assert b"Review Queue" in response.content
+        assert b"978-0-13-110362-7" in response.content
+
+
+@pytest.mark.django_db
+class TestQueueCountInNav:
+    """The mode bar's Queue item carries the count of pending scans.
+
+    The count lives on every ingest page, not only on the queue itself,
+    so a cataloger standing on the scan page right after scanning can
+    tell whether it landed without navigating away to look.
+    """
+
+    def test_zero_when_nothing_is_pending(self, client_logged_in):
+        response = client_logged_in.get("/ingest/scan/")
+        assert response.status_code == 200
+        assert b">0</span>" in response.content
+
+    def test_tracks_what_is_actually_pending(
+        self, client_logged_in, pending_isbn_scan, pending_ocr_scan
+    ):
+        response = client_logged_in.get("/ingest/scan/")
+        assert b">2</span>" in response.content
+
+    def test_is_not_scoped_to_the_current_user(self, db, pending_isbn_scan):
+        """Matches the queue itself: the count is everyone's pending
+        scans, not just the current user's."""
+        User.objects.create_user(username="other", password="testpass123")
+        c = Client()
+        c.login(username="other", password="testpass123")
+        response = c.get("/ingest/scan/")
+        assert b">1</span>" in response.content
 
 
 @pytest.mark.django_db
@@ -517,9 +543,12 @@ class TestRepeatIsbnSearch:
         assert ScanResult.objects.count() == before + 1
 
     @patch("ingest.views.isbn_lookup")
-    def test_will_not_write_another_users_scan(
+    def test_reuses_another_users_scan_from_the_queue(
         self, mock_lookup, client_logged_in, db
     ):
+        """Searching again from someone else's queue row updates that
+        row rather than leaving it behind with an empty candidate list
+        while a duplicate accumulates elsewhere."""
         mock_lookup.return_value = self.RESULT
         other = User.objects.create_user(
             username="stranger", password="testpass123"
@@ -530,11 +559,15 @@ class TestRepeatIsbnSearch:
             candidate_records=[],
             scanned_by=other,
         )
+        before = ScanResult.objects.count()
 
         client_logged_in.post(
             "/ingest/isbn-lookup/",
             {"isbn": theirs.isbn, "scan_id": str(theirs.pk)},
         )
 
+        assert ScanResult.objects.count() == before
         theirs.refresh_from_db()
-        assert theirs.candidate_records == []
+        assert theirs.candidate_records[0]["title"] == (
+            "Found on the second pass"
+        )

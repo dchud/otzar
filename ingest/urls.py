@@ -3,7 +3,7 @@ from django.urls import path
 from ingest import views
 
 urlpatterns = [
-    path("", views.ingest_index, name="ingest"),
+    path("", views.review_queue, name="ingest"),
     path("new/", views.manual_entry, name="manual_entry"),
     path("select-candidate/", views.select_candidate, name="select_candidate"),
     path("confirm/", views.confirm_candidate, name="confirm_candidate"),

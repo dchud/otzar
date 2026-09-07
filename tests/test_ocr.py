@@ -551,9 +551,13 @@ class TestTitlePageUploadView:
         assert b"Re-run OCR" in response.content
         assert b"Discard" in response.content
 
-    def test_run_ocr_rejects_non_owner(
-        self, client_logged_in, tmp_path, settings
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_run_ocr_allows_any_cataloger(
+        self, mock_ocr, client_logged_in, tmp_path, settings
     ):
+        """Every logged-in cataloger can act on any pending scan, not
+        just the one who took the photo."""
+        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         User.objects.create_user(username="other", password="testpass123")
@@ -561,7 +565,11 @@ class TestTitlePageUploadView:
         c.login(username="other", password="testpass123")
 
         response = c.post(f"/ingest/scan-title/{scan.pk}/ocr/")
-        assert response.status_code == 403
+        assert response.status_code == 200
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output == SAMPLE_OCR_RESPONSE
 
     def test_run_ocr_requires_post(self, client_logged_in, tmp_path, settings):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
@@ -614,9 +622,11 @@ class TestTitlePageUploadView:
         scan.refresh_from_db()
         assert scan.status == "discarded"
 
-    def test_discard_rejects_non_owner(
+    def test_discard_allows_any_cataloger(
         self, client_logged_in, tmp_path, settings
     ):
+        """Discarding is a queue action, not limited to the scan's
+        owner."""
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         User.objects.create_user(username="other", password="testpass123")
@@ -624,7 +634,10 @@ class TestTitlePageUploadView:
         c.login(username="other", password="testpass123")
 
         response = c.post(f"/ingest/scan-title/{scan.pk}/discard/")
-        assert response.status_code == 403
+        assert response.status_code == 200
+
+        scan.refresh_from_db()
+        assert scan.status == "discarded"
 
     def test_discard_requires_post(self, client_logged_in, tmp_path, settings):
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
@@ -662,7 +675,7 @@ class TestTitlePagePoll:
         assert response.status_code == 200
         assert f"title-page-card-{scan.pk}".encode() in response.content
 
-    def test_excludes_other_users_scans(self, user, tmp_path, settings):
+    def test_includes_other_users_scans(self, user, tmp_path, settings):
         from ingest.models import ScanResult
 
         settings.MEDIA_ROOT = str(tmp_path)
@@ -679,15 +692,12 @@ class TestTitlePagePoll:
         )
         other_scan = ScanResult.objects.filter(scanned_by=other).first()
 
-        # Owner sees only their own scans (none in this case).
+        # Every cataloger sees every in-progress scan, not just their own.
         c = Client()
         c.login(username="cataloger", password="testpass123")
         response = c.get("/ingest/scan-title/poll/")
         assert response.status_code == 200
-        assert (
-            f"title-page-card-{other_scan.pk}".encode() not in response.content
-        )
-        assert b"Waiting for photos" in response.content
+        assert f"title-page-card-{other_scan.pk}".encode() in response.content
 
     def test_excludes_pending_without_ocr_output(
         self, client_logged_in, tmp_path, settings
@@ -747,7 +757,7 @@ class TestTitlePagePoll:
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/edit/")
         assert response.status_code == 409
 
-    def test_edit_metadata_rejects_non_owner(
+    def test_edit_metadata_allows_any_cataloger(
         self, client_logged_in, tmp_path, settings
     ):
         scan = self._upload(client_logged_in, tmp_path, settings)
@@ -759,7 +769,8 @@ class TestTitlePagePoll:
         c = Client()
         c.login(username="other", password="testpass123")
         response = c.post(f"/ingest/scan-title/{scan.pk}/edit/")
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert b"Extracted metadata" in response.content
 
     def test_staff_sees_all_awaiting(self, user, tmp_path, settings):
         from ingest.models import ScanResult

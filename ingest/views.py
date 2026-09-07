@@ -39,7 +39,7 @@ from sources.score import rank_candidates
 logger = logging.getLogger(__name__)
 
 
-def _close_scan_for_record(scan_id, candidate_index, record, user):
+def _close_scan_for_record(scan_id, candidate_index, record):
     """Mark the scan that produced this record as confirmed.
 
     Both routes into the candidates table carry a ScanResult -- the
@@ -58,8 +58,6 @@ def _close_scan_for_record(scan_id, candidate_index, record, user):
     scan = ScanResult.objects.filter(pk=scan_id).first()
     if scan is None:
         return
-    if not user.is_staff and scan.scanned_by != user:
-        return
     if scan.status in ("discarded", "confirmed"):
         return
 
@@ -76,22 +74,20 @@ def _close_scan_for_record(scan_id, candidate_index, record, user):
     )
 
 
-def _in_progress_title_scans(user):
+def _in_progress_title_scans():
     """Title-page scans the poll pane should be showing.
 
     Both the poll and the upload response render from this, so an
     upload cannot momentarily drop a card the next poll puts back --
     which is what happened when the upload response listed only the
     uploader's awaiting_ocr rows while the poll listed those plus
-    pending-with-output, and every user's rows for staff.
+    pending-with-output. Every cataloger sees every in-progress scan,
+    matching review_queue.
     """
-    qs = ScanResult.objects.filter(scan_type="ocr").filter(
+    return ScanResult.objects.filter(scan_type="ocr").filter(
         Q(status="awaiting_ocr")
         | Q(status="pending", ocr_output__isnull=False)
     )
-    if not user.is_staff:
-        qs = qs.filter(scanned_by=user)
-    return qs
 
 
 def _take_ocr_lease(scan):
@@ -148,7 +144,7 @@ def _candidates_with_json(candidates, matches=None):
     return items
 
 
-def _scan_for_repeat_search(user, scan_id):
+def _scan_for_repeat_search(scan_id):
     """The pending scan a repeated search should write its results into.
 
     A search launched from a queue row belongs to the scan already
@@ -156,18 +152,13 @@ def _scan_for_repeat_search(user, scan_id):
     behind with its empty candidate list, so a user who retried twice
     would end up with three rows for one book.
 
-    Returns None when there is no such scan to reuse -- no id given, the
-    scan is gone or already resolved, or it belongs to someone else --
-    and the caller creates one instead.
+    Returns None when there is no such scan to reuse -- no id given, or
+    the scan is gone or already resolved -- and the caller creates one
+    instead.
     """
     if not scan_id:
         return None
-    scan = ScanResult.objects.filter(pk=scan_id, status="pending").first()
-    if scan is None:
-        return None
-    if not user.is_staff and scan.scanned_by != user:
-        return None
-    return scan
+    return ScanResult.objects.filter(pk=scan_id, status="pending").first()
 
 
 def _create_record_from_candidate(
@@ -275,12 +266,6 @@ def _create_record_from_candidate(
     return record
 
 
-@login_required
-def ingest_index(request):
-    """Landing page with links to all ingest methods."""
-    return render(request, "ingest/index.html")
-
-
 # Fields that can be pre-filled from ISBN lookup query params.
 _PREFILL_FIELDS = [
     "title",
@@ -345,7 +330,6 @@ def confirm_candidate(request):
             request.session.get("candidate_scan_id"),
             request.session.get("candidate_index"),
             record,
-            request.user,
         )
 
         request.session.pop("candidate", None)
@@ -491,9 +475,7 @@ def isbn_lookup_view(request):
 
     # Create a ScanResult so the scan appears in the review queue, or
     # refresh the one this search was launched from.
-    scan = _scan_for_repeat_search(
-        request.user, _parse_int(request.POST.get("scan_id"))
-    )
+    scan = _scan_for_repeat_search(_parse_int(request.POST.get("scan_id")))
     if scan is None:
         scan = ScanResult.objects.create(
             scan_type="isbn",
@@ -686,7 +668,7 @@ def title_page_upload(request):
     return render(
         request,
         "ingest/_title_page_poll.html",
-        {"scans": _in_progress_title_scans(request.user)},
+        {"scans": _in_progress_title_scans()},
     )
 
 
@@ -707,8 +689,6 @@ def run_ocr(request, scan_id):
     timestamp and not a status.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
-    if not request.user.is_staff and scan.scanned_by != request.user:
-        return HttpResponse("Forbidden", status=403)
     if not scan.image or scan.status == "discarded":
         return _notice(request, "Image is no longer available.", status=409)
     if not _take_ocr_lease(scan):
@@ -768,12 +748,12 @@ def title_page_poll(request):
     OCR succeeded but the user navigated away would silently disappear
     from the UI even though their image and metadata are still saved.
 
-    Staff users see all in-progress scans, matching review_queue.
+    Every cataloger sees the same set, matching review_queue.
     """
     return render(
         request,
         "ingest/_title_page_poll.html",
-        {"scans": _in_progress_title_scans(request.user)},
+        {"scans": _in_progress_title_scans()},
     )
 
 
@@ -786,8 +766,6 @@ def edit_title_metadata(request, scan_id):
     scan must already have ocr_output (status=pending); otherwise 409.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
-    if not request.user.is_staff and scan.scanned_by != request.user:
-        return HttpResponse("Forbidden", status=403)
     if scan.status != "pending" or not scan.ocr_output:
         return _notice(request, "Scan has no metadata to edit.", status=409)
     return render(
@@ -806,8 +784,6 @@ def discard_title_scan(request, scan_id):
     200 so the caller can rely on the card disappearing either way.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
-    if not request.user.is_staff and scan.scanned_by != request.user:
-        return HttpResponse("Forbidden", status=403)
 
     if scan.status != "discarded":
         if scan.image:
@@ -990,20 +966,18 @@ def series_manage(request, series_id):
 
 @login_required
 def review_queue(request):
-    """Show pending ScanResults for the current user (or all, for staff).
+    """Show every pending ScanResult, reachable at /ingest/ and
+    /ingest/queue/ alike.
+
+    Every logged-in cataloger sees and can act on the whole queue --
+    several people scan while one reviews, and that only works if the
+    reviewer isn't limited to what they scanned themselves.
 
     Each scan carries its candidates paired with their JSON payloads,
     the shape the candidate table partial reads, so the queue renders
     the same rows as the search results it came from.
     """
-    if request.user.is_staff:
-        scans = ScanResult.objects.filter(status="pending")
-    else:
-        scans = ScanResult.objects.filter(
-            status="pending", scanned_by=request.user
-        )
-
-    scans = list(scans)
+    scans = list(ScanResult.objects.filter(status="pending"))
     for scan in scans:
         scan.candidates = _candidates_with_json(scan.candidate_records)
 
@@ -1015,10 +989,6 @@ def review_queue(request):
 def confirm_scan(request, scan_id):
     """Confirm a ScanResult: create a Record from the selected candidate."""
     scan = get_object_or_404(ScanResult, pk=scan_id)
-
-    # Only the owner or staff can confirm.
-    if not request.user.is_staff and scan.scanned_by != request.user:
-        return HttpResponse("Forbidden", status=403)
 
     candidate_index_str = request.POST.get("candidate_index", "0")
     try:
@@ -1052,9 +1022,6 @@ def confirm_scan(request, scan_id):
 def discard_scan(request, scan_id):
     """Mark a ScanResult as discarded."""
     scan = get_object_or_404(ScanResult, pk=scan_id)
-
-    if not request.user.is_staff and scan.scanned_by != request.user:
-        return HttpResponse("Forbidden", status=403)
 
     scan.status = "discarded"
     scan.save()

@@ -30,7 +30,7 @@ class TestAuth:
     ):
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/")
-        expect(page.locator("h1")).to_contain_text("Add to catalog")
+        expect(page.locator("h1")).to_contain_text("Review Queue")
 
     def test_logout(self, page, live_server, staff_user):
         login(page, live_server)
