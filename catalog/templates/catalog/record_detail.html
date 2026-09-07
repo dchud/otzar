@@ -193,13 +193,14 @@
       </div>
       {% endif %}
 
-      {# Provenance: the ownership history in prose, and the marks this
-         copy itself carries. One heading, because a reader asking whose
-         copy this was wants them together, and four separate headings
-         for a line of transcription each would swamp the bibliographic
-         description above. The labels keep the three kinds of mark
-         apart, which is what a printed label, a handwritten
-         inscription and an institutional stamp need. #}
+      {% comment %}Provenance: the ownership history in prose, and the
+         marks this copy itself carries. One heading, because a reader
+         asking whose copy this was wants them together, and four
+         separate headings for a line of transcription each would swamp
+         the bibliographic description above. The labels keep the three
+         kinds of mark apart, which is what a printed label, a
+         handwritten inscription and an institutional stamp need.
+      {% endcomment %}
       {% if record.provenance or record.bookplate_text or record.dedication_text or record.stamp_text %}
       <div>
         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Provenance</h2>
