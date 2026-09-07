@@ -1,12 +1,14 @@
 import io
 import json
 import logging
+import os
 
 import qrcode
 from django.conf import settings
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
@@ -14,7 +16,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from catalog.models import Author, Location, Publisher, Record, Series
+from catalog.models import (
+    Author,
+    Location,
+    Publisher,
+    Record,
+    Series,
+    TitlePageImage,
+)
 from catalog.search import ensure_fts_table, index_record
 from catalog.utils import strip_marc_punctuation
 from ingest.authority import (
@@ -39,6 +48,42 @@ from sources.score import rank_candidates
 logger = logging.getLogger(__name__)
 
 
+def _attach_title_page_image(scan, record):
+    """Promote a confirmed OCR scan's photo to a permanent TitlePageImage.
+
+    The photo is what identified this particular copy, so it moves with
+    the record it produced rather than staying behind as a staging
+    artifact. Moved through the storage API -- read the staged file,
+    save the bytes under the new field's own upload path, then delete
+    the staged one -- rather than through the filesystem, so this needs
+    no change when media moves to S3.
+
+    Only an OCR (title-page) scan carries a title-page photo; an ISBN
+    scan's image field, when set, is a barcode, not a title page, and is
+    left alone. A storage failure here is logged and swallowed rather
+    than raised: the record it would illustrate already exists, and
+    losing the photo must not cost the user the record too. If the read
+    of the staged file fails, nothing has been written yet and the
+    staged copy is untouched; if the write of the permanent copy fails,
+    the exception is caught before the staged file is deleted, so the
+    photo is not lost either way -- only the promotion is.
+    """
+    if scan.scan_type != "ocr" or not scan.image:
+        return
+    try:
+        basename = os.path.basename(scan.image.name)
+        with scan.image.open("rb") as fh:
+            data = fh.read()
+        title_page_image = TitlePageImage(record=record, staged=False)
+        title_page_image.image.save(basename, ContentFile(data), save=True)
+        scan.image.delete(save=False)
+        scan.image = None
+    except Exception:
+        logger.exception(
+            "Title page image promotion failed for scan %s", scan.pk
+        )
+
+
 def _close_scan_for_record(scan_id, candidate_index, record):
     """Mark the scan that produced this record as confirmed.
 
@@ -61,6 +106,8 @@ def _close_scan_for_record(scan_id, candidate_index, record):
     if scan.status in ("discarded", "confirmed"):
         return
 
+    _attach_title_page_image(scan, record)
+
     scan.status = "confirmed"
     scan.created_record = record
     scan.selected_candidate_index = candidate_index
@@ -69,6 +116,7 @@ def _close_scan_for_record(scan_id, candidate_index, record):
             "status",
             "created_record",
             "selected_candidate_index",
+            "image",
             "updated_at",
         ]
     )
@@ -1003,6 +1051,8 @@ def confirm_scan(request, scan_id):
     candidate = candidates[candidate_index]
 
     record = _create_record_from_candidate(candidate, request.user)
+
+    _attach_title_page_image(scan, record)
 
     # Mark the ScanResult as confirmed.
     scan.status = "confirmed"
