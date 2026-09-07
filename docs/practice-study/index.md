@@ -92,4 +92,6 @@ A claim with no footnote is counted.
 - [Reading the numbers](reading-the-numbers.md) — what the intervals,
   Cramér's V, adjusted mutual information and the precision figures
   mean, in plain terms.
+- [Related work and references](references.md) — prior studies that
+  cover this ground, and the source for each statistical method.
 - [The data](data.md) — what is published, and where the scripts live.

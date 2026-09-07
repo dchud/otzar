@@ -153,10 +153,11 @@ resamples at 80% of the corpus, mean best Jaccard recovery:
 Both rows are the k=8 partition, the only cut at which stability was
 measured.
 
-The k=8 partitions are reproducible under subsampling. A recovery
-below about 0.5 would mean a partition dissolves on a resample; none
-of these come close to that. This says nothing about the choice of k
-itself, which was made after seeing the results.
+The k=8 partitions are reproducible under subsampling. Against the
+usual convention — below 0.75 unstable, 0.85 and above highly stable
+([Hennig 2007](references.md)) — all of these count as highly stable.
+That says nothing about the choice of k itself, which was made after
+seeing the results.
 
 The caveat is what stability does *not* establish. A partition can be
 perfectly reproducible and still correspond to nothing of interest —

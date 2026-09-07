@@ -51,6 +51,7 @@ nav:
     - Six items side by side: practice-study/cases.md
     - What follows for otzar: practice-study/implications.md
     - Reading the numbers: practice-study/reading-the-numbers.md
+    - Related work and references: practice-study/references.md
     - The data: practice-study/data.md
 
 markdown_extensions:

@@ -119,11 +119,13 @@ makes them slightly narrower than the truth.
 **Cluster stability** asks whether the groups themselves are real or an
 accident of where the algorithm cut. Eighty percent of the corpus is
 drawn at random, the clustering is run again, and each original cluster
-is checked for how much of it comes back together. A recovery near 1.0
-means the group reappears; below about 0.5 means it dissolves.
+is checked for how much of it comes back together. The usual
+convention is that a mean recovery below 0.75 marks an unstable
+cluster, and 0.85 or above a highly stable one
+([Hennig 2007](references.md)).
 
-Every cluster here recovers between 0.92 and 1.00, so the groups are
-reproducible. That is worth stating alongside its limit: **a group can
+Every cluster here recovers between 0.92 and 1.00, highly stable by
+that convention. That is worth stating alongside its limit: **a group can
 be perfectly reproducible and still mean nothing.** The most stable
 clusters in this study are stable because accession-number formats are
 consistent within an institution.
