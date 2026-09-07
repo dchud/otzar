@@ -252,8 +252,10 @@ def _create_record_from_candidate(
     reuses an unambiguous match and otherwise creates a row.
 
     It is likewise the one place a candidate's series statement becomes
-    a position in a set, so volumes catalogued one at a time end up on
-    one Series rather than one apiece.
+    membership in a series, so volumes catalogued one at a time end up
+    on one Series rather than one apiece -- and the one place that
+    statement is read as a work in parts or as a publisher's line, since
+    only the first of those has positions to hand out.
     """
     date_str = candidate.get("date", "")
     date_int = None
@@ -316,6 +318,7 @@ def _create_record_from_candidate(
             record,
             series_info["series_title"],
             series_info["series_volume"],
+            series_info["kind"],
         )
 
     # Best-effort; a missing cover must not cost the user the record.
@@ -1041,19 +1044,41 @@ def authority_check(request):
     )
 
 
+def _set_series_kind(series, kind):
+    """Record a person's decision about what kind of series this is.
+
+    The decision is marked as asserted, which is what keeps it: the
+    confirm path declines to change a kind a person set, so the next
+    record arriving with evidence for the other reading leaves it alone.
+    """
+    series.kind = kind
+    series.kind_source = Series.SOURCE_ASSERTED
+    series.save(update_fields=["kind", "kind_source"])
+    return f"Recorded as a {series.get_kind_display().lower()}."
+
+
 @login_required
 def series_manage(request, series_id):
-    """Manage volumes for an existing Series.
+    """Manage an existing Series.
 
-    GET: display existing volumes with gap indicators and an add-volumes form.
-    POST: create new SeriesVolume entries from the submitted volume spec.
+    GET: show what kind of series it is and the records in it, with
+    volume positions and gaps where it is a work-set.
+    POST: set the kind, or add volume positions from a volume spec.
+
+    A publisher's line gets no add-volumes form, because a gap
+    placeholder would assert that a volume of it exists and is missing.
+    Correcting the kind is offered on the same page, so a series filed
+    wrongly is fixed where it is noticed.
     """
     series = get_object_or_404(Series, pk=series_id)
     message = ""
 
     if request.method == "POST":
+        kind = request.POST.get("kind", "")
         volume_spec = request.POST.get("volume_spec", "").strip()
-        if volume_spec:
+        if kind in dict(Series.KIND_CHOICES):
+            message = _set_series_kind(series, kind)
+        elif volume_spec:
             created = create_series_volumes(series, volume_spec)
             message = (
                 f"Added {len(created)} volume(s)."
@@ -1083,6 +1108,8 @@ def series_manage(request, series_id):
             "series": series,
             "volumes": volumes,
             "gaps": gaps,
+            "records": series.records.all(),
+            "kind_choices": Series.KIND_CHOICES,
             "message": message,
         },
     )

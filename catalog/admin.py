@@ -262,14 +262,34 @@ class PublisherAdmin(IndexedAdmin):
 
 @admin.register(Series)
 class SeriesAdmin(admin.ModelAdmin):
+    """Admin for series, including which kind each one is.
+
+    Changing the kind here is a person deciding, so it is marked as
+    asserted and incoming records stop changing it. Saving without
+    touching the kind is not, because most edits here are to a title.
+
+    ``kind_source`` is read-only for the same reason: it records how the
+    kind was arrived at, and typing a value into it would claim
+    something the save did not do.
+    """
+
     list_display: ClassVar[list[str]] = [
         "title",
         "title_romanized",
+        "kind",
+        "kind_source",
         "total_volumes",
         "publisher",
     ]
+    list_filter: ClassVar[list[str]] = ["kind", "kind_source"]
     search_fields: ClassVar[list[str]] = ["title", "title_romanized"]
+    readonly_fields: ClassVar[list[str]] = ["kind_source"]
     inlines: ClassVar[list[type[admin.TabularInline]]] = [SeriesVolumeInline]
+
+    def save_model(self, request, obj, form, change):
+        if "kind" in form.changed_data:
+            obj.kind_source = Series.SOURCE_ASSERTED
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Location)

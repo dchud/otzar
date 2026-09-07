@@ -143,10 +143,21 @@ def subject_detail(request, pk, slug=None):
 
 
 def series_browse(request):
+    """List series, with the counts each kind can honestly report.
+
+    A work-set reports how many volumes it holds and how many are
+    missing. A publisher's series reports how many records carry it and
+    nothing else: it has no extent, so it can have no gaps.
+    """
     series_qs = Series.objects.annotate(
-        volume_count=Count("volumes"),
-        held_count=Count("volumes", filter=Q(volumes__held=True)),
-        gap_count=Count("volumes", filter=Q(volumes__held=False)),
+        record_count=Count("records", distinct=True),
+        volume_count=Count("volumes", distinct=True),
+        held_count=Count(
+            "volumes", filter=Q(volumes__held=True), distinct=True
+        ),
+        gap_count=Count(
+            "volumes", filter=Q(volumes__held=False), distinct=True
+        ),
     ).order_by("title")
     page_obj = _paginate(request, series_qs)
     return render(

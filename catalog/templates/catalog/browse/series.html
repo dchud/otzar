@@ -23,8 +23,10 @@
         {% if s.publisher %}
           <span class="text-gray-400 dark:text-gray-500 text-sm ml-2">&mdash; {{ s.publisher.name }}</span>
         {% endif %}
+        <div class="text-xs text-gray-500 dark:text-gray-400">{{ s.get_kind_display }}</div>
       </div>
       <div class="flex items-center gap-2 whitespace-nowrap">
+        {% if s.is_work_set %}
         <span class="text-sm text-gray-500 dark:text-gray-300">
           {{ s.volume_count }} vol{{ s.volume_count|pluralize }}
         </span>
@@ -36,6 +38,11 @@
         {% if s.gap_count %}
         <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">
           {{ s.gap_count }} gap{{ s.gap_count|pluralize }}
+        </span>
+        {% endif %}
+        {% else %}
+        <span class="text-sm text-gray-500 dark:text-gray-300">
+          {{ s.record_count }} record{{ s.record_count|pluralize }}
         </span>
         {% endif %}
       </div>
