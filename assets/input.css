@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-@source "../../templates";
-@source "../../catalog/templates";
-@source "../../sources/templates";
-@source "../../ingest/templates";
+@source "../templates";
+@source "../catalog/templates";
+@source "../sources/templates";
+@source "../ingest/templates";
 
 @variant dark (&:where(.dark, .dark *));
 

@@ -161,7 +161,7 @@ STORAGES = {
 MEDIA_URL = "/media/"
 MEDIA_ROOT = DATA_DIR / "media"
 
-TAILWIND_CLI_SRC_CSS = "static/src/input.css"
+TAILWIND_CLI_SRC_CSS = "assets/input.css"
 TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 
 LOGIN_URL = "/accounts/login/"

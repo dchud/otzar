@@ -158,7 +158,7 @@ faithfully: if tests fail, show the output; if a step was skipped, say which.
 | `ingest/` | Scan and OCR workflow, review queue, QR phone handoff, MARC candidate confirm |
 | `sources/` | SRU clients (NLI, LC, DNB), VIAF, MARC parsing, cover lookup |
 | `templates/`, `*/templates/` | Django templates; partials are `_`-prefixed |
-| `static/src/input.css` | Tailwind source; `static/css/tailwind.css` is generated |
+| `assets/input.css` | Tailwind source; `static/css/tailwind.css` is generated |
 | `tests/`, `tests/e2e/` | Unit tests and Playwright browser tests |
 | `docs/plans/` | Planning documents, exempt from persistent-artifact rules |
 
