@@ -51,7 +51,7 @@
 
 ## Styling
 
-Tailwind compiles `static/css/tailwind.css` from `static/src/input.css`
+Tailwind compiles `static/css/tailwind.css` from `assets/input.css`
 by scanning the four template directories named with `@source`. The
 compiled file is generated, not committed: `.gitignore` excludes it.
 

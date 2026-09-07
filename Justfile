@@ -55,7 +55,7 @@ check-quick:
     ./scripts/check.sh --quick
 
 # `--force` is not optional. Without it the command rebuilds only when
-# static/src/input.css is newer than the output, and the classes that go
+# assets/input.css is newer than the output, and the classes that go
 # stale are the ones a template added -- which that check never looks at.
 # A full build takes about a second.
 
