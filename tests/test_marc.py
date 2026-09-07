@@ -911,3 +911,121 @@ class TestParseRecordStatementOfResponsibility:
         parsed = parse_record(records[0])
         assert parsed["statement_of_responsibility"] is None
         assert "Halakhic man" in parsed["title"]
+
+
+def _record_with_020s(fields: list[str]) -> mrrc.Record:
+    """Build a record whose only content is the given 020 fields.
+
+    Each entry is a raw MARC subfield string such as
+    ``$a9780827609426 (v. [1])``.
+    """
+    datafields = "\n".join(
+        '  <datafield tag="020" ind1=" " ind2=" ">\n'
+        + "\n".join(
+            f'    <subfield code="{part[0]}">{part[1:]}</subfield>'
+            for part in f.split("$")
+            if part
+        )
+        + "\n  </datafield>"
+        for f in fields
+    )
+    xml = (
+        '<record xmlns="http://www.loc.gov/MARC21/slim">\n'
+        "  <leader>00000nam a2200000 i 4500</leader>\n"
+        '  <datafield tag="245" ind1="1" ind2="0">\n'
+        '    <subfield code="a">A book</subfield>\n'
+        "  </datafield>\n" + datafields + "\n</record>"
+    )
+    return mrrc.xml_to_record(xml)
+
+
+class TestIsbnQualifiers:
+    """The two catalogs put the volume in different subfields.
+
+    LC writes ``$a`` clean and puts the qualifier in ``$q``. NLI writes
+    both into ``$a``. Reading ``$a`` whole yields an ISBN from one and a
+    string that is not one from the other, for the same book.
+    """
+
+    def test_a_qualifier_written_into_subfield_a_is_separated(self):
+        record = _record_with_020s(["$a9780827609426 (v. [1])"])
+        parsed = parse_record(record)
+
+        assert parsed["isbn"] == "9780827609426"
+        assert parsed["isbns"] == [
+            {"value": "9780827609426", "qualifier": "v. [1]"}
+        ]
+
+    def test_a_qualifier_in_subfield_q_reaches_the_same_place(self):
+        record = _record_with_020s(["$a9780827609426$qv. 1"])
+        parsed = parse_record(record)
+
+        assert parsed["isbn"] == "9780827609426"
+        assert parsed["isbns"][0]["qualifier"] == "v. 1"
+
+    def test_both_forms_of_one_book_agree_on_the_number(self):
+        inline = parse_record(_record_with_020s(["$a0827608128 (v. [2])"]))
+        explicit = parse_record(_record_with_020s(["$a0827608128$qv. 2"]))
+
+        assert inline["isbn"] == explicit["isbn"] == "0827608128"
+
+    def test_hyphenation_is_removed(self):
+        parsed = parse_record(_record_with_020s(["$a0-8276-0812-8"]))
+
+        assert parsed["isbn"] == "0827608128"
+
+    def test_a_terminal_check_character_survives(self):
+        parsed = parse_record(_record_with_020s(["$a082760812X"]))
+
+        assert parsed["isbn"] == "082760812X"
+
+    def test_every_volume_of_a_set_record_is_read(self):
+        record = _record_with_020s(
+            [
+                "$a9780827609426 (v. [1])",
+                "$a0827608128 (v. [2])",
+                "$a9780827608979 (v. [3])",
+            ]
+        )
+        parsed = parse_record(record)
+
+        assert [e["value"] for e in parsed["isbns"]] == [
+            "9780827609426",
+            "0827608128",
+            "9780827608979",
+        ]
+        assert [e["qualifier"] for e in parsed["isbns"]] == [
+            "v. [1]",
+            "v. [2]",
+            "v. [3]",
+        ]
+
+    def test_a_cancelled_isbn_is_kept_apart_from_the_matchable_ones(self):
+        record = _record_with_020s(
+            ["$z0827608979 (v. [3])", "$a9780827608979 (v. [3])"]
+        )
+        parsed = parse_record(record)
+
+        assert [e["value"] for e in parsed["isbns"]] == ["9780827608979"]
+        assert parsed["invalid_isbns"] == ["0827608979"]
+
+    def test_something_that_is_not_an_isbn_is_dropped_rather_than_kept(
+        self,
+    ):
+        """A value that cannot be matched is worse than no value.
+
+        It looks like an identifier to everything downstream and finds
+        nothing, so the record silently fails to deduplicate instead of
+        visibly lacking an ISBN.
+        """
+        parsed = parse_record(_record_with_020s(["$aunbound edition"]))
+
+        assert parsed["isbn"] is None
+        assert parsed["isbns"] == []
+
+    def test_a_record_with_no_020_has_no_isbn(self):
+        parsed = parse_record(_record_with_020s([]))
+
+        assert parsed["isbn"] is None
+        assert parsed["isbns"] == []
+        assert parsed["invalid_isbns"] == []

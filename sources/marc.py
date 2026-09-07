@@ -151,6 +151,83 @@ def get_field_value(
     return strip_control_characters(str(field))
 
 
+# An ISBN is ten or thirteen characters, digits with an optional X as the
+# final check character. Hyphenation is presentational and varies between
+# catalogs, so it is removed before comparison.
+_ISBN_SHAPE_RE = re.compile(r"^\d{9}[\dXx]$|^\d{13}$")
+
+
+def _split_isbn(value: str) -> tuple[str | None, str]:
+    """Split *value* into an ISBN and whatever was written after it.
+
+    Catalogs disagree about where a volume qualifier belongs. LC puts it
+    in ``$q`` and leaves ``$a`` clean. NLI writes it into ``$a`` beside
+    the number: ``9780827609426 (v. [1])``. Reading ``$a`` whole
+    therefore yields an ISBN from one catalog and a string that is not
+    one from the other, for the same book.
+
+    The number is the first whitespace-delimited token, because no ISBN
+    contains a space and every qualifier this has been seen with is
+    separated by one. Anything after it is returned as written, minus
+    the brackets catalogs wrap it in.
+
+    Returns ``(None, "")`` when the leading token is not an ISBN, rather
+    than guessing: a value that cannot be matched is worse than no value,
+    because it looks like an identifier and never finds anything.
+    """
+    text = strip_control_characters(value) or ""
+    head, _, tail = text.strip().partition(" ")
+    compact = head.replace("-", "").replace(" ", "")
+    if not _ISBN_SHAPE_RE.match(compact):
+        return None, ""
+    return compact.upper(), _unwrap(tail)
+
+
+def _unwrap(text: str) -> str:
+    """Remove one matched pair of enclosing brackets from *text*.
+
+    A qualifier is written parenthesised -- ``(v. [1])`` -- and the
+    parentheses are punctuation around the statement rather than part of
+    it. The square brackets inside are not: in cataloging they mark a
+    value the cataloger supplied rather than transcribed, so ``v. [1]``
+    says something ``v. 1`` does not and both are kept as written.
+    """
+    text = text.strip()
+    pairs = {"(": ")", "[": "]", "{": "}"}
+    while len(text) >= 2 and pairs.get(text[0]) == text[-1]:
+        text = text[1:-1].strip()
+    return text
+
+
+def _isbns(record: mrrc.Record) -> tuple[list[dict], list[str]]:
+    """Return every ISBN on *record*, and the ones marked invalid.
+
+    A single bibliographic record can stand for a whole set and carry one
+    ``020`` per volume, so this reads every field rather than the first.
+    Each entry keeps the volume qualifier alongside the number: both
+    catalogs state which volume an ISBN belongs to, and that is evidence
+    about the set rather than decoration on the identifier.
+
+    ``$z`` holds a cancelled or invalid ISBN. It is kept separately
+    because it is a fact about the record worth showing and is not
+    something to match on.
+    """
+    valid: list[dict] = []
+    invalid: list[str] = []
+    for field in record.get_fields("020"):
+        for raw in _subfield_values(field, ["a"]):
+            number, inline = _split_isbn(raw)
+            if number is None:
+                continue
+            qualifier = " ".join(_subfield_values(field, ["q"])) or inline
+            valid.append({"value": number, "qualifier": qualifier.strip()})
+        for raw in _subfield_values(field, ["z"]):
+            number, _ = _split_isbn(raw)
+            if number is not None:
+                invalid.append(number)
+    return valid, invalid
+
+
 def _linked_880_value(
     record: mrrc.Record,
     tag: str,
@@ -332,7 +409,13 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     result["language"] = f008[35:38] if f008 and len(f008) >= 38 else None
 
     # --- ISBN ---
-    result["isbn"] = get_field_value(marc_record, "020", ["a"])
+    isbns, invalid_isbns = _isbns(marc_record)
+    result["isbns"] = isbns
+    result["invalid_isbns"] = invalid_isbns
+    # The first is not more authoritative than the rest; it is the one a
+    # single-valued caller gets, and callers that care about the set read
+    # ``isbns``.
+    result["isbn"] = isbns[0]["value"] if isbns else None
 
     # --- Additional authors (700 fields) ---
     additional_authors: list[str] = []
