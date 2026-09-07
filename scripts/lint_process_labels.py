@@ -21,9 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Planning documents are working artifacts; they are allowed to name
-# beads, PRs and the order work happens in. Generated and vendored
-# trees are not ours to lint.
+# Generated and vendored trees are not ours to lint.
 EXCLUDED_DIRS = {
     ".beads",
     ".claude",
@@ -38,7 +36,6 @@ EXCLUDED_DIRS = {
     "tmp",
 }
 EXCLUDED_PATHS = {
-    Path("docs/plans"),
     Path("static/css/tailwind.css"),
     Path("CHANGELOG.md"),
     # The instruction files define these conventions, so they have to
