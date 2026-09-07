@@ -1,3 +1,23 @@
+{% if cascade_info %}
+{% comment %}Which cascade step matched for each catalog, so a broad
+title-only fallback doesn't look like a precise publisher/place/date
+match. Shown whether or not the search found any candidates.{% endcomment %}
+<ul class="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mb-2">
+  {% for info in cascade_info %}
+  <li>
+    <span class="font-medium">{{ info.source }}:</span>
+    {% if info.failed %}
+    search failed
+    {% elif info.step %}
+    matched on <strong>{{ info.step }}</strong> &mdash;
+    <code class="break-all">{{ info.query_used }}</code>
+    {% else %}
+    no step matched
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
 {% if not candidates %}
 <p class="text-gray-500 dark:text-gray-300 text-sm">
   No records found{% if isbn %} for ISBN <strong>{{ isbn }}</strong>{% endif %}.

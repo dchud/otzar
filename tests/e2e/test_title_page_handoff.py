@@ -756,6 +756,54 @@ class TestTitlePageHandoff:
         )
         assert overflow["pageOverflow"] <= 0, "page scrolls horizontally"
 
+    def test_candidate_results_show_matched_cascade_step(
+        self, page, live_server, staff_user
+    ):
+        """A broad title-only fallback is labeled as such in the results
+        header, rather than looking identical to a precise match on
+        publisher, place, and date."""
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="pending",
+                ocr_output=SAMPLE_OCR_RESPONSE,
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+
+        with (
+            patch("ingest.views.search_nli") as mock_nli,
+            patch("ingest.views.search_lc") as mock_lc,
+        ):
+            mock_nli.return_value = CascadeResult(
+                query_used='alma.title="Mishneh Torah"',
+                step="title",
+                records=WIDE_CANDIDATES[:1],
+            )
+            mock_lc.return_value = CascadeResult(records=[])
+
+            page.goto(f"{live_server.url}/ingest/scan-title/")
+            expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+                timeout=10000
+            )
+            page.click('button:text("Continue editing")')
+            expect(page.locator("text=Extracted metadata")).to_be_visible(
+                timeout=10000
+            )
+            page.click('#search-controls button[type="submit"]')
+            expect(page.get_by_text("matched on")).to_be_visible(timeout=10000)
+
+        results = page.locator("#title-page-metadata")
+        expect(results.get_by_text("matched on")).to_contain_text("title")
+        expect(
+            results.get_by_text('alma.title="Mishneh Torah"')
+        ).to_be_visible()
+        expect(results.get_by_text("no step matched")).to_be_visible()
+
 
 @pytest.mark.django_db(transaction=True)
 class TestSharedOCRProgress:

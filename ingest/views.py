@@ -650,21 +650,42 @@ def title_page_upload(request):
                 "author_romanized", ""
             ).strip(),
         }
+        # cascade_info carries which step matched (or didn't) for each
+        # catalog, so the template can tell a precise match from a
+        # broad title-only fallback -- the two look identical in the
+        # candidate list itself.
+        cascade_info = []
         candidates = []
         try:
             nli_result = search_nli(metadata)
+            cascade_info.append(
+                {
+                    "source": "NLI",
+                    "step": nli_result.step,
+                    "query_used": nli_result.query_used,
+                }
+            )
             for rec in nli_result.records:
                 rec["source_catalog"] = "NLI"
                 candidates.append(rec)
         except Exception:
             logger.exception("NLI cascade search failed")
+            cascade_info.append({"source": "NLI", "failed": True})
         try:
             lc_result = search_lc(metadata)
+            cascade_info.append(
+                {
+                    "source": "LC",
+                    "step": lc_result.step,
+                    "query_used": lc_result.query_used,
+                }
+            )
             for rec in lc_result.records:
                 rec["source_catalog"] = "LC"
                 candidates.append(rec)
         except Exception:
             logger.exception("LC cascade search failed")
+            cascade_info.append({"source": "LC", "failed": True})
 
         # Order by agreement with what was read off the page, across
         # catalogs. Each cascade returns its rows in that catalog's own
@@ -693,6 +714,7 @@ def title_page_upload(request):
                 "scored": True,
                 "metadata": metadata,
                 "scan_id": scan_id,
+                "cascade_info": cascade_info,
             },
         )
 

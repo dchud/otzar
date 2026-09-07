@@ -855,6 +855,79 @@ class TestTitlePagePoll:
         assert b"ISBN 123" in response.content
         assert b"NLI" in response.content
 
+    @patch("ingest.views.search_lc")
+    @patch("ingest.views.search_nli")
+    def test_search_cascade_shows_matched_step(
+        self, mock_nli, mock_lc, client_logged_in
+    ):
+        """The results header names which cascade step matched for each
+        catalog, so a broad title-only fallback doesn't read the same
+        as a match on publisher, place, and date."""
+        from sources.cascade import CascadeResult
+
+        mock_nli.return_value = CascadeResult(
+            query_used='alma.title="Test Book"',
+            step="title",
+            records=[
+                {
+                    "title": "Test Book",
+                    "source_catalog": "NLI",
+                }
+            ],
+            total_hits=1,
+        )
+        mock_lc.return_value = CascadeResult()
+
+        response = client_logged_in.post(
+            "/ingest/upload-title/",
+            {
+                "action": "search",
+                "title": "משנה תורה",
+                "title_romanized": "Mishneh Torah",
+                "date": "",
+                "author": "",
+                "author_romanized": "",
+                "subtitle": "",
+                "publisher": "",
+                "place": "",
+            },
+        )
+
+        assert response.status_code == 200
+        assert b"<strong>title</strong>" in response.content
+        assert b"alma.title=&quot;Test Book&quot;" in response.content
+        assert b"no step matched" in response.content
+
+    @patch("ingest.views.search_lc")
+    @patch("ingest.views.search_nli")
+    def test_search_cascade_reports_a_failed_source(
+        self, mock_nli, mock_lc, client_logged_in
+    ):
+        """A catalog whose search raised is called out as failed rather
+        than silently contributing nothing to the candidate list."""
+        from sources.cascade import CascadeResult
+
+        mock_nli.side_effect = RuntimeError("boom")
+        mock_lc.return_value = CascadeResult()
+
+        response = client_logged_in.post(
+            "/ingest/upload-title/",
+            {
+                "action": "search",
+                "title": "Test",
+                "title_romanized": "",
+                "date": "",
+                "author": "",
+                "author_romanized": "",
+                "subtitle": "",
+                "publisher": "",
+                "place": "",
+            },
+        )
+
+        assert response.status_code == 200
+        assert b"search failed" in response.content
+
 
 class TestOCRLease:
     """A run of OCR is visible to every device, not just the clicking one.
