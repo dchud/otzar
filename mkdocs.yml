@@ -8,11 +8,10 @@ repo_name: dchud/otzar
 edit_uri: edit/main/docs/
 copyright: MIT licensed
 
-# docs/plans/ holds working artifacts. They are exempt from the
-# persistent-artifact rules, so they carry bead IDs, pull request
-# references and time-state wording, and several describe work that has
-# since landed. Publishing them would put the least durable writing in
-# the project in front of the most casual reader.
+# The long-term plan is a working artifact: it carries bead IDs, orders
+# work, and records what was believed when it was written. Publishing it
+# would put the least durable writing in the project in front of the
+# most casual reader.
 exclude_docs: |
   plans/
 

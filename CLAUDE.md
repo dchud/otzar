@@ -86,14 +86,14 @@ if I were the only person looking at this code?
   in your reply; do not create a second file describing the change.
 - Keep documentation factual, concise, and plain. State what things do and how.
 
-`docs/plans/` holds planning documents. They are working artifacts and are
-exempt from the persistent-artifact rules below.
+ is a working artifact and is exempt from
+the persistent-artifact rules below. It is the only such file.
 
 ## Persistent artifacts: no process labels, no revision history
 
 Code, tests, and user-facing documentation outlive the work that produced them.
 
-**Forbidden in source, tests, and `docs/` outside `docs/plans/`:**
+**Forbidden in source, tests, and  outside :**
 
 - Phase letters or step numbers from a planning document
 - PR identifiers: "PR1", "this PR", "PR #117"
@@ -160,7 +160,7 @@ faithfully: if tests fail, show the output; if a step was skipped, say which.
 | `templates/`, `*/templates/` | Django templates; partials are `_`-prefixed |
 | `assets/input.css` | Tailwind source; `static/css/tailwind.css` is generated |
 | `tests/`, `tests/e2e/` | Unit tests and Playwright browser tests |
-| `docs/plans/` | Planning documents, exempt from persistent-artifact rules |
+| `docs/plans/long-term-plan.md` | The roadmap, exempt from persistent-artifact rules |
 
 ### Architecture
 
