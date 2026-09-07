@@ -78,18 +78,30 @@ def extract_metadata_from_image(image_bytes):
         image_bytes: Raw image bytes (JPEG or PNG).
 
     Returns:
-        A dict holding every key in ``OCR_FIELDS``, each value a string
-        or None. A page the model could read nothing from comes back
-        with every value None: that is a reading, and what to do with an
-        empty one is the caller's decision. None is returned only when
-        the call produced no reading at all \u2014 an API failure, a refusal,
-        a reply cut short, or a reply with no text in it \u2014 and the log
-        names which.
+        A 2-tuple ``(metadata, usage)``.
+
+        ``metadata`` is a dict holding every key in ``OCR_FIELDS``, each
+        value a string or None. A page the model could read nothing from
+        comes back with every value None: that is a reading, and what to
+        do with an empty one is the caller's decision. None is returned
+        only when the call produced no reading at all \u2014 an API failure,
+        a refusal, a reply cut short, or a reply with no text in it \u2014
+        and the log names which.
+
+        ``usage`` is a dict with ``model``, ``input_tokens`` and
+        ``output_tokens`` whenever the Anthropic API returned a
+        response \u2014 which it does for every ``metadata`` outcome above
+        except an outright failure to reach it. It is None only when no
+        response was ever received (no API key configured, or the
+        request itself raised): nothing was spent, so there is nothing
+        to log. Logging is the caller's job, not this function's \u2014 see
+        ``ingest.views.run_ocr``, which is what knows the scan and the
+        user the call is billed against.
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         logger.error("ANTHROPIC_API_KEY not set")
-        return None
+        return None, None
 
     model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
@@ -127,21 +139,30 @@ def extract_metadata_from_image(image_bytes):
         )
     except anthropic.APIError:
         logger.exception("OCR API error")
-        return None
+        return None, None
     except Exception:
         logger.exception("Unexpected error calling the Anthropic API")
-        return None
+        return None, None
+
+    # A response was received, so the call is billed regardless of what
+    # follows below. ``message.model`` (not the requested alias) is what
+    # actually ran, which is what a cost log should name.
+    usage = {
+        "model": message.model,
+        "input_tokens": message.usage.input_tokens,
+        "output_tokens": message.usage.output_tokens,
+    }
 
     # The schema binds the answer, not the turn: a reply the model never
     # finished, or declined to give, is outside it.
     if message.stop_reason == "max_tokens":
         logger.error("OCR response was truncated at the token limit")
-        return None
+        return None, usage
     if message.stop_reason == "refusal":
         logger.error(
             "The OCR call refused the image: %s", message.stop_details
         )
-        return None
+        return None, usage
 
     text = next(
         (block.text for block in message.content if block.type == "text"),
@@ -152,13 +173,13 @@ def extract_metadata_from_image(image_bytes):
             "No text block in OCR response (stop_reason=%s)",
             message.stop_reason,
         )
-        return None
+        return None, usage
 
     try:
-        return json.loads(text)
+        return json.loads(text), usage
     except json.JSONDecodeError:
         logger.exception(
             "OCR response is not schema-constrained JSON: %.200s",
             text,
         )
-        return None
+        return None, usage

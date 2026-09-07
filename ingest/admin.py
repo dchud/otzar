@@ -26,7 +26,8 @@ class APIUsageLogAdmin(admin.ModelAdmin):
         "user",
         "input_tokens",
         "output_tokens",
+        "produced_reading",
         "created_at",
     ]
-    list_filter: ClassVar[list[str]] = ["api", "model"]
+    list_filter: ClassVar[list[str]] = ["api", "model", "produced_reading"]
     readonly_fields: ClassVar[list[str]] = ["created_at"]

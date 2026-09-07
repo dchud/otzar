@@ -13,7 +13,7 @@ from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
 from catalog.models import Record
-from ingest.models import ScanResult
+from ingest.models import APIUsageLog, ScanResult
 from ingest.ocr import OCR_FIELDS
 from sources.cascade import CascadeResult
 from tests.e2e.conftest import login
@@ -31,6 +31,16 @@ SAMPLE_OCR_RESPONSE = {
     "date": "1862",
     "title_romanized": "Mishneh Torah",
     "author_romanized": "Maimonides",
+}
+
+# The usage half of what a real call to extract_metadata_from_image
+# returns alongside its metadata. These tests patch
+# ingest.views.extract_metadata_from_image wholesale, so this stands in
+# for the real function's second return value.
+SAMPLE_USAGE = {
+    "model": "claude-sonnet-5",
+    "input_tokens": 1200,
+    "output_tokens": 150,
 }
 
 
@@ -144,7 +154,7 @@ def ocr_held_open(mock_ocr):
         reached.set()
         if not release.wait(timeout=OCR_RELEASE_TIMEOUT):
             raise AssertionError("the OCR mock was never released")
-        return SAMPLE_OCR_RESPONSE
+        return SAMPLE_OCR_RESPONSE, SAMPLE_USAGE
 
     mock_ocr.side_effect = blocking_ocr
     try:
@@ -269,7 +279,7 @@ class TestTitlePageHandoff:
     ):
         """A user who uploaded an image can trigger OCR from the desktop poll
         and see the editable metadata partial."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
 
         # Pre-create a scan as if the phone had uploaded.
         with open(FIXTURE_IMAGE, "rb") as fh:
@@ -318,8 +328,14 @@ class TestTitlePageHandoff:
         """The Re-run OCR button on the metadata form re-extracts and
         replaces the metadata."""
         mock_ocr.side_effect = [
-            {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
-            {**SAMPLE_OCR_RESPONSE, "title_romanized": "Second Title"},
+            (
+                {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
+                SAMPLE_USAGE,
+            ),
+            (
+                {**SAMPLE_OCR_RESPONSE, "title_romanized": "Second Title"},
+                SAMPLE_USAGE,
+            ),
         ]
 
         with open(FIXTURE_IMAGE, "rb") as fh:
@@ -357,8 +373,11 @@ class TestTitlePageHandoff:
         on screen -- the form keeps showing the previous reading, with
         a notice about the failed attempt."""
         mock_ocr.side_effect = [
-            {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
-            None,
+            (
+                {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
+                SAMPLE_USAGE,
+            ),
+            (None, SAMPLE_USAGE),
         ]
 
         with open(FIXTURE_IMAGE, "rb") as fh:
@@ -402,7 +421,7 @@ class TestTitlePageHandoff:
     ):
         """The Discard button on the metadata form removes the scan and
         the metadata form."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
 
         with open(FIXTURE_IMAGE, "rb") as fh:
             from django.core.files.base import ContentFile
@@ -479,7 +498,7 @@ class TestTitlePageHandoff:
 
         def slow_ocr(_image_bytes):
             time.sleep(1.5)
-            return SAMPLE_OCR_RESPONSE
+            return SAMPLE_OCR_RESPONSE, SAMPLE_USAGE
 
         mock_ocr.side_effect = slow_ocr
 
@@ -521,7 +540,7 @@ class TestTitlePageHandoff:
         self, mock_ocr, page, live_server, staff_user
     ):
         """A failed OCR leaves one photo on screen, not two."""
-        mock_ocr.return_value = None
+        mock_ocr.return_value = (None, SAMPLE_USAGE)
 
         with open(FIXTURE_IMAGE, "rb") as fh:
             from django.core.files.base import ContentFile
@@ -558,7 +577,7 @@ class TestTitlePageHandoff:
         same dead end as a failed call, and a metadata form with eight
         empty boxes is a worse answer than Try OCR again and Discard.
         """
-        mock_ocr.return_value = dict.fromkeys(OCR_FIELDS)
+        mock_ocr.return_value = (dict.fromkeys(OCR_FIELDS), SAMPLE_USAGE)
 
         with open(FIXTURE_IMAGE, "rb") as fh:
             from django.core.files.base import ContentFile
@@ -891,7 +910,7 @@ class TestSharedOCRProgress:
         self, mock_ocr, page, live_server, staff_user
     ):
         """The catalog search runs 7-12s; the button says so itself."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._staged_scan(staff_user)
         scan.status = "pending"
         scan.ocr_output = SAMPLE_OCR_RESPONSE
@@ -1013,6 +1032,37 @@ class TestConcurrentDeviceFeedback:
 
         desktop.close()
         phone.close()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_user_is_told_when_the_daily_cap_is_reached(
+        self, mock_ocr, page, live_server, staff_user, monkeypatch
+    ):
+        """A capped user is mid-workflow with a photo they just took --
+        an unexplained failure would be the worst outcome, so the
+        refusal has to say what happened and when it clears."""
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "1")
+        APIUsageLog.objects.create(
+            api="ocr", user=staff_user, input_tokens=1, output_tokens=1
+        )
+        scan = self._staged_scan(staff_user)
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        page.click('button:has(.btn-idle:text-is("Run OCR"))')
+        expect(page.get_by_text("Today's OCR limit")).to_be_visible(
+            timeout=10000
+        )
+        expect(page.get_by_text("midnight")).to_be_visible()
+
+        # Refused before it ever reached the vision call.
+        mock_ocr.assert_not_called()
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_started_at is None
 
 
 @pytest.mark.django_db(transaction=True)

@@ -6,7 +6,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 
-from ingest.models import staging_image_path
+from ingest.models import APIUsageLog, ScanResult, staging_image_path
 from ingest.ocr import (
     OCR_FIELDS,
     OCR_PROMPT,
@@ -40,15 +40,35 @@ SAMPLE_OCR_RESPONSE = {
     "author_romanized": "Maimonides",
 }
 
+# The usage half of what a real call to extract_metadata_from_image
+# returns alongside its metadata. Tests that patch
+# ingest.views.extract_metadata_from_image wholesale stand this in for
+# the real function's second return value.
+SAMPLE_USAGE = {
+    "model": "claude-sonnet-5",
+    "input_tokens": 1200,
+    "output_tokens": 150,
+}
+
 
 def _mock_vision_client(
-    mock_anthropic_cls, text, stop_reason="end_turn", blocks=None
+    mock_anthropic_cls,
+    text,
+    stop_reason="end_turn",
+    blocks=None,
+    model="claude-sonnet-5",
+    input_tokens=1200,
+    output_tokens=150,
 ):
     """Wire a mocked Anthropic client to return one vision response."""
     mock_client = MagicMock()
     mock_anthropic_cls.return_value = mock_client
     mock_message = MagicMock()
     mock_message.stop_reason = stop_reason
+    mock_message.model = model
+    mock_message.usage = MagicMock(
+        input_tokens=input_tokens, output_tokens=output_tokens
+    )
     mock_message.content = (
         blocks if blocks is not None else [MagicMock(type="text", text=text)]
     )
@@ -98,8 +118,10 @@ class TestResponseSchema:
 class TestExtractMetadataFromImage:
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""})
     def test_no_api_key_returns_none(self):
-        result = extract_metadata_from_image(b"fake image bytes")
-        assert result is None
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
+        assert metadata is None
+        # No request was ever sent, so there is nothing to log.
+        assert usage is None
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict(
@@ -117,9 +139,10 @@ class TestExtractMetadataFromImage:
             ],
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result == SAMPLE_OCR_RESPONSE
+        assert metadata == SAMPLE_OCR_RESPONSE
+        assert usage == SAMPLE_USAGE
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict(
@@ -131,19 +154,43 @@ class TestExtractMetadataFromImage:
             mock_anthropic_cls, json.dumps(SAMPLE_OCR_RESPONSE)
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result is not None
+        assert metadata is not None
         assert (
-            result["title"]
+            metadata["title"]
             == "\u05de\u05e9\u05e0\u05d4 \u05ea\u05d5\u05e8\u05d4"
         )
-        assert result["date"] == "1862"
-        assert result["title_romanized"] == "Mishneh Torah"
+        assert metadata["date"] == "1862"
+        assert metadata["title_romanized"] == "Mishneh Torah"
+        assert usage == SAMPLE_USAGE
 
         # Verify API was called with the right model
         call_kwargs = mock_client.messages.create.call_args
         assert call_kwargs.kwargs["model"] == "test-model"
+
+    @patch("ingest.ocr.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    def test_usage_reports_what_the_api_actually_ran(self, mock_anthropic_cls):
+        """The logged model is the one the SDK echoes back, not the
+        alias requested -- ``CLAUDE_MODEL`` can name a rolling alias, and
+        cost monitoring needs the dated snapshot that was actually
+        billed."""
+        _mock_vision_client(
+            mock_anthropic_cls,
+            json.dumps(SAMPLE_OCR_RESPONSE),
+            model="claude-sonnet-5-20260101",
+            input_tokens=3456,
+            output_tokens=234,
+        )
+
+        _metadata, usage = extract_metadata_from_image(b"fake image bytes")
+
+        assert usage == {
+            "model": "claude-sonnet-5-20260101",
+            "input_tokens": 3456,
+            "output_tokens": 234,
+        }
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -155,9 +202,9 @@ class TestExtractMetadataFromImage:
         }
         _mock_vision_client(mock_anthropic_cls, json.dumps(payload))
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, _usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result["author"] == "\u05e8\u05e9\u05f4\u05d9"
+        assert metadata["author"] == "\u05e8\u05e9\u05f4\u05d9"
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -174,10 +221,10 @@ class TestExtractMetadataFromImage:
         payload = {**SAMPLE_OCR_RESPONSE, "title": quoted}
         _mock_vision_client(mock_anthropic_cls, json.dumps(payload))
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, _usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result["title"] == quoted
-        assert "\u05f4" not in result["title"]
+        assert metadata["title"] == quoted
+        assert "\u05f4" not in metadata["title"]
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -192,9 +239,11 @@ class TestExtractMetadataFromImage:
         empty = {field: None for field in OCR_FIELDS}
         _mock_vision_client(mock_anthropic_cls, json.dumps(empty))
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result == empty
+        assert metadata == empty
+        # The call still cost tokens even though nothing came of it.
+        assert usage == SAMPLE_USAGE
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -209,8 +258,10 @@ class TestExtractMetadataFromImage:
             body=None,
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
-        assert result is None
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
+        assert metadata is None
+        # No response was ever received, so nothing was spent to log.
+        assert usage is None
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -222,10 +273,12 @@ class TestExtractMetadataFromImage:
             stop_reason="max_tokens",
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result is None
+        assert metadata is None
         assert "truncated" in caplog.text
+        # A truncated reply is still a billed call.
+        assert usage == SAMPLE_USAGE
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -237,10 +290,11 @@ class TestExtractMetadataFromImage:
             stop_reason="refusal",
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
 
-        assert result is None
+        assert metadata is None
         assert "refused" in caplog.text
+        assert usage == SAMPLE_USAGE
 
     @patch("ingest.ocr.anthropic.Anthropic")
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
@@ -253,8 +307,9 @@ class TestExtractMetadataFromImage:
             blocks=[MagicMock(type="thinking", thinking="...")],
         )
 
-        result = extract_metadata_from_image(b"fake image bytes")
-        assert result is None
+        metadata, usage = extract_metadata_from_image(b"fake image bytes")
+        assert metadata is None
+        assert usage == SAMPLE_USAGE
 
 
 @pytest.mark.django_db
@@ -413,9 +468,9 @@ class TestTitlePageUploadView:
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_happy_path(
-        self, mock_ocr, client_logged_in, tmp_path, settings
+        self, mock_ocr, client_logged_in, user, tmp_path, settings
     ):
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -430,6 +485,14 @@ class TestTitlePageUploadView:
         assert scan.ocr_output == SAMPLE_OCR_RESPONSE
         mock_ocr.assert_called_once()
 
+        log = APIUsageLog.objects.get()
+        assert log.api == "ocr"
+        assert log.model == SAMPLE_USAGE["model"]
+        assert log.user == user
+        assert log.input_tokens == SAMPLE_USAGE["input_tokens"]
+        assert log.output_tokens == SAMPLE_USAGE["output_tokens"]
+        assert log.produced_reading is True
+
     @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_can_be_re_run_on_pending(
         self, mock_ocr, client_logged_in, tmp_path, settings
@@ -438,7 +501,10 @@ class TestTitlePageUploadView:
         an earlier run produced unusable metadata) re-extracts and replaces."""
         first = {**SAMPLE_OCR_RESPONSE, "title": "first attempt"}
         second = {**SAMPLE_OCR_RESPONSE, "title": "second attempt"}
-        mock_ocr.side_effect = [first, second]
+        mock_ocr.side_effect = [
+            (first, SAMPLE_USAGE),
+            (second, SAMPLE_USAGE),
+        ]
 
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
@@ -470,7 +536,7 @@ class TestTitlePageUploadView:
     def test_run_ocr_handles_extraction_failure(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = None
+        mock_ocr.return_value = (None, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -480,6 +546,10 @@ class TestTitlePageUploadView:
         scan.refresh_from_db()
         assert scan.status == "awaiting_ocr"
         assert scan.ocr_output is None
+
+        # The call still cost tokens even though nothing came of it.
+        log = APIUsageLog.objects.get()
+        assert log.produced_reading is False
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_treats_an_all_null_reading_as_nothing_found(
@@ -490,7 +560,10 @@ class TestTitlePageUploadView:
         Extraction reports the empty reading and the failed call apart;
         the queue card treats both as work still to do.
         """
-        mock_ocr.return_value = {field: None for field in OCR_FIELDS}
+        mock_ocr.return_value = (
+            {field: None for field in OCR_FIELDS},
+            SAMPLE_USAGE,
+        )
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -501,6 +574,12 @@ class TestTitlePageUploadView:
         scan.refresh_from_db()
         assert scan.status == "awaiting_ocr"
         assert scan.ocr_output is None
+
+        # The model returned an answer, all-null field values -- that is
+        # a reading (see extract_metadata_from_image's own docstring),
+        # distinct from a call that never produced one.
+        log = APIUsageLog.objects.get()
+        assert log.produced_reading is True
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_failure_response_carries_no_second_image(
@@ -512,7 +591,7 @@ class TestTitlePageUploadView:
         the metadata pane put the same photo on screen twice, under a
         duplicated element id.
         """
-        mock_ocr.return_value = None
+        mock_ocr.return_value = (None, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -532,7 +611,7 @@ class TestTitlePageUploadView:
         kept rather than discarded, with a notice about the failed
         attempt shown alongside it."""
         first = {**SAMPLE_OCR_RESPONSE, "title": "first attempt"}
-        mock_ocr.side_effect = [first, None]
+        mock_ocr.side_effect = [(first, SAMPLE_USAGE), (None, SAMPLE_USAGE)]
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -547,11 +626,16 @@ class TestTitlePageUploadView:
         assert scan.status == "pending"
         assert scan.ocr_output["title"] == "first attempt"
 
+        # Both calls cost tokens, including the one that produced
+        # nothing usable, so both are logged and both count against the
+        # daily cap.
+        assert APIUsageLog.objects.count() == 2
+
     @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_response_includes_retry_and_discard_buttons(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -564,7 +648,7 @@ class TestTitlePageUploadView:
     ):
         """Every logged-in cataloger can act on any pending scan, not
         just the one who took the photo."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         User.objects.create_user(username="other", password="testpass123")
@@ -975,7 +1059,7 @@ class TestOCRLease:
         def observe(_image_bytes):
             fresh = ScanResult.objects.get(pk=scan.pk)
             seen["ocr_started_at"] = fresh.ocr_started_at
-            return SAMPLE_OCR_RESPONSE
+            return SAMPLE_OCR_RESPONSE, SAMPLE_USAGE
 
         mock_ocr.side_effect = observe
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -986,7 +1070,7 @@ class TestOCRLease:
     def test_lease_released_on_success(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -998,7 +1082,7 @@ class TestOCRLease:
     def test_lease_released_when_extraction_returns_none(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = None
+        mock_ocr.return_value = (None, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -1045,7 +1129,7 @@ class TestOCRLease:
 
         from django.utils import timezone
 
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
         scan.ocr_started_at = timezone.now() - timedelta(minutes=5)
         scan.save(update_fields=["ocr_started_at"])
@@ -1109,7 +1193,7 @@ class TestSearchProgress:
     def test_search_button_carries_its_own_busy_state(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -1128,7 +1212,7 @@ class TestSearchProgress:
     ):
         """One request covers both catalogs, so the browser cannot know
         which is in flight. It can honestly say which will be asked."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -1142,7 +1226,7 @@ class TestSearchProgress:
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
         """The old grey span beside the button is gone, not doubled up."""
-        mock_ocr.return_value = SAMPLE_OCR_RESPONSE
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -1212,7 +1296,7 @@ class TestOCRLeaseRaces:
             ScanResult.objects.filter(pk=scan.pk).update(
                 status="discarded", image=""
             )
-            return SAMPLE_OCR_RESPONSE
+            return SAMPLE_OCR_RESPONSE, SAMPLE_USAGE
 
         mock_ocr.side_effect = discard_midway
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
@@ -1220,6 +1304,10 @@ class TestOCRLeaseRaces:
         scan.refresh_from_db()
         assert scan.status == "discarded"
         assert not scan.ocr_output
+
+        # The call still happened and still cost tokens before the
+        # discard landed, so it is still logged.
+        assert APIUsageLog.objects.count() == 1
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_busy_response_is_renderable(
@@ -1265,6 +1353,207 @@ class TestOCRLeaseRaces:
             marker = f"title-page-card-{pk}".encode()
             assert marker in upload.content, f"upload dropped card {pk}"
             assert marker in poll.content, f"poll dropped card {pk}"
+
+
+@pytest.mark.django_db
+class TestAPIUsageLog:
+    """The daily cap the OCR log feeds run_ocr's check with."""
+
+    def test_default_cap_when_env_var_unset(self, monkeypatch):
+        monkeypatch.delenv("OCR_DAILY_CALL_CAP", raising=False)
+        assert APIUsageLog.daily_cap() == 500
+
+    def test_cap_reads_the_env_var(self, monkeypatch):
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "7")
+        assert APIUsageLog.daily_cap() == 7
+
+    def test_calls_today_counts_ocr_rows_only(self, user):
+        APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        # A row logged under some other api namespace is not an OCR
+        # call and does not count against the OCR cap.
+        APIUsageLog.objects.create(
+            api="other", user=user, input_tokens=1, output_tokens=1
+        )
+        assert APIUsageLog.calls_today() == 2
+
+    def test_calls_today_excludes_calls_from_before_local_midnight(self, user):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        old = APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        APIUsageLog.objects.filter(pk=old.pk).update(
+            created_at=timezone.now() - timedelta(days=1)
+        )
+        assert APIUsageLog.calls_today() == 0
+
+
+@pytest.mark.django_db
+class TestOCRDailyCap:
+    """run_ocr checks the cap before it takes the lease or spends
+    anything -- a cap enforced after the call would not be a cap."""
+
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+        client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_call_is_refused_once_the_cap_is_reached(
+        self, mock_ocr, client_logged_in, user, tmp_path, settings, monkeypatch
+    ):
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "1")
+        APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 429
+        assert b"OCR limit of 1 scans" in response.content
+        assert b"midnight" in response.content
+        assert b"<" in response.content, "429 body must be renderable HTML"
+
+        # No lease taken, no call made: refused before either happened.
+        mock_ocr.assert_not_called()
+        scan.refresh_from_db()
+        assert scan.status == "awaiting_ocr"
+        assert scan.ocr_started_at is None
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_call_proceeds_just_under_the_cap(
+        self, mock_ocr, client_logged_in, user, tmp_path, settings, monkeypatch
+    ):
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "2")
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
+        APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 200
+        mock_ocr.assert_called_once()
+        assert APIUsageLog.objects.count() == 2
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_cap_is_a_shared_budget_across_users(
+        self, mock_ocr, client_logged_in, tmp_path, settings, monkeypatch
+    ):
+        """One Anthropic key, one bill: another user's calls count too."""
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "1")
+        other = User.objects.create_user(
+            username="other-cataloger", password="testpass123"
+        )
+        APIUsageLog.objects.create(
+            api="ocr", user=other, input_tokens=1, output_tokens=1
+        )
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 429
+        mock_ocr.assert_not_called()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_cap_resets_at_local_midnight(
+        self, mock_ocr, client_logged_in, user, tmp_path, settings, monkeypatch
+    ):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "1")
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
+        yesterday = APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        APIUsageLog.objects.filter(pk=yesterday.pk).update(
+            created_at=timezone.now() - timedelta(days=1)
+        )
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 200
+        mock_ocr.assert_called_once()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_a_retry_after_a_failed_reading_counts_against_the_cap(
+        self, mock_ocr, client_logged_in, tmp_path, settings, monkeypatch
+    ):
+        """Each call that reaches the model costs money, so each one
+        counts -- a retry loop on a bad photo is exactly what the cap
+        exists to bound."""
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "2")
+        mock_ocr.side_effect = [(None, SAMPLE_USAGE), (None, SAMPLE_USAGE)]
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        second = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert second.status_code == 200
+        assert APIUsageLog.calls_today() == 2
+
+        third = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        assert third.status_code == 429
+
+
+@pytest.mark.django_db
+class TestAPIUsageLogWriteFailure:
+    """A failure logging usage must not cost the user their scan --
+    the same shape of problem as title-page image promotion in
+    ``_attach_title_page_image``."""
+
+    def _upload_scan(self, client_logged_in, tmp_path, settings):
+        settings.MEDIA_ROOT = str(tmp_path)
+        image = io.BytesIO(b"fake jpeg data")
+        image.name = "test.jpg"
+        client_logged_in.post(
+            "/ingest/upload-title/",
+            {"image": image},
+            format="multipart",
+        )
+        return ScanResult.objects.filter(scan_type="ocr").first()
+
+    @patch("ingest.views.extract_metadata_from_image")
+    def test_a_db_write_failure_does_not_lose_a_successful_reading(
+        self, mock_ocr, client_logged_in, tmp_path, settings, caplog
+    ):
+        mock_ocr.return_value = (SAMPLE_OCR_RESPONSE, SAMPLE_USAGE)
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        with patch(
+            "ingest.views.APIUsageLog.objects.create",
+            side_effect=Exception("database is down"),
+        ):
+            response = client_logged_in.post(
+                f"/ingest/scan-title/{scan.pk}/ocr/"
+            )
+
+        assert response.status_code == 200
+        assert b"Extracted metadata" in response.content
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output == SAMPLE_OCR_RESPONSE
+
+        assert not APIUsageLog.objects.exists()
+        assert "Failed to record OCR usage" in caplog.text
 
 
 class TestStagingImagePath:
