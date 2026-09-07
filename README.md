@@ -79,6 +79,7 @@ just check-quick    # the same, without the browser tests
 - `docs/user-guide.md` — cataloging and searching
 - `docs/development.md` — architecture and how the pieces fit
 - `docs/administration.md` — configuration, backups, maintenance commands
+- `docs/marc-in-practice.md` — what the source catalogs actually send
 
 Issues are tracked in `.beads/` with [beads](https://github.com/Dicklesworthstone/beads_rust).
 
