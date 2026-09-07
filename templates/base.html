@@ -55,7 +55,15 @@
           {% if user.is_staff %}
           <a href="/admin/" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Admin</a>
           {% endif %}
-          <span>{{ user.username }}</span>
+          {% comment %}
+            The only child of this row that carries no action of its
+            own -- every other child is a link, a button, or an icon
+            at its touch target. Below `sm` the row has no room to
+            spare, so this is the one that gives way; a signed-in
+            user still has Admin and Log out to show they are signed
+            in, even without their name spelled out.
+          {% endcomment %}
+          <span class="hidden sm:inline">{{ user.username }}</span>
           <form method="post" action="{% url 'logout' %}" class="inline">
             {% csrf_token %}
             <button type="submit" class="hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">Log out</button>
