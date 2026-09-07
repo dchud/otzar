@@ -1029,3 +1029,130 @@ class TestIsbnQualifiers:
         assert parsed["isbn"] is None
         assert parsed["isbns"] == []
         assert parsed["invalid_isbns"] == []
+
+
+def _record_with_series(fields: list[tuple[str, str, str]]) -> mrrc.Record:
+    """Build a record carrying the given series fields.
+
+    Each entry is ``(tag, indicator1, subfield string)``, e.g.
+    ``("490", "1", "$aTalmud Bavli$vv. 3")``.
+    """
+    parts = []
+    for tag, ind1, subs in fields:
+        ind2 = "0" if tag == "830" else " "
+        body = "\n".join(
+            f'    <subfield code="{sub[0]}">{sub[1:]}</subfield>'
+            for sub in subs.split("$")
+            if sub
+        )
+        parts.append(
+            f'  <datafield tag="{tag}" ind1="{ind1}" ind2="{ind2}">\n'
+            f"{body}\n  </datafield>"
+        )
+    xml = (
+        '<record xmlns="http://www.loc.gov/MARC21/slim">\n'
+        "  <leader>00000nam a2200000 i 4500</leader>\n"
+        '  <datafield tag="245" ind1="1" ind2="0">\n'
+        '    <subfield code="a">A volume</subfield>\n'
+        "  </datafield>\n" + "\n".join(parts) + "\n</record>"
+    )
+    return mrrc.xml_to_record(xml)
+
+
+class TestSeriesFormPreference:
+    """830 decides identity; 490 is kept because it is what was printed.
+
+    490 is transcribed from the piece in hand, with that volume's
+    punctuation and spelling. 830 is the authorized form, established so
+    that variant transcriptions of one set collocate. Reading 490 first
+    means two records of one set can disagree about which set they are
+    in, which is the thing the authorized form exists to prevent.
+    """
+
+    def test_the_authorized_title_decides_identity(self):
+        record = _record_with_series(
+            [("490", "1", "$aTalmud Bavli"), ("830", " ", "$aTalmud Bavli.")]
+        )
+        parsed = parse_record(record)
+
+        assert parsed["series_title"] == "Talmud Bavli."
+
+    def test_the_transcribed_title_is_kept_alongside(self):
+        record = _record_with_series(
+            [("490", "1", "$aTalmud Bavli"), ("830", " ", "$aTalmud Bavli.")]
+        )
+        parsed = parse_record(record)
+
+        assert parsed["series_title_transcribed"] == "Talmud Bavli"
+
+    def test_the_authorized_volume_decides_identity(self):
+        record = _record_with_series(
+            [
+                ("490", "1", "$aTalmud Bavli$vhelek 3"),
+                ("830", " ", "$aTalmud Bavli.$vv. 3"),
+            ]
+        )
+        parsed = parse_record(record)
+
+        assert parsed["series_volume"] == "v. 3"
+        assert parsed["series_volume_transcribed"] == "helek 3"
+
+    def test_an_untraced_series_falls_back_to_what_was_printed(self):
+        """Indicator 0 means no 8XX exists, so 490 is all there is."""
+        record = _record_with_series([("490", "0", "$aA local series")])
+        parsed = parse_record(record)
+
+        assert parsed["series_title"] == "A local series"
+        assert parsed["series_title_transcribed"] == "A local series"
+        assert parsed["series_traced"] is False
+
+    def test_an_830_without_a_490_still_gives_identity(self):
+        record = _record_with_series([("830", " ", "$aTalmud Bavli.")])
+        parsed = parse_record(record)
+
+        assert parsed["series_title"] == "Talmud Bavli."
+        assert parsed["series_title_transcribed"] is None
+        assert parsed["series_traced"] is None
+
+    def test_a_record_with_no_series_says_nothing_about_tracing(self):
+        record = _record_with_series([])
+        parsed = parse_record(record)
+
+        assert parsed["series_title"] is None
+        assert parsed["series_traced"] is None
+
+
+class TestSeriesTracingIndicator:
+    """The 490 first indicator is read, not inferred from an 830.
+
+    The two can disagree, and the disagreement is information: a record
+    tracing a series it carries no 8XX for has its authorized form in an
+    authority file it did not bring.
+    """
+
+    def test_indicator_one_means_traced(self):
+        record = _record_with_series([("490", "1", "$aSome series")])
+
+        assert parse_record(record)["series_traced"] is True
+
+    def test_indicator_zero_means_not_traced(self):
+        record = _record_with_series([("490", "0", "$aSome series")])
+
+        assert parse_record(record)["series_traced"] is False
+
+    def test_a_blank_indicator_is_not_guessed_at(self):
+        """Blank indicators appear on older records.
+
+        Reading one as either value would invent a claim the cataloger
+        did not make.
+        """
+        record = _record_with_series([("490", " ", "$aSome series")])
+
+        assert parse_record(record)["series_traced"] is None
+
+    def test_tracing_is_reported_even_when_no_830_is_present(self):
+        record = _record_with_series([("490", "1", "$aSome series")])
+        parsed = parse_record(record)
+
+        assert parsed["series_traced"] is True
+        assert parsed["series_title"] == "Some series"
