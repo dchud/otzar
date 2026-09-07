@@ -85,6 +85,7 @@ whether it answers.
 | `set_cases.py` | `tmp/vagf/set_cases.json` — the set survey: 22 multi-volume works asked of all five catalogs by title |
 | `set_report.py` | `tmp/vagf/set_summary.json` and the published `set-survey.csv`, filtering each response to records whose `245` names the work |
 | `tradition.py` | Whether the clusters track a cataloging tradition rather than an institution |
+| `era_stability.py` | Whether the leader/19 divide changed over time, on both the publication and record-creation axes |
 | `build_data.py` | The three published files in `docs/practice-study/data/` |
 
 ## Reading them

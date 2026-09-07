@@ -144,14 +144,17 @@ of 44 coded at DNB and 42 of 42 at K10plus, against 9 records at LC and
 English Talmud, the edition a contemporary collection is most likely to
 hold, is the one nobody describes hierarchically.
 
-## The pattern is older than RDA
+## The pattern is older than RDA, and it has not changed
 
 RDA was implemented in 2013 and fewer than a third of the corpus
 records declare it in `040 $e`, so a rule change cannot be what
-produced this. Coding rates by the imprint's own date, across the
-corpus rather than the survey:
+produced this.
 
-| Imprint era | PICA books | coded | Anglo books | coded |
+Two time axes are available, and they answer different questions.
+`008/07-10` is when the **book** was published; `008/00-05` is when the
+**record** was created. Coding rates on both, across the corpus:
+
+| Book published | PICA | coded | Anglo | coded |
 |---|---|---|---|---|
 | before 1970 | 640 | 28% | 866 | **0** |
 | 1970–89 | 124 | 31% | 250 | **0** |
@@ -159,14 +162,33 @@ corpus rather than the survey:
 | 2005–12 | 194 | 13% | 278 | **0** |
 | 2013 onward | 498 | 14% | 786 | 1 |
 
-Not one of 866 pre-1970 Anglo-American books codes the position, and
-the PICA catalogs code throughout. The AACR2-era prohibition and its
-RDA-era successor bracket the whole span.
+| Record created | PICA | coded | Anglo | coded |
+|---|---|---|---|---|
+| before 1990 | 12 | 33% | 509 | **0** |
+| 1990s | 212 | 12% | 316 | **0** |
+| 2000s | 263 | 20% | 665 | **0** |
+| 2010–13 | 60 | 25% | 96 | **0** |
+| 2014 onward | 1,282 | 20% | 1,001 | 1 |
 
-The usual caveat on this axis applies: `008` gives the date of the
-book, not of the record, so a 1930 imprint may have been catalogued in
-2015. What the table shows is stability across the material, which is
-weaker than stability across cataloging eras but points the same way.
+The first table appears to show PICA coding halving after 1990. **The
+second shows no such fall**, and the second is the one that speaks to
+cataloging. A rate that moves with the age of the book and not with the
+age of the record is describing what a library acquired from each
+period, not how it catalogued.
+
+That is worth stating plainly because the first table on its own reads
+as a change in practice, and the change is not there.
+
+On the other side both axes agree, and neither shows anything at all:
+zero across every bin, including 866 books published before 1970 and
+509 records created before 1990.
+
+Two limits. `008/00-05` records when a record entered *that* catalog,
+so for anything reaching it by migration or through a union catalogue
+it may be the date of transfer rather than of original cataloging —
+which is the likely reason only 12 PICA records date before 1990. And
+the 2014-onward bin holds half the corpus, so it carries most of the
+weight in both tables.
 
 ## How good is this evidence
 
