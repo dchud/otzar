@@ -118,13 +118,12 @@ Key files:
 
 ### `ingest`
 
-Handles data input workflows: title page OCR via Claude Vision, scan
-staging/review, and the pipeline from raw input to catalog records.
+Handles data input workflows: title page OCR, scan staging/review, and the
+pipeline from raw input to catalog records.
 
 Key files:
 
-- `ingest/ocr.py` -- Claude Vision API integration for title page metadata
-  extraction
+- `ingest/ocr.py` -- Title page OCR for metadata extraction
 - `ingest/models.py` -- `ScanResult` and `APIUsageLog` models
 - `ingest/urls.py` -- ingest workflow URL routing
 
@@ -288,8 +287,8 @@ choose.
 
 ## OCR integration
 
-`ingest/ocr.py` uses the Anthropic Python SDK to send title page images to
-Claude Vision.
+`ingest/ocr.py` processes title page images using the Anthropic Messages API
+with image input.
 
 The prompt instructs the model to:
 
@@ -370,7 +369,7 @@ the relevant client methods.
 
 ### Integration tests
 
-Tests that require a live API key (e.g., OCR tests hitting Claude Vision) or
+Tests that require a live API key (e.g., OCR tests calling the Anthropic API) or
 network access should be marked and run separately to keep the default test
 suite fast and offline.
 
