@@ -92,11 +92,29 @@ class TestHeaderSearch:
 
         expect(self._search_box(page)).to_be_visible()
 
-        overflow = page.evaluate(
-            "() => document.documentElement.scrollWidth"
-            " - document.documentElement.clientWidth"
+        # Not scrollWidth minus clientWidth. clientWidth excludes a
+        # vertical scrollbar, and whether one takes layout width is a
+        # property of the platform rather than of the page: Windows and
+        # Linux draw a classic scrollbar that does, macOS, iOS and
+        # Android draw an overlay one that does not. That subtraction
+        # therefore reports which machine ran the test.
+        #
+        # Ask the layout instead. Any element whose right edge falls
+        # outside the content box is real overflow on every platform,
+        # and naming it is more use than a pixel count.
+        offenders = page.evaluate("""() => {
+            const limit = document.documentElement.clientWidth;
+            return [...document.querySelectorAll('body *')]
+                .map(el => ({el, r: el.getBoundingClientRect()}))
+                .filter(({r}) => r.width > 0 && r.right > limit + 1)
+                .map(({el, r}) => `${el.tagName.toLowerCase()}`
+                    + `.${(el.className || '').toString().split(' ')[0]}`
+                    + ` right=${Math.round(r.right)} limit=${limit}`)
+                .slice(0, 5);
+        }""")
+        assert not offenders, (
+            "content extends past the viewport: " + "; ".join(offenders)
         )
-        assert overflow <= 0, f"page scrolls sideways by {overflow}px"
 
 
 @pytest.mark.django_db(transaction=True)
