@@ -62,7 +62,13 @@ line-length = 79
 target-version = "py313"
 # Agent worktrees are checkouts of this same repo nested inside it.
 # Linting them means linting another branch's in-progress code.
-extend-exclude = [".claude"]
+#
+# studies/ holds the scripts that produced published findings, kept
+# byte-for-byte as they ran. Reformatting them would mean the committed
+# code is no longer the code the numbers came from, which is the one
+# property that makes them worth keeping. They are not imported by the
+# application and are not on any runtime path.
+extend-exclude = [".claude", "studies"]
 
 [tool.ruff.lint]
 # Ruff's default rule set is the gate, plus the pycodestyle families its

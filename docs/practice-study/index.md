@@ -184,4 +184,4 @@ A claim with no footnote is counted from the corpus.
 - [What follows for otzar](implications.md) — the design consequences,
   and the limits of the evidence.
 - [The data](data.md) — the published corpus features, the query
-  manifest, and the case records.
+  manifest, the case records, and where the scripts live.

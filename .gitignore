@@ -223,6 +223,11 @@ __marimo__/
 # directory named data. The study publishes docs/practice-study/data/.
 /data/
 cache/
+# Corpus archives for the studies. Large, and their terms are the ones
+# the study's data page discusses -- they are handed over deliberately,
+# not committed.
+*.zip
+
 media/
 staticfiles/
 tmp/
