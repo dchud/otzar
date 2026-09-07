@@ -147,6 +147,24 @@ class TestEachStillShowsWhatItWasKeptFor:
         assert fields(name, "740")
         assert fields(name, "773")
 
+    def test_one_set_is_punctuated_two_ways_in_one_record(self):
+        """Why the authorized form has to win.
+
+        This record states its series twice: transcribed in 490 with a
+        spaced hyphen, and authorized in 830 with a double hyphen. The
+        strings differ, the set does not. Reading 490 first would let
+        two records of one set disagree about which set they are in.
+        """
+        from sources.marc import parse_record
+
+        name = "miqraot_gedolot_parallel_script_nli"
+        parsed = parse_record(extract_marc_records(load(name))[1][0])
+
+        assert parsed["series_title"] != parsed["series_title_transcribed"]
+        assert "--" in parsed["series_title"]
+        assert " - " in parsed["series_title_transcribed"]
+        assert parsed["series_traced"] is True
+
     def test_the_obsolete_series_statement_survives(self):
         assert fields("sapirstein_rashi_obsolete_series_lc", "440")
 

@@ -199,6 +199,31 @@ def _unwrap(text: str) -> str:
     return text
 
 
+def _series_is_traced(record: mrrc.Record) -> bool | None:
+    """Whether a 490 says an authorized series heading should exist.
+
+    First indicator 0 means the series is not traced: no 8XX added entry
+    was made and the transcribed form is all there is. 1 means it is
+    traced, and an 800, 810, 811 or 830 carries the authorized form.
+
+    This is read rather than inferred from whether an 830 happens to be
+    present, because the two can disagree and the disagreement is
+    information. A record tracing a series it does not carry an 8XX for
+    is one whose authorized form lives in an authority file this record
+    did not bring; a record carrying an 830 while claiming not to trace
+    is one where somebody added the heading and left the indicator
+    behind. Neither is visible if the indicator is skipped.
+
+    Returns None when there is no 490, or when its indicator is neither
+    0 nor 1 -- blank indicators appear on older records, and guessing at
+    them would invent a claim the cataloger did not make.
+    """
+    field = record.get_field("490")
+    if field is None:
+        return None
+    return {"0": False, "1": True}.get(field.indicator1)
+
+
 def _isbns(record: mrrc.Record) -> tuple[list[dict], list[str]]:
     """Return every ISBN on *record*, and the ones marked invalid.
 
@@ -332,8 +357,11 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     - ``isbn`` -- from 020$a
     - ``subjects`` -- list of 650 headings, each its $a followed by any
       subdivisions, deduplicated
-    - ``series_title`` -- from 490$a or 830$a
-    - ``series_volume`` -- from 490$v or 830$v
+    - ``series_title`` -- 830$a preferred over 490$a
+    - ``series_volume`` -- 830$v preferred over 490$v
+    - ``series_title_transcribed``, ``series_volume_transcribed`` -- the
+      490 forms, kept alongside
+    - ``series_traced`` -- the 490 first indicator, or None
     - ``source_marc`` -- the whole record as MARC-in-JSON, uncleaned
 
     Every value above except ``source_marc`` is cleaned for display.
@@ -450,15 +478,19 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     result["dewey_classification"] = dewey
 
     # --- Series ---
-    series_title = get_field_value(marc_record, "490", ["a"])
-    if series_title is None:
-        series_title = get_field_value(marc_record, "830", ["a"])
-    result["series_title"] = series_title
+    authorized_title = get_field_value(marc_record, "830", ["a"])
+    transcribed_title = get_field_value(marc_record, "490", ["a"])
+    authorized_volume = get_field_value(marc_record, "830", ["v"])
+    transcribed_volume = get_field_value(marc_record, "490", ["v"])
 
-    series_volume = get_field_value(marc_record, "490", ["v"])
-    if series_volume is None:
-        series_volume = get_field_value(marc_record, "830", ["v"])
-    result["series_volume"] = series_volume
+    # The authorized form decides identity; the transcribed form is kept
+    # because it is what is printed on the volume in hand. See
+    # _series_is_traced for why both are read rather than one.
+    result["series_title"] = authorized_title or transcribed_title
+    result["series_volume"] = authorized_volume or transcribed_volume
+    result["series_title_transcribed"] = transcribed_title
+    result["series_volume_transcribed"] = transcribed_volume
+    result["series_traced"] = _series_is_traced(marc_record)
 
     # --- Source record ---
     result["source_marc"] = record_to_marcjson(marc_record)
