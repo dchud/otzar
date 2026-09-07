@@ -167,3 +167,65 @@ TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
+
+# Django merges DEFAULT_LOGGING (django/utils/log.py) with this dict
+# rather than replacing it: it runs dictConfig(DEFAULT_LOGGING), then
+# dictConfig(LOGGING). DEFAULT_LOGGING defines a "django" logger with
+# its own console handler (active only while DEBUG is true) and a
+# mail_admins handler; both are left alone here. The application
+# loggers below attach their own console handler directly instead of
+# going through a shared root handler, because a root handler would
+# also catch everything that already propagates there from "django",
+# printing Django's own log lines a second time.
+#
+# disable_existing_loggers is set here (not just left at DEFAULT_LOGGING's
+# False) because dictConfig defaults it to True on every call, including
+# this one -- without an explicit False, any logger already created
+# before this dict is applied and not named in "loggers" below,
+# including "django" and "django.server", would be disabled.
+_APP_LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+        },
+    },
+    "loggers": {
+        # catalog, ingest and sources cover every application module by
+        # prefix -- a logger named "sources.marc" is a child of
+        # "sources" and inherits this level and handler unless it sets
+        # its own. propagate is False so a record reaching this
+        # handler does not also climb to root and print twice.
+        "catalog": {
+            "handlers": ["console"],
+            "level": _APP_LOG_LEVEL,
+            "propagate": False,
+        },
+        "ingest": {
+            "handlers": ["console"],
+            "level": _APP_LOG_LEVEL,
+            "propagate": False,
+        },
+        "sources": {
+            "handlers": ["console"],
+            "level": _APP_LOG_LEVEL,
+            "propagate": False,
+        },
+        # httpx logs one line per request at INFO and its own request
+        # internals at DEBUG; the SRU cascade makes several calls per
+        # lookup, so this stays at WARNING regardless of DEBUG.
+        # httpcore is the transport httpx logs through underneath it.
+        "httpx": {"level": "WARNING"},
+        "httpcore": {"level": "WARNING"},
+    },
+}
