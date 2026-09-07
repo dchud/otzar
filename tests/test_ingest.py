@@ -559,7 +559,7 @@ class TestCandidatePayloadStaysOnTheServer:
         assert "00000nam a2200000 a 4500" not in html
         assert f'name="scan_id" value="{scan.pk}"' in html
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     @patch("ingest.views.isbn_lookup")
     def test_confirming_by_index_alone_still_carries_every_field(
         self, mock_lookup, _cover, client_logged_in
