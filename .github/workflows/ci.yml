@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Every job here only reads the repository and runs tests; none of them
+# pushes, comments, or uploads a release. contents: read covers all
+# three, so nothing narrower is granted per job.
+permissions:
+  contents: read
+
 # `static/css/tailwind.css` is generated from the templates rather than
 # committed, so both test jobs build it before they run anything. The
 # unit suite asserts the stylesheet URL carries a cache-busting stamp,
@@ -26,9 +32,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           enable-cache: true
 
@@ -47,12 +55,16 @@ jobs:
       - name: Check for process labels in persistent artifacts
         run: uv run python scripts/lint_process_labels.py
 
+      - name: Lint the workflows
+        run: uv run zizmor .github/workflows/
+
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check whether the change can affect tests
         id: relevant
@@ -86,7 +98,7 @@ jobs:
           echo "Only tracker and Markdown files changed. Skipping the tests."
           echo "run=false" >> "$GITHUB_OUTPUT"
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         if: steps.relevant.outputs.run == 'true'
         with:
           enable-cache: true
@@ -117,7 +129,7 @@ jobs:
 
       - name: Cache the Tailwind CLI
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .django_tailwind_cli
           key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -135,9 +147,10 @@ jobs:
   test-e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check whether the change can affect tests
         id: relevant
@@ -171,7 +184,7 @@ jobs:
           echo "Only tracker and Markdown files changed. Skipping the tests."
           echo "run=false" >> "$GITHUB_OUTPUT"
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         if: steps.relevant.outputs.run == 'true'
         with:
           enable-cache: true
@@ -202,7 +215,7 @@ jobs:
 
       - name: Cache the Tailwind CLI
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .django_tailwind_cli
           key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -216,7 +229,7 @@ jobs:
       - name: Cache Playwright browsers
         if: steps.relevant.outputs.run == 'true'
         id: playwright-cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
