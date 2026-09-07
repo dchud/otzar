@@ -1,3 +1,5 @@
+import io
+import os
 from typing import Any, ClassVar
 from unittest.mock import patch
 
@@ -5,7 +7,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 
-from catalog.models import Author, Record
+from catalog.models import Author, Record, TitlePageImage
 
 
 @pytest.fixture
@@ -482,6 +484,155 @@ class TestScanClosedOnConfirm:
         scan.refresh_from_db()
         assert scan.status == "confirmed"
         assert scan.created_record is not None
+
+
+@pytest.mark.django_db
+class TestTitlePageImagePromotion:
+    """Confirming an OCR scan must carry its photo onto the record.
+
+    The photograph is what identified this particular copy, so it has
+    to move from ScanResult's staging path to a permanent
+    TitlePageImage rather than staying a staging artifact that nothing
+    ever reads again.
+    """
+
+    CANDIDATE: ClassVar[dict[str, str]] = {
+        "title": "Mishneh Torah",
+        "author": "Maimonides",
+        "date": "1862",
+        "publisher": "Romm",
+        "place": "Vilna",
+        "source_catalog": "NLI",
+    }
+
+    def _staged_ocr_scan(self, user):
+        from ingest.models import ScanResult
+
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output={"title": "Mishneh Torah"},
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+        scan.image.save("photo.jpg", io.BytesIO(b"fake jpeg data"))
+        return scan
+
+    def _select_and_confirm(self, client, scan_id=None, index=0):
+        import json as _json
+
+        payload = {"candidate_data": _json.dumps(self.CANDIDATE)}
+        if scan_id is not None:
+            payload["scan_id"] = str(scan_id)
+            payload["candidate_index"] = str(index)
+        client.post("/ingest/select-candidate/", payload)
+        return client.post("/ingest/confirm/")
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_review_page_confirm_promotes_the_image(
+        self, _cover, client_logged_in, user, tmp_path, settings
+    ):
+        settings.MEDIA_ROOT = str(tmp_path)
+        scan = self._staged_ocr_scan(user)
+        staged_path = scan.image.path
+
+        self._select_and_confirm(client_logged_in, scan.pk)
+
+        scan.refresh_from_db()
+        record = scan.created_record
+        assert record is not None
+
+        images = TitlePageImage.objects.filter(record=record)
+        assert images.count() == 1
+        title_page_image = images.get()
+        assert title_page_image.staged is False
+        assert title_page_image.image.name.startswith("title-pages/")
+
+        # The staged copy is gone and the field is cleared.
+        assert not scan.image
+        assert not os.path.exists(staged_path)
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_queue_confirm_promotes_the_image(
+        self, _cover, client_logged_in, user, tmp_path, settings
+    ):
+        settings.MEDIA_ROOT = str(tmp_path)
+        scan = self._staged_ocr_scan(user)
+        staged_path = scan.image.path
+
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        record = scan.created_record
+        assert record is not None
+
+        title_page_image = TitlePageImage.objects.get(record=record)
+        assert title_page_image.staged is False
+        assert not scan.image
+        assert not os.path.exists(staged_path)
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_isbn_scan_image_is_left_alone(
+        self, _cover, client_logged_in, user, tmp_path, settings
+    ):
+        """An ISBN scan's image, if it ever has one, is a barcode photo,
+        not a title page, and must not become a TitlePageImage."""
+        from ingest.models import ScanResult
+
+        settings.MEDIA_ROOT = str(tmp_path)
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            status="pending",
+            candidate_records=[self.CANDIDATE],
+            scanned_by=user,
+        )
+        scan.image.save("barcode.jpg", io.BytesIO(b"fake jpeg data"))
+
+        client_logged_in.post(
+            f"/ingest/confirm/{scan.pk}/", {"candidate_index": "0"}
+        )
+
+        scan.refresh_from_db()
+        assert TitlePageImage.objects.count() == 0
+        assert scan.image  # left in place
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_no_image_means_no_title_page_row(
+        self, _cover, client_logged_in, user
+    ):
+        """A scan with nothing staged (or none behind the candidate at
+        all) must not error and must not create an empty row."""
+        response = self._select_and_confirm(client_logged_in, scan_id=None)
+        assert response.status_code == 302
+        assert TitlePageImage.objects.count() == 0
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    def test_a_write_failure_loses_neither_the_record_nor_the_photo(
+        self, _cover, client_logged_in, user, tmp_path, settings
+    ):
+        """A storage failure while writing the permanent copy must not
+        take the staged photo down with it, and must not stop the
+        record from being created -- the record already exists by the
+        time the promotion runs.
+        """
+        settings.MEDIA_ROOT = str(tmp_path)
+        scan = self._staged_ocr_scan(user)
+        staged_path = scan.image.path
+
+        with patch(
+            "ingest.views.ContentFile", side_effect=OSError("disk full")
+        ):
+            response = self._select_and_confirm(client_logged_in, scan.pk)
+
+        assert response.status_code == 302
+        assert Record.objects.filter(title="Mishneh Torah").exists()
+        assert TitlePageImage.objects.count() == 0
+
+        scan.refresh_from_db()
+        assert scan.image  # not cleared; the staged copy is intact
+        assert os.path.exists(staged_path)
 
 
 @pytest.mark.django_db

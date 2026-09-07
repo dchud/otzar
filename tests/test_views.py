@@ -6,6 +6,7 @@ import pytest
 from django.apps import apps
 from django.conf import settings
 from django.contrib.staticfiles import finders
+from django.core.files.base import ContentFile
 from django.test import Client
 
 from catalog.models import Author, Record
@@ -88,6 +89,63 @@ class TestRecordDetailView:
         content = response.content.decode()
         assert "245" in content
         assert "View source MARC" in content
+
+
+@pytest.mark.django_db
+class TestRecordDetailImages:
+    """The sidebar shows the cover and the scanned title page below it.
+
+    They answer different questions: the cover is stock art for the
+    edition, the title page is a photograph of this physical copy. A
+    collection of old books needs both on screen, not one standing in
+    for the other.
+    """
+
+    def _url(self, record):
+        return f"/catalog/{record.record_id}/{record.slug}/"
+
+    def test_neither_image_renders_when_absent(self, client, sample_record):
+        response = client.get(self._url(sample_record))
+        content = response.content.decode()
+        assert "Cover of" not in content
+        assert "Title page of" not in content
+
+    def test_title_page_image_shown_without_a_cover(
+        self, client, sample_record, tmp_path, settings
+    ):
+        settings.MEDIA_ROOT = str(tmp_path)
+        from catalog.models import TitlePageImage
+
+        image = TitlePageImage(record=sample_record, staged=False)
+        image.image.save(
+            "title.jpg", ContentFile(b"fake jpeg data"), save=True
+        )
+
+        response = client.get(self._url(sample_record))
+        content = response.content.decode()
+        assert "Cover of" not in content
+        assert f'alt="Title page of {sample_record.title}"' in content
+        assert image.image.url in content
+
+    def test_cover_and_title_page_image_both_shown(
+        self, client, sample_record, tmp_path, settings
+    ):
+        settings.MEDIA_ROOT = str(tmp_path)
+        from catalog.models import TitlePageImage
+
+        sample_record.cover_url = "https://covers.example/edition.jpg"
+        sample_record.save(update_fields=["cover_url"])
+        image = TitlePageImage(record=sample_record, staged=False)
+        image.image.save(
+            "title.jpg", ContentFile(b"fake jpeg data"), save=True
+        )
+
+        response = client.get(self._url(sample_record))
+        content = response.content.decode()
+        assert 'alt="Cover of' in content
+        assert f'alt="Title page of {sample_record.title}"' in content
+        # The title page appears after the cover, so it renders below it.
+        assert content.index("Cover of") < content.index("Title page of")
 
 
 @pytest.mark.django_db

@@ -4,12 +4,15 @@ import os
 import threading
 import time
 from contextlib import contextmanager
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
+from django.core.files.base import ContentFile
 from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
+from catalog.models import Record
 from ingest.models import ScanResult
 from ingest.ocr import OCR_FIELDS
 from sources.cascade import CascadeResult
@@ -915,3 +918,64 @@ class TestConcurrentDeviceFeedback:
 
         desktop.close()
         phone.close()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestTitlePageImageOnRecordPage:
+    """Confirming a title-page scan has to leave the photo somewhere a
+    person looking at the record can see it, not on a ScanResult
+    nothing shows again.
+    """
+
+    CANDIDATE: ClassVar[dict[str, str]] = {
+        "title": "Mishneh Torah",
+        "author": "Maimonides",
+        "date": "1862",
+        "publisher": "Romm",
+        "place": "Vilna",
+        "source_catalog": "NLI",
+    }
+
+    def test_confirming_a_title_page_scan_shows_the_image(
+        self, page, live_server, staff_user
+    ):
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output=SAMPLE_OCR_RESPONSE,
+            candidate_records=[self.CANDIDATE],
+            scanned_by=staff_user,
+        )
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        page.get_by_role("button", name="Details").click()
+        see_full_record = page.get_by_role("button", name="See full record")
+        expect(see_full_record).to_be_visible()
+        see_full_record.click()
+
+        page.wait_for_url("**/ingest/confirm/", timeout=10000)
+        page.get_by_role("button", name="Add to catalog").click()
+        page.wait_for_url("**/catalog/**", timeout=10000)
+
+        record = Record.objects.get(title="Mishneh Torah")
+        title_page_image = record.title_page_images.get()
+        assert title_page_image.staged is False
+
+        img = page.get_by_role("img", name=f"Title page of {record.title}")
+        expect(img).to_be_visible()
+        img_src = img.get_attribute("src")
+        assert img_src and img_src.startswith("/media/title-pages/"), (
+            f"image src looks wrong: {img_src!r}"
+        )
+        img_response = page.request.get(f"{live_server.url}{img_src}")
+        assert img_response.status == 200, (
+            f"image url {img_src} returned {img_response.status}"
+        )
+
+        # The staging copy is gone; the record's copy is the only one.
+        scan.refresh_from_db()
+        assert not scan.image
