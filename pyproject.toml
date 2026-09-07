@@ -47,6 +47,13 @@ pythonpath = ["."]
 # worktrees -- checkouts of this repo whose tests are another branch's.
 # Collecting either turns a throwaway file into a suite failure.
 norecursedirs = ["tmp", ".claude", ".venv", "node_modules"]
+# The suite exercises three remote services -- the Anthropic API for
+# OCR, the SRU catalogs at NLI, LC and DNB, and Open Library for covers
+# -- and every test of those paths mocks the client. Blocking sockets
+# turns that convention into enforcement, so a test that forgets a patch
+# or patches the wrong name fails instead of quietly making a real call.
+# Unix sockets stay open for the database and the live-server fixture.
+addopts = ["--disable-socket", "--allow-unix-socket"]
 
 [tool.ruff]
 line-length = 79

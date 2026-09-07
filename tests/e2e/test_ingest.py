@@ -297,7 +297,6 @@ class TestMarcParsingOnConfirmPage:
         series = page.locator("text=Klavierbibliothek").inner_text()
         assert not any(0x80 <= ord(char) <= 0x9F for char in series)
 
-    @patch("ingest.views.fetch_cover_url")
     @patch("sources.cascade.dnb_client.search")
     @patch("sources.cascade.lc_client.search")
     @patch("sources.cascade.nli_client.search")
@@ -306,7 +305,6 @@ class TestMarcParsingOnConfirmPage:
         mock_nli,
         mock_lc,
         mock_dnb,
-        mock_cover,
         page,
         live_server,
         staff_user,
@@ -316,7 +314,6 @@ class TestMarcParsingOnConfirmPage:
         mock_lc.return_value = SRUResult(
             success=True, data=LC_SUBJECTS_SRU_XML
         )
-        mock_cover.return_value = ""
         ensure_fts_table()
 
         self._look_up(page, live_server, "9780123456789")
