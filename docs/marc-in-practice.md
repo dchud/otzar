@@ -6,6 +6,28 @@ a survey of real responses found, so that decisions about which fields to
 read rest on measurement rather than on inference from the format
 documentation.
 
+## There is no single pattern, and there will not be one
+
+The three endpoints do not share a cataloging practice, and neither do
+the eras within any one of them, and neither do individual catalogers
+working the same material in the same decade. A record is the product of
+the rules in force where and when it was made, the material in hand, and
+the judgement of the person who made it. Variation between them is
+correct practice rather than error, and it does not converge.
+
+So the numbers below describe tendencies, not rules. They are useful for
+deciding what is worth reading and in what order, and for knowing which
+absences are safe to build on. They are not useful for predicting what
+any particular record contains, and code that treats a 90% figure as a
+guarantee will meet the other 10% in a collection this size within the
+first afternoon.
+
+The practical consequence is that reading a field should never be
+conditional on another field being absent, and that every treatment worth
+supporting is worth supporting alongside the others rather than as a
+fallback in a chain. What otzar can rely on is its own model, assembled
+from whatever evidence each record happens to offer.
+
 ## The survey
 
 1,027 records: 481 from the National Library of Israel, 446 from the
