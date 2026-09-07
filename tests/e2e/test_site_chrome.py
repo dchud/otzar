@@ -42,6 +42,82 @@ class TestRepositoryLink:
 
 
 @pytest.mark.django_db(transaction=True)
+class TestHeaderSearch:
+    """The header carries its own search box, not just a link to
+    /search/, so a query can be sent from wherever a reader lands."""
+
+    def _search_box(self, page):
+        return page.locator("header").get_by_label("Search the catalog")
+
+    def test_search_box_is_present_on_every_page(
+        self, page, live_server, sample_record
+    ):
+        for path in ["/", "/browse/", "/search/"]:
+            page.goto(f"{live_server.url}{path}")
+            expect(self._search_box(page)).to_be_visible()
+
+    def test_search_box_meets_the_touch_target_size(self, page, live_server):
+        page.goto(live_server.url)
+
+        box = self._search_box(page).bounding_box()
+
+        assert box["height"] >= 44
+
+    def test_search_box_does_not_assume_left_to_right_input(
+        self, page, live_server
+    ):
+        page.goto(live_server.url)
+
+        expect(self._search_box(page)).to_have_attribute("dir", "auto")
+
+    def test_submitting_from_the_home_page_header_lands_on_results(
+        self, page, live_server, sample_record
+    ):
+        page.goto(live_server.url)
+
+        self._search_box(page).fill("social life")
+        self._search_box(page).press("Enter")
+
+        expect(page).to_have_url(f"{live_server.url}/search/?q=social+life")
+        expect(
+            page.locator("text=The social life of information")
+        ).to_be_visible()
+
+    def test_search_box_is_reachable_at_phone_width(self, page, live_server):
+        """base.html hides the Home/Browse/Ingest links below sm with
+        no menu to reveal them again, so the search box does not live
+        inside that same hidden block -- it stays visible here too."""
+        page.set_viewport_size({"width": 375, "height": 812})
+        page.goto(live_server.url)
+
+        expect(self._search_box(page)).to_be_visible()
+
+        # Not scrollWidth minus clientWidth. clientWidth excludes a
+        # vertical scrollbar, and whether one takes layout width is a
+        # property of the platform rather than of the page: Windows and
+        # Linux draw a classic scrollbar that does, macOS, iOS and
+        # Android draw an overlay one that does not. That subtraction
+        # therefore reports which machine ran the test.
+        #
+        # Ask the layout instead. Any element whose right edge falls
+        # outside the content box is real overflow on every platform,
+        # and naming it is more use than a pixel count.
+        offenders = page.evaluate("""() => {
+            const limit = document.documentElement.clientWidth;
+            return [...document.querySelectorAll('body *')]
+                .map(el => ({el, r: el.getBoundingClientRect()}))
+                .filter(({r}) => r.width > 0 && r.right > limit + 1)
+                .map(({el, r}) => `${el.tagName.toLowerCase()}`
+                    + `.${(el.className || '').toString().split(' ')[0]}`
+                    + ` right=${Math.round(r.right)} limit=${limit}`)
+                .slice(0, 5);
+        }""")
+        assert not offenders, (
+            "content extends past the viewport: " + "; ".join(offenders)
+        )
+
+
+@pytest.mark.django_db(transaction=True)
 class TestBuildIndicator:
     def test_footer_links_the_commit_to_github(
         self, page, live_server, settings
@@ -86,3 +162,43 @@ class TestBuildIndicator:
         expect(page.locator('footer a[href*="/commit/"]')).to_have_count(0)
         expect(page.get_by_role("link", name=REPO_LINK)).to_be_visible()
         assert errors == [], f"Console errors in the footer: {errors}"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestNothingScrollsSideways:
+    """A search form must fit the narrowest phone still in use.
+
+    A flex item defaults to ``min-width: auto``, so it will not shrink
+    below its content's intrinsic width. An input's is roughly twenty
+    characters, so a ``flex-1`` field stops shrinking and pushes the
+    submit button out of the row instead. It is invisible at desktop
+    widths and on whichever machine happens to render the button
+    narrowest, which is why it survived until a Linux runner disagreed
+    with a Mac about a font.
+
+    320px is an iPhone SE, which is current hardware, not a museum
+    piece.
+    """
+
+    PAGES = ("/", "/search/?q=test")
+
+    @pytest.mark.parametrize("width", [320, 360, 375, 414])
+    @pytest.mark.parametrize("path", PAGES)
+    def test_content_stays_inside_the_viewport(
+        self, page, live_server, width, path
+    ):
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(f"{live_server.url}{path}")
+
+        offenders = page.evaluate("""() => {
+            const limit = document.documentElement.clientWidth;
+            return [...document.querySelectorAll('body *')]
+                .map(el => ({el, r: el.getBoundingClientRect()}))
+                .filter(({r}) => r.width > 0 && r.right > limit + 1)
+                .map(({el, r}) => `${el.tagName.toLowerCase()}`
+                    + `.${(el.className || '').toString().split(' ')[0]}`
+                    + ` right=${Math.round(r.right)} limit=${limit}`)
+                .slice(0, 5);
+        }""")
+
+        assert not offenders, f"{path} at {width}px: " + "; ".join(offenders)

@@ -48,7 +48,7 @@ class TestSearchMatching:
         self, page, live_server, matching_records
     ):
         page.goto(live_server.url)
-        page.fill('input[name="q"]', "כוזרי")
+        page.fill('main input[name="q"]', "כוזרי")
         page.click('button[type="submit"]')
         expect(page.locator("text=ספר הכוזרי")).to_be_visible()
 

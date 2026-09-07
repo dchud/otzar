@@ -8,11 +8,11 @@ from playwright.sync_api import expect
 class TestCatalogSearch:
     def test_search_page_loads(self, page, live_server):
         page.goto(f"{live_server.url}/search/")
-        expect(page.locator('input[name="q"]')).to_be_visible()
+        expect(page.locator('main input[name="q"]')).to_be_visible()
 
     def test_search_from_home(self, page, live_server, sample_record):
         page.goto(live_server.url)
-        page.fill('input[name="q"]', "social life")
+        page.fill('main input[name="q"]', "social life")
         page.click('button[type="submit"]')
         expect(
             page.locator("text=The social life of information")

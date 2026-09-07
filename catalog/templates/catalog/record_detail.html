@@ -232,6 +232,23 @@
       </div>
       {% endif %}
 
+      {# Related: other records sharing a subject heading #}
+      {% if same_subject %}
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Other works on the same subject{{ record.subjects.count|pluralize }}</h2>
+        <ul class="mt-2 space-y-1">
+          {% for rel in same_subject %}
+          <li dir="auto">
+            <a href="/catalog/{{ rel.record_id }}/{{ rel.slug }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ rel.title|bidi_text }}</a>
+            {% if rel.get_date_display %}
+            <span class="text-gray-500 dark:text-gray-300">({{ rel.get_date_display }})</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
       {# Related: other works by same author(s) #}
       {% if other_by_author %}
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">

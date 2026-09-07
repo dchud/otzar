@@ -1,5 +1,5 @@
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -39,6 +39,19 @@ def record_detail(request, record_id, slug=None):
         .exclude(pk=record.pk)
         .distinct()[:10]
         if author_ids
+        else Record.objects.none()
+    )
+
+    # Related: other records sharing a subject heading, most-shared
+    # first. A collection catalogued by subject makes this the more
+    # useful list to browse once the series has been exhausted.
+    subject_ids = list(record.subjects.values_list("pk", flat=True))
+    same_subject = (
+        Record.objects.filter(subjects__pk__in=subject_ids)
+        .exclude(pk=record.pk)
+        .annotate(shared_subjects=Count("subjects", distinct=True))
+        .order_by("-shared_subjects")[:10]
+        if subject_ids
         else Record.objects.none()
     )
 
@@ -99,6 +112,7 @@ def record_detail(request, record_id, slug=None):
     context = {
         "record": record,
         "other_by_author": other_by_author,
+        "same_subject": same_subject,
         "sibling_volumes": sibling_volumes,
         "marc_fields": marc_fields,
     }
