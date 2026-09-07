@@ -33,7 +33,7 @@ It will arrive from K10plus and DNB. Across 22 multi-volume works held
 by LC, Oxford and NLI, it appears on **0 of 1,180 records**. That
 absence is well supported: the three catalogs share no software and
 converge anyway. Its presence rests on two catalogs that share PICA and
-may amount to one observation.
+may amount to one observation.[^pica]
 
 ## Absence of a link is not absence of a set
 
@@ -261,18 +261,7 @@ publisher and year, run against the five endpoints named in the
 [overview](index.md), 50 records per query, deduplicated on `003`
 plus `001`. Requests were spaced at least four seconds per host.
 
-[^onemany]: **Inference.** The counts behind it are real: books with a
-    volume count in `300 $a` run 3.3-6.2% at LC, NLI and Oxford against
-    0-0.5% at DNB and K10plus, and only the latter two declare
-    per-volume records. The nine-versus-one figure is illustrative
-    arithmetic, not an observed pair — the corpus holds no single set
-    with its records counted on both sides. Confirming it means picking
-    a known multi-volume work and counting the records each catalog
-    returns for it.
 
-[^l07d]: **Not verified here.** The MARC definition of `leader/07=d`
-    comes from format documentation. Confirming it means reading the
-    MARC 21 Bibliographic leader specification.
 
 [^pica]: **Inference.** See the [marker chapter](markers.md). The
     corpus shows the two catalogs populating leader/19 are the two

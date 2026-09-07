@@ -183,8 +183,9 @@ whose `300 $a` carries a volume count:
 
 The relationship is inverted. Where the PICA catalogs create a record
 per volume and declare it, the Anglo-American catalogs create one record
-for the whole set. The same eight-volume commentary arrives as nine
-records from K10plus and as one from LC.[^onemany]
+for the whole set. The [set survey](sets.md) measures this directly on
+named works: the Library of Congress describes *Entsiḳlopedyah
+talmudit* with one record where K10plus uses thirty-one.
 
 NLI also links at the monograph level, in a third idiom again. Of its
 108 language-material records carrying `773`, 79 are component parts and
@@ -400,15 +401,6 @@ with the era of the material, and cannot separate them.
     reprints and facsimiles is an inference from the date mismatch, not
     a count of those records.
 
-[^onemany]: **Inference.** The counts establish that books carrying a
-    volume count in `300 $a` run 3.3-6.2% at LC, NLI and Oxford against
-    0-0.5% at DNB and K10plus, and that only the latter two declare
-    per-volume records in leader/19. Reading that as one catalog
-    describing a set at set level while the other describes it at
-    volume level fits both figures, but the corpus contains no set
-    held by catalogs on both sides with its records counted, which is
-    what would settle it. The nine-versus-one example is illustrative
-    arithmetic, not an observed pair.
 
 [^twofeat]: **Inference.** The feature counts and the AMI figures are
     computed. That the small feature difference is *why* the partitions
