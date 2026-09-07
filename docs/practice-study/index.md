@@ -102,21 +102,29 @@ cluster across 30 resamples at 80% of the corpus.
 
 ## What the study found
 
-**MARC has a field for this, and where it is used it is exact.** Leader
-position 19, multipart resource record level, separates a set record
-from a part with its own title from a part whose title depends on the
-set. The three values carry three separate mechanisms: dependent parts
-take a `773` host link and `245 $n`/`$p` enumeration on 100% and 99% of
-273 records across two catalogs; independent parts take `490` on all of
-them and `830` on four in five, and never `773`; set records take
-neither. Used as a test, `773` together with `245 $n`/`$p` predicts a
-declared dependent part with precision 1.000 and recall 0.996.
+**A set arrives as one record or as many, depending on the catalog.**
+The two PICA catalogs, K10plus and DNB, make a record per volume and
+declare it in leader/19, multipart resource record level. LC, NLI and
+Oxford make one record for the whole set, with the volume count in
+`300 $a` and the parts in `505` — 3.3–6.2% of their books carry such a
+count, against 0–0.5% at the two PICA catalogs. The same eight-volume
+commentary reaches otzar as nine records or as one.
 
-**Two catalogs of five populate it.** K10plus on 24% of books, DNB on
-14%, Oxford on one record, LC and NLI on none. Where it is blank the
-distinction was not recorded, and the remaining evidence does not
-reconstruct it — `773` alone conflates volumes of a set with articles
-inside a host.
+**Where leader/19 is used, the three values carry three separate
+mechanisms.** Dependent parts take `773` and `245 $n`/`$p` on 272 of
+273 records; parts with independent titles take `490` always and `830`
+usually and `773` never; set records take neither, though they may
+carry a series statement of their own. Two cautions: the two catalogs
+that populate it are the two running PICA, so this is one family of
+export software being internally consistent rather than two traditions
+agreeing, and the rule was read from and scored against the same
+records.
+
+**The relationship is expressed in at least three idioms.** The
+leader/19 mechanism at the PICA catalogs; a set-level record at LC,
+NLI and Oxford; and a monograph-level link at NLI, where 25 records use
+Alma's `773 $w`/`$4 ANA`/`$4 UP` form. A rule keyed to one misses the
+other two.
 
 **Structure identifies the institution before the book.** With every
 field included, clustering recovers which catalog answered at
@@ -131,12 +139,14 @@ one another (0.803).
 **With only standard fields, nothing dominates.** Catalog, record type
 and bibliographic level all land near 0.33 with overlapping intervals.
 
-**The clustering does not recover multipart level, and that does not
-contradict the exact test.** Adjusted mutual information between the
-partitions and leader/19 is 0.04 to 0.11 even within the catalogs that
-declare it. The partitions do not isolate 273 records out of 1,829 as a
-group; a two-field rule still identifies them without error. The two
-measures answer different questions and both answers stand.
+**The clustering does not recover multipart level at all.** Scored
+against the corpus-wide partitions and restricted to the two catalogs
+that declare it, adjusted mutual information is **0.000**: all 287
+dependent-part records fall inside the single largest cluster. Fresh
+partitions of K10plus alone reach 0.20–0.25. That does not contradict
+the exact test — a dependent part differs from an ordinary book on two
+features out of 442, which is not enough to move a partition — but the
+records do not sort on it.
 
 **Only `490`, `830` and `130`/`240` appear at comparable rates in every
 catalog**, at 13–26%, 10–16% and 6–9%. Every other part-whole marker is

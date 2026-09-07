@@ -1,48 +1,67 @@
 # What follows for otzar
 
-## Test leader/19 first, because it is decisive when it is there
+## A set arrives as one record or as many, depending on the catalog
 
-MARC position 19 of the leader records multipart resource level: `a`
-for a set, `b` for a part with its own title, `c` for a part whose
-title depends on the set. Where a catalog populates it, the three
-values carry three separate and nearly exceptionless field patterns:
+The largest practical finding is not which field marks a volume. It is
+that the same eight-volume commentary reaches otzar as **nine records
+from K10plus and one record from LC**.
 
-| leader/19 | mechanism | in this corpus |
-|---|---|---|
-| `c` dependent part | `773` host link plus `245 $n`/`$p` enumeration | 273 records, both present on 100% and 99% |
-| `b` independent part | `490` on every record, `830` on four in five, no `773` | 57 records, `773` on none |
-| `a` set record | neither mechanism | 36 records, `773` on none |
+The two PICA catalogs, K10plus and DNB, create a record per volume and
+declare it in leader/19, multipart resource record level: `a` for the
+set, `b` for a part with its own title, `c` for a part whose title
+depends on the set. LC, NLI and Oxford create one comprehensive record
+for the set, with the extent in `300 $a` and the parts listed in `505`.
+Books carrying a volume count in `300 $a` run 3.3-6.2% at the three
+Anglo-American catalogs against 0-0.5% at the two PICA ones.
 
-Two of those fields together are an exact test. Scored against declared
-leader/19 in the catalogs that populate it, "`773` present and
-`245 $n` or `$p` present" gives 272 true positives, **zero** false
-positives and one false negative — precision 1.000, recall 0.996.
-Neither field works alone: `773` by itself has precision 0.581, since
-it equally marks an article inside a host.
+Anything in otzar that reconciles records across catalogs has to handle
+a one-to-many correspondence, not a one-to-one one. That is a data-model
+consequence, not a parsing one, and it is worth settling before the
+identity rules are written.
 
-This is the distinction the set work needs, declared in the record
-rather than inferred from it, and it is worth testing before anything
-else. It also separates the two uses of `773`, which are otherwise
-indistinguishable: of 378 K10plus book records carrying `773`, 195 are
-dependent parts of a multipart resource and 177 are `leader/07=a`
-component parts — articles inside a host, not volumes inside a set.
+## Where leader/19 is present, it is decisive
 
-## Everywhere else, no single field test works
+Where a catalog populates leader/19 the three values carry three
+separate mechanisms: dependent parts take `773` plus `245 $n`/`$p`,
+parts with independent titles take `490` and usually `830` and never
+`773`, and set records take neither, though they may carry a `490` or
+`830` of their own since a set can belong to a series.
 
-Leader/19 is populated on 24% of K10plus books and 14% of DNB's, on one
-Oxford record, and on nothing at LC or NLI. Where it is blank the
-distinction is not merely harder to recover — it was never recorded,
-and the remaining markers do not substitute for it:
+Used as a test, "`773` present and `245 $n` or `$p` present" identifies
+a declared dependent part with 272 true positives, no false positives
+and one false negative. Two cautions come with that figure. The rule was
+read from and scored against the same records, so it describes this
+corpus rather than predicting the next. And the two catalogs are the two
+running PICA — the fields are written together by one family of export
+software, so this measures internal consistency of that output, not two
+traditions agreeing.
 
-- `773` alone conflates set volumes with articles, and runs from none
-  at all at LC to 35% at K10plus. The two-field test that is exact at
-  K10plus and DNB matches **0 of 2,620** books at LC, NLI and Oxford.
-  Those catalogs do not express the distinction in the fields either.
-- `leader/07=d` reaches 4 records out of 4,449, all at NLI. MARC
-  defines it for archival units described collectively elsewhere, and
-  that is what those four are.
-- `800`/`810`/`811` is at or below 3% everywhere.
-- `245 $n`/`$p` is 18% at K10plus and 1% at LC and NLI.
+In practice the test adds nothing where leader/19 is present, since it
+matches exactly the records that declare it, and it matches nothing
+where leader/19 is absent. Its use is as a cross-check, and as a
+fallback for PICA-derived records that reach otzar with the leader
+position stripped.
+
+## Elsewhere the distinction is expressed, but differently
+
+It is not true that the other catalogs fail to record the relationship.
+They record it in at least two other idioms:
+
+- **A set-level record**, at LC, NLI and Oxford, with the volume count
+  in `300 $a` and the parts in `505`. There is no per-volume record to
+  find because none was made.
+- **A monograph-level link at NLI.** Of its 108 language-material
+  records carrying `773`, 25 are `leader/07=m` records using Alma's
+  related-record form — `$w` pointing at a parent on 19 of them, `$4
+  ANA` on 8, `$4 UP` on 6, `$g` part numbering on 10 — with some
+  carrying `490`/`830` numbering for the same volume.
+
+So a rule keyed to any one of these misses the other two. `773` alone
+conflates set volumes with articles and runs from none at all at LC to
+35% at K10plus. `leader/07=d` reaches 4 records out of 4,449, all at
+NLI, and MARC defines it for archival units described collectively
+elsewhere, which is what those four are. `800`/`810`/`811` is at or
+below 3% everywhere.
 
 The only markers that appear at comparable rates in every catalog are
 `490` (13-26%, V=0.10), `830` (10-16%, V=0.08) and `130`/`240` (6-9%,
@@ -55,10 +74,12 @@ statement claims only that words appeared on a piece.
 
 Which catalog answered is known at the moment a record arrives: it is
 which client returned it. Conditioning costs nothing and changes the
-reading substantially. `773` is real evidence at K10plus and next to none at
-Oxford. `440` is worth reading at LC and nowhere else. Absence of `830`
-means something different at LC, which leaves series untraced on a book
-it holds, than at DNB, which traces and links them.
+reading substantially. `773` is real evidence at K10plus and next to none
+at Oxford. `440` is worth reading at LC and nowhere else. In the one
+four-way case examined, LC left a series untraced on a book it holds
+while DNB and K10plus traced and linked it; one record does not
+establish a policy, but it does mean absence of `830` cannot be read
+the same way at every catalog.
 
 This is the same conclusion the catalog-variation note already records,
 now with sizes attached: build per-catalog evidence weights, not
@@ -122,7 +143,8 @@ and image material uses `leader/07=d` and `773` almost universally and
 ## Do not classify records into named treatment types
 
 Structure predicts declared bibliographic level in two catalogs of five
-and fails to in the other three, where it predicts the cataloging rules
+and fails to in the other three, where it predicts the descriptive
+cataloging form
 or the material type instead. With standard fields only, catalog,
 record type and bibliographic level all score near 0.33 with
 overlapping intervals — no organising principle wins.

@@ -12,7 +12,7 @@ be checked against the source catalogs.
 Overlap in the corpus is thin — 35 ISBNs appear in more than one
 catalog — so these are illustrations of mechanisms the aggregate tables
 measure, not an independent sample. A matched-pair test on 35 items
-would have no power.
+would have little power.
 
 ## 1. Same software, same rules, different institution
 
@@ -45,9 +45,10 @@ one item.
 
 Two details do differ bibliographically. NLI's `245$h [on order]`
 records a local acquisition state inside a bibliographic subfield. And
-NLI tags its heading with `$9lat` and
-`$8PreferredLanguageHeading` — its own mechanism for recording which
-script a heading is in, where other catalogs use `880`.
+NLI tags its heading with `$9lat` and `$8PreferredLanguageHeading`,
+marking the script of the heading it has. It carries no second form:
+where Oxford and LC romanize into the main fields and link the original
+in `880`, NLI has only the one heading.
 
 ## 2. One record, propagated: LC and Oxford
 
@@ -192,19 +193,23 @@ identify them differently:
 |---|---|
 | NLI | `$9lat $eeditor $8PreferredLanguageHeading` — script marker, no identifier |
 | LC | `$4http://id.loc.gov/vocabulary/relators/edt $0http://id.loc.gov/authorities/names/n85326155 $1http://id.loc.gov/rwo/agents/...` |
-| DNB and K10plus | `$0(DE-588)1047950758 $0(DE-627)779950895 $0(DE-576)164968954 $4edt` |
+| K10plus | `$0(DE-588)1047950758 $0(DE-627)779950895 $0(DE-576)164968954 $4edt` |
+| DNB | `$0(DE-588)1047950758 $0https://d-nb.info/gnd/1047950758 $0(DE-101)1047950758 $eHerausgeber $4edt $2gnd` |
 
-Three identifier vocabularies for one person: LC uses `id.loc.gov`
-URIs in `$0`, `$1` and `$4`; the German catalogs use bracketed database
-codes in `$0` with a MARC relator code in `$4`; NLI supplies no
-identifier at all and marks only the script of the heading. A matcher
-that reads `$0` has to accept a URI and a parenthesised prefix as the
-same kind of thing, and get nothing from NLI.
+Four shapes for one person. LC uses `id.loc.gov` URIs throughout `$0`,
+`$1` and `$4`. K10plus uses bracketed database codes in `$0` with a
+MARC relator code in `$4`. DNB carries **both** forms in one field — the
+bracketed GND code, the GND URI and its own `(DE-101)` code side by
+side, with `$2gnd` naming the vocabulary. NLI supplies no identifier at
+all and marks only the script of the heading. A matcher reading `$0`
+has to accept a URI and a parenthesised prefix as the same kind of
+thing, must not assume one `$0` per field, and gets nothing from NLI.
 
 The local blocks diverge as usual — NLI carries `901`, `903`, `906`,
 `921`, `939`, `999` and `AVA`; LC carries `906`, `923`, `925`, `955`,
-`985`; the German records carry `015`, `016`, `912`, `924`, `935`,
-`936`, `938`, `951`. None of those describes the book.
+`985`; K10plus carries `912`, `924`, `935`, `936`, `938`, `951`; DNB
+carries `850`, `883`, `925` and `926`. None of those describes the
+book.
 
 ## What the six show together
 
@@ -223,9 +228,10 @@ The aggregate tables report that catalogs differ. These records show
 5. **Series evidence is unevenly recorded** (case 4) — tracing, ISSN,
    bibliographic-record links and even spelling vary across four
    records of one series.
-6. **Name identifiers use three vocabularies** (case 6) — `id.loc.gov`
-   URIs at LC, bracketed database codes at DNB and K10plus, and no
-   identifier at all at NLI, for the same two people.
+6. **Name identifiers take four shapes** (case 6) — `id.loc.gov` URIs
+   at LC, bracketed database codes at K10plus, both codes and a URI
+   together at DNB, and no identifier at all at NLI, for the same two
+   people.
 
 None of the six shows a leader/19 value, because none of the six is a
 volume of a multipart resource. The mechanism the

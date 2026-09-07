@@ -77,16 +77,23 @@ That is the second possible outcome sitting alongside the third: the
 treatments are real enough to show up, and not sharp enough to sort
 records by.
 
-This sits in unresolved tension with the leader/19 result in the
-[marker chapter](markers.md), where the same taxonomy turns out to be
-declared explicitly and expressed almost without exception. Both are
-true of the same corpus. The clustering could not have found leader/19
-because it never saw it: the position was neither a feature in the
-vector nor a label held out for scoring, an omission in the design
-rather than a property of the data. What the clustering shows is that
-the *rest* of the record does not recover the distinction on its own —
-which is why the catalogs that leave leader/19 blank leave it
-unrecoverable.
+The [marker chapter](markers.md) shows the same taxonomy declared
+explicitly in leader/19 at K10plus and DNB, and expressed there almost
+without exception by two fields that are in this vector, `773` and
+`245 $n`/`$p`. The clustering does not organise on them. Scored against
+these partitions and restricted to those two catalogs, adjusted mutual
+information with leader/19 is 0.000: all 287 dependent-part records fall
+inside the largest cluster, at every cut and under both feature sets.
+Fresh partitions of the two catalogs together reach 0.03-0.10, and of
+K10plus alone 0.20-0.25.
+
+That is not a contradiction. A dependent-part record differs from an
+ordinary book on two features out of 442 and matches it on the rest,
+which does not move a Jaccard partition. Monographic component parts
+differ on many features, which is why a K10plus-only clustering scores
+0.558 on bibliographic level and 0.204 on multipart level at the same
+cut. Both results stand: exact where declared, and not an axis these
+records sort on.
 
 ## Within one catalog, the answer changes
 

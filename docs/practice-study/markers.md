@@ -52,7 +52,7 @@ therefore restricted to language material.
 
 ## The field MARC defines for the job
 
-MARC reserves leader position 19, *multipart resource record level*, for
+MARC defines leader position 19, *multipart resource record level*, for
 exactly the distinction the set work needs: `a` for a set record, `b`
 for a part with an independent title, `c` for a part with a dependent
 title. Two catalogs populate it. Three leave it blank.
@@ -64,6 +64,12 @@ title. Two catalogs populate it. Three leave it blank.
 | Oxford | 662 | 0 | 1 | 0 | under 1% |
 | LC | 1,164 | 0 | 0 | 0 | 0% |
 | NLI | 794 | 0 | 0 | 0 | 0% |
+
+The two catalogs that populate it are the two that run PICA. They are
+not independent witnesses: whatever writes leader/19 in a PICA-to-MARC
+export writes the accompanying fields as well, so the consistency below
+is the consistency of one family of export software, not two cataloging
+traditions agreeing.
 
 Where it is populated, each value carries a distinct and nearly
 exceptionless field pattern:
@@ -84,23 +90,27 @@ mechanisms and do not overlap:
 
 - **A part with a dependent title** — volume 3 of a set, whose own title
   does not stand alone — is linked to its host with `773` and enumerated
-  in `245 $n` or `$p`. Both hold on every one of the 273 such records in
-  the corpus, across two independent catalogs.
+  in `245 $n` or `$p`. Both hold on 272 of the 273 such records.
 - **A part with an independent title** does the opposite: no `773` at
   all, a `490` on every record, and an `830` on roughly four in five. It
   is described as its own book that belongs to a series.
-- **A set record** carries neither mechanism, as the thing being pointed
-  at rather than the thing pointing.
+- **A set record** carries neither of those, as the thing being pointed
+  at rather than the thing pointing. It may still carry `490` or `830`,
+  on 12% and 0% of K10plus set records and 40% and 20% of DNB's, since
+  a set can itself belong to a series.
 
 This is the taxonomy the set work assumed, and in these two catalogs it
-is not a vocabulary imposed on the records — it is declared in the
-leader and expressed consistently in the fields.
+is declared in the leader rather than inferred from the fields. What it
+is not is independent confirmation that the taxonomy describes
+cataloging in general: two PICA catalogs agreeing about PICA output is
+one observation, not two.
 
 The converse holds too, and separates the two distinct uses of `773`.
-Of the 378 K10plus book records carrying `773`, 195 are dependent parts
-of a multipart resource and 177 are `leader/07=a` monographic component
-parts — articles within a host, not volumes within a set. The leader
-tells the two apart; the presence of `773` alone does not.
+Of the 378 K10plus language-material records carrying `773`, 195 are
+dependent parts of a multipart resource, 177 are `leader/07=a`
+monographic component parts — articles within a host, not volumes
+within a set — and 6 are offprints and items in digitised collections.
+The leader tells them apart; the presence of `773` alone does not.
 
 ### The two fields together are an exact test, where they occur
 
@@ -121,25 +131,68 @@ because it is equally the mechanism for an article inside a host.
 `245 $n`/`$p` by itself reaches 0.996, and the pair removes its last
 error.
 
-The clustering does not reproduce this. Adjusted mutual information
-between the structural partitions and leader/19 is 0.043 to 0.110,
-including within the two catalogs that declare it. Both figures are
-correct and they answer different questions. Adjusted mutual
-information asks whether the partitions isolate multipart parts as a
-group, and they do not — 273 records out of 1,829 are absorbed into
-larger clusters. The precision figure asks whether a specific two-field
-test identifies them, and it does, without error. A rule can be exact
-while the same evidence fails to organise a corpus.
+The clustering does not reproduce this, and the figures are worth
+stating precisely because they are easy to conflate.
 
-At LC, NLI and Oxford leader/19 is blank on essentially every record.
-There the distinction is not merely harder to recover — it is not
-recorded. NLI's 108 book records with `773` include 79 component parts
-and no declared multipart volumes at all.
+| What was scored | AMI with leader/19 |
+|---|---|
+| Corpus-wide partitions, all 5,252 records | 0.043–0.089 |
+| Corpus-wide partitions, restricted to K10plus and DNB | **0.000** |
+| Fresh partitions of K10plus and DNB together | 0.033–0.100 |
+| Fresh partitions of K10plus alone | 0.204–0.248 |
 
-The two-field test finds nothing there either: **0 of 1,164 LC books,
-0 of 794 NLI books and 0 of 662 Oxford books** match it. Those catalogs
-do not leave the distinction undeclared while still expressing it in
-the fields. They do not express it.
+On the corpus-wide partitions all 287 dependent-part records — 273 books
+and 14 others — fall inside the single largest cluster, at every cut and
+under both feature sets. Within the two catalogs that declare the value,
+those partitions carry no information about it at all.
+
+Both that and the exact test are true, and they answer different
+questions. A dependent-part record differs from an ordinary book on two
+features out of 442, `tag:773` and `sub:245$n`/`$p`, and matches it on
+everything else, so it does not move a Jaccard partition. Monographic
+component parts differ on many features — no `020`, no `300 $c`, no
+`490` — which is why a K10plus-only clustering scores 0.558 on
+bibliographic level and 0.204 on multipart level at the same cut. A
+two-field rule can be exact while the same two features fail to organise
+a corpus.
+
+The rule was also read from and scored against the same 1,829 records.
+There is no held-out set, so 1.000 is a description of this corpus, not
+an estimate of performance on the next one.
+
+At LC, NLI and Oxford leader/19 is blank on essentially every record,
+and the two-field test finds nothing there: 0 of 1,164 LC books, 0 of
+794 NLI books, 0 of 662 Oxford books.
+
+That is not the same as the distinction being absent. Those catalogs
+describe a multipart monograph differently — as one comprehensive record
+for the set, with the extent in `300` and the parts listed in `505`,
+rather than as a set record plus one record per volume. Counting books
+whose `300 $a` carries a volume count:
+
+| Catalog | Books with a volume count in `300 $a` |
+|---|---|
+| Oxford | 41 of 662 (6.2%) |
+| LC | 57 of 1,164 (4.9%) |
+| NLI | 26 of 794 (3.3%) |
+| K10plus | 5 of 1,090 (0.5%) |
+| DNB | 0 of 739 (0%) |
+
+The relationship is inverted. Where the PICA catalogs create a record
+per volume and declare it, the Anglo-American catalogs create one record
+for the whole set. The same eight-volume commentary arrives as nine
+records from K10plus and as one from LC.
+
+NLI also links at the monograph level, in a third idiom again. Of its
+108 language-material records carrying `773`, 79 are component parts and
+4 are archival subunits — and the remaining 25 are `leader/07=m`
+records using Alma's related-record form, `773` with `$w` pointing at a
+parent record on 19 of them, `$4 ANA` on 8 and `$4 UP` on 6, and `$g`
+part numbering on 10. Some of those carry `490`/`830` numbering for the
+same volume.
+
+So the distinction is expressed in at least three ways across the five
+catalogs, and only one of them is the leader/19 mechanism.
 
 ## Books only: prevalence by catalog
 
@@ -189,8 +242,10 @@ not that a set exists.
 `773` runs from none at all at LC (0 of 1,164) and 6 records at Oxford
 to 35% at K10plus. `245$n`/`$p` runs from 1% at LC and NLI to 18% at
 K10plus. `440` is 10% at LC and
-0% everywhere else — it was made obsolete in 2008, and only LC's
-unconverted legacy records carry it here. `740` is 13% at NLI and
+0% everywhere else. It was made obsolete in 2008 and only LC's
+unconverted legacy records carry it here; the German catalogs never
+emitted it, since their MARC output postdates the change, so their zero
+is format history rather than a cataloging choice. `740` is 13% at NLI and
 essentially absent at DNB and K10plus.
 
 `880` is the sharpest division among the part-whole and script markers
@@ -239,9 +294,12 @@ and `830` from 7% (5–10) to 17% (15–19).
 obsolete in 2008, though the caveat below applies — this axis is the
 era of the book, not of the record.
 
-`020` reproduces the ISBN adoption curve, 6% to 72%, and is the
-cleanest validation available that the era axis is measuring something
-real.
+`020` reproduces the ISBN adoption curve, 6% to 72%, which is the
+closest thing here to a check that the era axis measures something
+real. The 6% on imprints published before 1940 is a reminder of that
+axis's limit rather than a contradiction: ISBNs did not exist before
+1967, and those rows are reprints, facsimiles and records whose `008`
+date refers to an original the item reproduces.
 
 One apparent trend is absent. `773` does not decline; it is flat
 except for a bump in the 1970-89 bin. Pooled across all material it

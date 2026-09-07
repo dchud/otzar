@@ -1,24 +1,33 @@
 # The data
 
-Three files carry everything the study measured. They are published so
-the tables can be checked and the analysis redone, and they are frozen:
-nothing here is revised after publication, because every number in the
-other five pages is computed from exactly these bytes.
+Three files carry the record-level data the study measured. They are
+published so the tables can be checked, and they are frozen: nothing
+here is revised after publication.
+
+What they check and what they do not: every figure in the marker and
+case chapters, and the marker rows in the implications chapter, is
+computable from `corpus-features.csv`. The clustering, adjusted mutual
+information, bootstrap and stability figures in the signatures chapter
+are not — those need the 725-feature vector, which is not published.
 
 | File | Size | Contents |
 |---|---|---|
 | [`corpus-features.csv`](data/corpus-features.csv) | 1.3 MB | 5,252 rows, one per record |
-| [`queries.csv`](data/queries.csv) | 10 KB | the 133 SRU queries that drew the corpus |
+| [`queries.csv`](data/queries.csv) | 10 KB | 133 of the 136 SRU queries that drew the corpus |
 | [`case-records.xml`](data/case-records.xml) | 205 KB | 21 MARCXML records: the six matched items |
 
 ## Why derived data rather than the records
 
 The corpus itself is 5,252 records from five institutions, and
-redistributing it would mean asserting redistribution rights for all
-five. Library of Congress records are United States federal work; DNB
-and K10plus publish their metadata openly. The terms for the National
-Library of Israel and the Bodleian are not established here, so their
-records are not republished.
+redistributing all of it would mean asserting redistribution rights for
+all five. Records the Library of Congress itself created are United
+States federal work — though LC's database also holds records other
+institutions created, identified by `040 $a`, and 41 NLI rows in this
+corpus carry `040 $aDLC` in the other direction. DNB publishes its
+bibliographic data under CC0 1.0, and K10plus states an open licence
+for its catalogue data; both should be checked against the current
+terms before relying on them. Terms for the National Library of Israel
+and the Bodleian are not established here.
 
 `corpus-features.csv` is derived data — a structural description of
 each record, not the record — and it carries the `001` control number
@@ -28,8 +37,13 @@ stays checkable without republishing anyone's catalog.
 
 The six matched items in `case-records.xml` are published in full
 because the case chapter quotes them field by field, and a reader
-checking that chapter needs the records in front of them. Twenty-one
-records is a quotation, not a redistribution of a catalog.
+checking that chapter needs the records in front of them. That file
+does include records whose terms are not established above: six from
+NLI and three from the Bodleian, alongside five from LC, five from
+K10plus and two from DNB. Twenty-one records quoted as evidence is a
+different act from republishing a catalogue, but it is not zero, and it
+is the one place this study reproduces records rather than describing
+them.
 
 ## Reproduction, and what it cannot give you
 
@@ -41,7 +55,7 @@ SRU returns results in a server-determined order, catalogs add and
 revise records continuously, and ranking shifts underneath a repeated
 query. A redraw is a new sample of the same populations along the same
 axes, and its numbers will differ. This is why the frozen CSV matters:
-it is the only way to check the arithmetic in the other five pages.
+for the figures it covers, it is the only way to check the arithmetic.
 Anyone redrawing the corpus is running a replication, which is a
 different and also useful thing.
 
@@ -62,17 +76,17 @@ invalidate every number already published.
 | `query` | The CQL that first returned this record |
 | `draw_axis` | `language+year`, `subject+year`, `publisher`, `control` |
 | `draw_domain` | `judaica` or `control` |
-| `draw_year` | The year **asked for** in the query, not the record's own date |
+| `draw_year` | The year **asked for** in the query, not the record's own date. Empty on the 156 publisher-stratum rows, whose queries name no year |
 
 ### Leader and 008
 
 | Column | Meaning |
 |---|---|
-| `ldr06_record_type` | Type of record: `a` language material, `c` notated music, `j` musical sound, `k` two-dimensional image, `p` mixed material, `t` manuscript |
+| `ldr06_record_type` | Type of record. Present here: `a` language material (4,449), `p` mixed material (292), `j` musical sound (199), `c` notated music (103), `k` two-dimensional image (82), `g` projected image (53), `i` nonmusical sound (30), `t` manuscript (26), `e` cartographic (9), `d` manuscript music (4), `m` computer file (4), `o` kit (1) |
 | `ldr07_bib_level` | Bibliographic level: `m` monograph, `s` serial, `a` monographic component part, `b` serial component part, `c` collection, `d` subunit |
 | `ldr17_encoding_level` | Fullness of the description |
-| `ldr18_description_form` | Descriptive cataloging form: `a` AACR2, `c` ISBD punctuation omitted, `i` ISBD punctuation included, `u` unknown. This records punctuation, not which rules were applied |
-| `ldr19_multipart_level` | Multipart resource record level: `a` set, `b` part with independent title, `c` part with dependent title, empty where not coded |
+| `ldr18_description_form` | Descriptive cataloging form: `c` ISBD punctuation omitted (1,959), `i` ISBD punctuation included (1,344), `a` AACR2 (1,267), blank meaning non-ISBD (410), `u` unknown (253), `-` (11), `p` obsolete partial ISBD (7), `n` (1). This records punctuation, not which rules were applied |
+| `ldr19_multipart_level` | Multipart resource record level: `c` part with dependent title (287), `b` part with independent title (59), `a` set (41), `-` (12), empty where not coded (4,853). The tables in the study count `-` as blank. The position was redefined in 2007, which is part of why older records leave it empty |
 | `date_type_008` | `008/06` |
 | `year1_008`, `year2_008` | `008/07-10` and `008/11-14`. `year1` is the publication date used for the era tables |
 | `place_008`, `lang_008` | `008/15-17` and `008/35-37` |
@@ -81,13 +95,14 @@ invalidate every number already published.
 
 | Column | Meaning |
 |---|---|
-| `agency_040a` | Original cataloging agency. Empty on NLI records, which omit `$a`. DNB values are internal cataloging-unit codes |
-| `cataloging_lang_040b` | Language of cataloging. NLI records carry `heb` |
-| `convention_040e` | Description convention: `rda`, `rakwb`, `pn`, or empty |
+| `agency_040a` | Original cataloging agency. Empty on 1,217 of 1,432 NLI rows: NLI omits `$a` on its own original cataloging but keeps it on copy, so 215 NLI rows carry a value (DLC 41, MiAaPQ 26, UkMbAM-D 20, others). DNB values are internal cataloging-unit codes |
+| `cataloging_lang_040b` | Language of cataloging. NLI is mixed: 634 empty, 528 `eng`, 266 `heb`, 4 other |
+| `convention_040e` | Description convention: empty (3,020), `rda` (1,544), `rakwb` German RAK-WB (621), `pn` provider-neutral e-resource record (65), `ncafnor` (1), `gihc` (1) |
 
 ### Markers
 
-Each is `1` or `0`. These are the definitions the marker chapter uses.
+Each is `1` or `0`. These are the definitions the marker chapter uses,
+except `has_505_t`, which is carried in the file but not used there.
 
 | Column | True when |
 |---|---|
@@ -123,21 +138,30 @@ co-occurrence work directly.
 ## `queries.csv`
 
 One row per query, with the catalog, the CQL, the draw axis and domain,
-and `records_first_seen_here`.
+and `records_first_seen_here`. It holds 133 rows, not the 136 queries
+the draw issued: three LC queries — `dc.subject="Rabbinical literature"`
+for 1900, 1925 and 1950 — returned no records and so appear nowhere in
+the corpus the file is derived from.
 
-That last column needs care. Records were deduplicated on `003` plus
-`001` across the whole draw, and each is attributed to the first query
-that returned it. A query whose results were mostly returned by an
-earlier query shows a low count. The column is not a measure of how
-many records that query matches — the catalogs' own totals, which the
-study did not record per query, would be needed for that.
+That last column needs care in two ways. Records were deduplicated on
+`003` plus `001` across the whole draw, and each is attributed to the
+first query that returned it, so a query whose results were mostly
+returned earlier shows a low count. It is not a measure of how many
+records the query matches; the catalogs' own totals, which the study
+did not record per query, would be needed for that.
+
+And "first" depends on the order the draw ran, which was a shuffle
+seeded with `0` to interleave the servers, while this file is sorted by
+catalog and query. The run order cannot be reconstructed from the file.
 
 ## `case-records.xml`
 
 A MARCXML collection of the 21 records behind the case chapter: six
 ISBNs, each fetched from all five catalogs, with a record for every
 catalog that holds it. An XML comment before each record gives its ISBN
-and catalog. The records are as retrieved, unmodified.
+and catalog. The record content is as retrieved; the bytes are not,
+since the records were re-serialised into a single collection element
+with those comments added.
 
 ## Regenerating everything
 
