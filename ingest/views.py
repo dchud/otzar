@@ -871,11 +871,21 @@ def _attach_from_candidate(record, candidate):
             record.subjects.add(subject)
 
     # External identifiers
-    isbn = candidate.get("isbn", "")
-    if isbn:
-        ExternalIdentifier.objects.get_or_create(
-            record=record, identifier_type="ISBN", value=isbn.strip()
-        )
+    # A single bibliographic record can stand for a whole set and carry
+    # one 020 per volume, so every ISBN on it is stored rather than the
+    # first. Which volume each belongs to is on the candidate as a
+    # qualifier and has nowhere to go here yet; ExternalIdentifier holds
+    # a type and a value and says nothing about parts.
+    isbns = candidate.get("isbns")
+    if isbns is None:
+        one = (candidate.get("isbn") or "").strip()
+        isbns = [{"value": one}] if one else []
+    for entry in isbns:
+        value = (entry.get("value") or "").strip()
+        if value:
+            ExternalIdentifier.objects.get_or_create(
+                record=record, identifier_type="ISBN", value=value
+            )
     lccn = candidate.get("lccn", "")
     if lccn:
         ExternalIdentifier.objects.get_or_create(

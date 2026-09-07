@@ -100,24 +100,30 @@ class TestEachStillShowsWhatItWasKeptFor:
 
         LC writes ``020 $a 9780827609426 $q v. 1``. NLI writes
         ``020 $a 9780827609426 (v. [1])``, qualifier and all, in the
-        subfield reserved for the number itself. Reading $a therefore
-        yields an ISBN from one catalog and a string that is not an
-        ISBN from the other, for the same book.
+        subfield reserved for the number. The fixtures are kept as a
+        pair because that difference is the point; the assertions below
+        are on the markup, not on what the parser makes of it.
         """
+        assert has_subfield(fields("commentators_bible_lc", "020"), "q")
+        assert not has_subfield(fields("commentators_bible_nli", "020"), "q")
+
+    def test_the_parser_reconciles_the_pair(self):
+        """Both halves yield the same ISBNs and keep both qualifiers."""
         from sources.marc import parse_record
 
         lc, nli = (
-            extract_marc_records(load(f"commentators_bible_{c}"))[1][0]
+            parse_record(
+                extract_marc_records(load(f"commentators_bible_{c}"))[1][0]
+            )
             for c in ("lc", "nli")
         )
-        lc_isbn = parse_record(lc)["isbn"]
-        nli_isbn = parse_record(nli)["isbn"]
 
-        assert lc_isbn == "9780827609426"
-        assert nli_isbn.startswith(lc_isbn)
-        assert nli_isbn != lc_isbn
-        assert has_subfield(fields("commentators_bible_lc", "020"), "q")
-        assert not has_subfield(fields("commentators_bible_nli", "020"), "q")
+        assert lc["isbn"] == nli["isbn"] == "9780827609426"
+        assert lc["isbns"][0]["qualifier"] == "v. 1"
+        # Square brackets mark a value the cataloger supplied rather
+        # than transcribed, so they are kept.
+        assert nli["isbns"][0]["qualifier"] == "v. [1]"
+        assert nli["invalid_isbns"] == ["0827608979"]
 
     def test_one_record_can_carry_the_isbn_of_every_volume(self):
         # A single bibliographic record standing for a whole set: six
