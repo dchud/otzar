@@ -140,6 +140,18 @@ class TestSeeFullRecord:
         expect(page.locator("text=Rudolph, Wilhelm")).to_be_visible()
         expect(page.locator("text=Bible. Old Testament")).to_be_visible()
 
+    def test_candidate_never_travels_through_the_row(
+        self, page, live_server, staff_user, queued_scan
+    ):
+        """Every candidate on this page already lives on the scan
+        being rendered, so "See full record" names its pick by index
+        rather than carrying a copy of the record with it."""
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+        page.click(f"#scan-{queued_scan.pk}-row-0")
+
+        assert "candidate_data" not in page.content()
+
 
 @pytest.mark.django_db(transaction=True)
 class TestZeroCandidateScan:

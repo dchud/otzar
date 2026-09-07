@@ -172,14 +172,17 @@ def _notice(request, message, status=200):
 
 
 def _candidates_with_json(candidates, matches=None):
-    """Pair each candidate with the JSON payload its row posts back.
+    """Pair each candidate with the JSON payload its row falls back to.
 
-    The candidate travels to ``select_candidate`` verbatim rather than
-    being looked up again, so the row a user picked and the record that
-    gets built describe the same thing. The template renders the payload
-    into a textarea under autoescaping: the browser resolves the
-    character references when it reads the field back, so the JSON
-    arrives intact and a title carrying markup cannot close the tag.
+    ``isbn_lookup_view`` and the title-page cascade search both always
+    have a ScanResult behind the search by the time this renders --
+    created or reused before the candidates come back -- so
+    ``_candidates.html``'s "Use" button ordinarily posts just
+    ``(scan_id, candidate_index)`` and ``select_candidate`` reads the
+    candidate back off the scan rather than out of the form. The JSON
+    payload stays on the item only for the row to fall back to if a
+    request ever reaches this view with no scan_id; nothing in the
+    application generates that case today.
 
     *matches*, when given, runs parallel to *candidates* and carries
     each one's :class:`sources.score.Match`. It rides on the item rather
@@ -190,6 +193,18 @@ def _candidates_with_json(candidates, matches=None):
     for item, match in zip(items, matches or ()):
         item["match"] = match
     return items
+
+
+def _candidates_for_display(candidates):
+    """Pair each candidate with the dict the row partial reads.
+
+    For the review queue, where every candidate already lives on the
+    scan being rendered: the row's "Confirm" and "See full record"
+    actions both name their pick by ``(scan_id, candidate_index)``, so
+    nothing here needs to travel back through the browser and there is
+    no JSON payload to carry.
+    """
+    return [{"data": c} for c in candidates or []]
 
 
 def _scan_for_repeat_search(scan_id):
@@ -328,26 +343,51 @@ _PREFILL_FIELDS = [
 
 @login_required
 def select_candidate(request):
-    """Store a selected candidate's full data in session, redirect to manual entry."""
+    """Resolve the candidate a "Use" or "See full record" button
+    picked, store it in session, and redirect to confirm_candidate.
+
+    The common case posts only ``(scan_id, candidate_index)``: the
+    candidate is read back off the ScanResult's own
+    ``candidate_records`` rather than out of the form, so nothing the
+    parser extracted has to round-trip through the browser. A
+    ``candidate_data`` payload is still accepted and used when the scan
+    lookup finds nothing -- not every candidate comes from a scan.
+    """
     if request.method != "POST":
         return redirect("ingest")
-    candidate_json = request.POST.get("candidate_data", "")
-    if candidate_json:
-        try:
-            candidate = json.loads(candidate_json)
-            request.session["candidate"] = candidate
-        except (json.JSONDecodeError, TypeError):
-            logger.exception("Failed to parse candidate JSON")
-    else:
-        logger.warning("select_candidate called with empty candidate_data")
+
+    scan_id = _parse_int(request.POST.get("scan_id"))
+    candidate_index = _parse_int(request.POST.get("candidate_index"))
+
+    candidate = None
+    if scan_id is not None and candidate_index is not None:
+        scan = ScanResult.objects.filter(pk=scan_id).first()
+        if scan is not None:
+            candidates = scan.candidate_records or []
+            if 0 <= candidate_index < len(candidates):
+                candidate = candidates[candidate_index]
+
+    if candidate is None:
+        candidate_json = request.POST.get("candidate_data", "")
+        if candidate_json:
+            try:
+                candidate = json.loads(candidate_json)
+            except (json.JSONDecodeError, TypeError):
+                logger.exception("Failed to parse candidate JSON")
+        else:
+            logger.warning(
+                "select_candidate found no candidate for scan_id=%r "
+                "candidate_index=%r and no candidate_data fallback",
+                scan_id,
+                candidate_index,
+            )
+
+    if candidate is not None:
+        request.session["candidate"] = candidate
 
     # The scan this candidate came from, so confirming can close it.
-    request.session["candidate_scan_id"] = _parse_int(
-        request.POST.get("scan_id")
-    )
-    request.session["candidate_index"] = _parse_int(
-        request.POST.get("candidate_index")
-    )
+    request.session["candidate_scan_id"] = scan_id
+    request.session["candidate_index"] = candidate_index
     return redirect("confirm_candidate")
 
 
@@ -1060,13 +1100,16 @@ def review_queue(request):
     several people scan while one reviews, and that only works if the
     reviewer isn't limited to what they scanned themselves.
 
-    Each scan carries its candidates paired with their JSON payloads,
-    the shape the candidate table partial reads, so the queue renders
-    the same rows as the search results it came from.
+    Each scan carries its candidates paired for display, the shape the
+    candidate table partial reads, so the queue renders the same rows
+    as the search results it came from. Every candidate here already
+    lives on the scan being rendered, so unlike the search results
+    page, no candidate needs a JSON payload of its own -- "Confirm"
+    and "See full record" both name their pick by index.
     """
     scans = list(ScanResult.objects.filter(status="pending"))
     for scan in scans:
-        scan.candidates = _candidates_with_json(scan.candidate_records)
+        scan.candidates = _candidates_for_display(scan.candidate_records)
 
     return render(request, "ingest/review_queue.html", {"scans": scans})
 

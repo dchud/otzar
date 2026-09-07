@@ -157,7 +157,6 @@
 
                 <form method="post" action="{% url 'select_candidate' %}">
                   {% csrf_token %}
-                  <textarea name="candidate_data" class="hidden">{{ item.json }}</textarea>
                   <input type="hidden" name="scan_id" value="{{ scan.pk }}">
                   <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
                   <button type="submit"

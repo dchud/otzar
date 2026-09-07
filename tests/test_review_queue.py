@@ -1,5 +1,3 @@
-import html as html_module
-import re
 from typing import ClassVar
 from unittest.mock import patch
 
@@ -431,25 +429,23 @@ class TestExpandedRow:
         assert "See full record" in html
         assert f'name="scan_id" value="{rich_scan.pk}"' in html
 
-    def test_see_full_record_json_survives_the_round_trip(
+    def test_see_full_record_carries_no_candidate_payload(
         self, client_logged_in, rich_scan
     ):
-        """The candidate JSON has to parse after the browser reads it back."""
+        """The queue row names its pick by index; the candidate itself
+        -- MARC and all -- never travels through the row's markup."""
         html = _queue_html(client_logged_in)
-        match = re.search(
-            r'<textarea name="candidate_data"[^>]*>(.*?)</textarea>',
-            html,
-            re.DOTALL,
-        )
-        assert match, "no candidate payload in the row"
+        assert 'name="candidate_data"' not in html
 
+    def test_see_full_record_reaches_confirm_via_the_scan(
+        self, client_logged_in, rich_scan
+    ):
+        """select_candidate reads the candidate back off the scan by
+        index, so the same fields reach the confirm page with nothing
+        but (scan_id, candidate_index) in the request."""
         response = client_logged_in.post(
             "/ingest/select-candidate/",
-            {
-                "candidate_data": html_module.unescape(match.group(1)),
-                "scan_id": str(rich_scan.pk),
-                "candidate_index": "0",
-            },
+            {"scan_id": str(rich_scan.pk), "candidate_index": "0"},
         )
         assert response.status_code == 302
         assert response.url == "/ingest/confirm/"

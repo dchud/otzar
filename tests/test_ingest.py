@@ -487,6 +487,110 @@ class TestScanClosedOnConfirm:
 
 
 @pytest.mark.django_db
+class TestCandidatePayloadStaysOnTheServer:
+    """The candidate a search finds must not round-trip through the
+    browser to be selected.
+
+    isbn_lookup_view and the title-page cascade search both always
+    have a ScanResult behind the search by the time candidates render,
+    so the "Use" button only needs to name a row by (scan_id,
+    candidate_index); select_candidate reads the candidate back off
+    the scan. Adding source_marc to a parsed record made the old
+    embedded-JSON form roughly ninefold heavier, so this is what keeps
+    a page of results from growing with every field the parser learns
+    to extract.
+    """
+
+    CANDIDATE: ClassVar[dict[str, Any]] = {
+        "title": "Biblia Hebraica Stuttgartensia",
+        "author": "Elliger, Karl",
+        "date": "1994",
+        "source_catalog": "NLI",
+        "source_marc": {"leader": "00000nam a2200000 a 4500"},
+        "subjects": ["Bible. Old Testament -- Criticism"],
+    }
+
+    @patch("ingest.views.isbn_lookup")
+    def test_isbn_lookup_result_carries_no_candidate_payload(
+        self, mock_lookup, client_logged_in
+    ):
+        mock_lookup.return_value = {
+            "nli_records": [self.CANDIDATE],
+            "lc_records": [],
+        }
+        response = client_logged_in.post(
+            "/ingest/isbn-lookup/", {"isbn": "9783438052285"}
+        )
+
+        html = response.content.decode()
+        assert 'name="candidate_data"' not in html
+        assert "00000nam a2200000 a 4500" not in html
+        assert 'name="scan_id"' in html
+        assert 'name="candidate_index" value="0"' in html
+
+    @patch("ingest.views.search_lc")
+    @patch("ingest.views.search_nli")
+    def test_title_page_search_result_carries_no_candidate_payload(
+        self, mock_nli, mock_lc, client_logged_in, user
+    ):
+        from ingest.models import ScanResult
+        from sources.cascade import CascadeResult
+
+        scan = ScanResult.objects.create(
+            scan_type="ocr",
+            status="pending",
+            ocr_output={"title": "Biblia Hebraica Stuttgartensia"},
+            scanned_by=user,
+        )
+        mock_nli.return_value = CascadeResult(records=[self.CANDIDATE])
+        mock_lc.return_value = CascadeResult(records=[])
+
+        response = client_logged_in.post(
+            "/ingest/upload-title/",
+            {
+                "action": "search",
+                "scan_id": str(scan.pk),
+                "title": "Biblia Hebraica Stuttgartensia",
+            },
+        )
+
+        html = response.content.decode()
+        assert 'name="candidate_data"' not in html
+        assert "00000nam a2200000 a 4500" not in html
+        assert f'name="scan_id" value="{scan.pk}"' in html
+
+    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.isbn_lookup")
+    def test_confirming_by_index_alone_still_carries_every_field(
+        self, mock_lookup, _cover, client_logged_in
+    ):
+        """Nothing the parser found is lost by not shipping it -- it
+        was already on the server, on the scan."""
+        from ingest.models import ScanResult
+
+        mock_lookup.return_value = {
+            "nli_records": [self.CANDIDATE],
+            "lc_records": [],
+        }
+        client_logged_in.post(
+            "/ingest/isbn-lookup/", {"isbn": "9783438052285"}
+        )
+        scan = ScanResult.objects.get()
+
+        client_logged_in.post(
+            "/ingest/select-candidate/",
+            {"scan_id": str(scan.pk), "candidate_index": "0"},
+        )
+        client_logged_in.post("/ingest/confirm/")
+
+        record = Record.objects.get(title="Biblia Hebraica Stuttgartensia")
+        assert record.source_marc == {"leader": "00000nam a2200000 a 4500"}
+        assert record.subjects.filter(
+            heading="Bible. Old Testament -- Criticism"
+        ).exists()
+
+
+@pytest.mark.django_db
 class TestTitlePageImagePromotion:
     """Confirming an OCR scan must carry its photo onto the record.
 

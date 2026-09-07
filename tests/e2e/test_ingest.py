@@ -104,6 +104,35 @@ class TestISBNIngestFlow:
         expect(page.locator('input[name="isbn"]')).to_be_visible()
 
     @patch("ingest.views.isbn_lookup")
+    def test_candidate_marc_never_reaches_the_page(
+        self, mock_lookup, page, live_server, staff_user
+    ):
+        """A search always has a ScanResult behind it by the time
+        candidates render, so the "Use" button names its pick by scan
+        and index -- the record the parser extracted, MARC included,
+        stays on the server rather than round-tripping through a
+        hidden form field."""
+        candidate = dict(MOCK_ISBN_RESULT["nli_records"][0])
+        candidate["source_marc"] = {"marker": "MARC-PAYLOAD-MARKER"}
+        mock_lookup.return_value = {
+            "nli_records": [candidate],
+            "lc_records": [],
+        }
+        ensure_fts_table()
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan/")
+        page.fill('input[name="isbn"]', "0875847625")
+        page.click('button:text("Look up")')
+        page.wait_for_selector(
+            "text=The social life of information", timeout=10000
+        )
+
+        content = page.content()
+        assert "MARC-PAYLOAD-MARKER" not in content
+        assert "candidate_data" not in content
+
+    @patch("ingest.views.isbn_lookup")
     def test_full_isbn_flow(self, mock_lookup, page, live_server, staff_user):
         """Test the complete ISBN → candidates → confirm → record flow."""
         mock_lookup.return_value = MOCK_ISBN_RESULT
