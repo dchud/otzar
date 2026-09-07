@@ -126,6 +126,20 @@
       </div>
       {% endif %}
 
+      {# Issued in a publisher's series: a publication fact, not a set #}
+      {% if publisher_series %}
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">Published in</h2>
+        <ul class="mt-1 space-y-1">
+          {% for s in publisher_series %}
+          <li dir="auto">
+            <a href="{% url 'series_manage' series_id=s.pk %}" class="text-blue-700 dark:text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ s.title|bidi_text }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
       {# Series membership #}
       {% if sibling_volumes %}
       <div>
@@ -133,7 +147,7 @@
         {% for sv_info in sibling_volumes %}
         <div class="mt-2">
           <p class="font-medium" dir="auto">
-            <a href="/browse/series/{{ sv_info.series.pk }}/" class="text-blue-700 dark:text-blue-400 hover:underline">{{ sv_info.series.title|bidi_text }}</a>
+            <a href="{% url 'series_manage' series_id=sv_info.series.pk %}" class="text-blue-700 dark:text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">{{ sv_info.series.title|bidi_text }}</a>
             <span class="text-gray-500 dark:text-gray-300">— vol. {{ sv_info.current_volume }}</span>
           </p>
           <div class="mt-1 flex flex-wrap gap-1">

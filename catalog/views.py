@@ -3,7 +3,7 @@ from django.db.models import Count, Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
-from catalog.models import Record, SeriesVolume
+from catalog.models import Record, Series, SeriesVolume
 from catalog.search import remove_from_index
 
 
@@ -55,10 +55,21 @@ def record_detail(request, record_id, slug=None):
         else Record.objects.none()
     )
 
-    # Related: other volumes in the same series
+    # The publisher's series this record was issued in. It is a fact
+    # about how the book was published rather than membership in a set,
+    # so it names the series and stops there: no position, no siblings
+    # laid out in order, and no gaps.
+    publisher_series = record.series.filter(kind=Series.KIND_IMPRINT)
+
+    # Related: other volumes in the same set. A position under a series
+    # since refiled as a publisher's line is skipped rather than shown:
+    # the row survives so the correction can be undone, but a sequence
+    # nobody completes has no siblings worth laying out.
     series_volumes = record.series_volumes.all()
     sibling_volumes = []
     for sv in series_volumes:
+        if not sv.series.is_work_set:
+            continue
         siblings = (
             SeriesVolume.objects.filter(series=sv.series)
             .select_related("record")
@@ -113,6 +124,7 @@ def record_detail(request, record_id, slug=None):
         "record": record,
         "other_by_author": other_by_author,
         "same_subject": same_subject,
+        "publisher_series": publisher_series,
         "sibling_volumes": sibling_volumes,
         "marc_fields": marc_fields,
     }

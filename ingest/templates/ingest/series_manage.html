@@ -20,6 +20,35 @@
 {% endif %}
 
 <section class="mb-8">
+  <h2 class="text-lg font-medium mb-2">Kind of series</h2>
+  <p class="text-sm text-gray-500 dark:text-gray-300 mb-4">
+    A multi-volume work has volumes to complete, so it can have gaps.
+    A publisher's series is a label on unrelated books, so it cannot.
+  </p>
+
+  <form method="post" class="space-y-3">
+    {% csrf_token %}
+    <fieldset class="space-y-2">
+      <legend class="sr-only">Kind of series</legend>
+      {% for value, label in kind_choices %}
+      <div class="flex items-center gap-2">
+        <input type="radio" name="kind" value="{{ value }}" id="id_kind_{{ value }}"
+               class="h-4 w-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+               {% if series.kind == value %}checked{% endif %}>
+        <label for="id_kind_{{ value }}" class="text-sm">{{ label }}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+
+    <button type="submit"
+            class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      Save kind
+    </button>
+  </form>
+</section>
+
+{% if series.is_work_set %}
+<section class="mb-8">
   <h2 class="text-lg font-medium mb-4">Existing volumes</h2>
 
   {% if volumes %}
@@ -34,7 +63,7 @@
     <tbody>
       {% for vol in volumes %}
       <tr class="border-b dark:border-gray-800">
-        <td class="py-2 pr-4">{{ vol.volume_number }}</td>
+        <td class="py-2 pr-4">{{ vol.volume_number|default:"unnumbered" }}</td>
         <td class="py-2 pr-4">
           {% if vol.held %}
           <span class="text-green-600 dark:text-green-400">Yes</span>
@@ -89,4 +118,27 @@
     </button>
   </form>
 </section>
+{% else %}
+<section>
+  <h2 class="text-lg font-medium mb-2">Records in this series</h2>
+  <p class="text-sm text-gray-500 dark:text-gray-300 mb-4">
+    A publisher's series keeps no volume numbering, so there is nothing here to complete.
+  </p>
+
+  {% if records %}
+  <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+    {% for record in records %}
+    <li class="py-2">
+      <a href="/catalog/{{ record.record_id }}/{{ record.slug }}/"
+         class="text-blue-600 dark:text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
+        {{ record.title }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-gray-500 dark:text-gray-300">No records in this series yet.</p>
+  {% endif %}
+</section>
+{% endif %}
 {% endblock %}

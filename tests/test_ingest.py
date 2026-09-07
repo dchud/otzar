@@ -988,11 +988,17 @@ class TestSeriesOnConfirm:
     only thing every volume of a set agrees on. The volume designation
     is normalized to Arabic digits, so "v. 1" and "חלק א" name the same
     position.
+
+    A series statement is only half a set. Whether the title names a
+    work somebody completes or a publisher's line decides whether the
+    record gets a position at all, so the candidates below come in both
+    shapes: one whose uniform title repeats its series statement, and
+    one that is a label on unrelated books.
     """
 
     @staticmethod
-    def candidate(title, series_title, series_volume):
-        return {
+    def candidate(title, series_title, series_volume, **overrides):
+        candidate = {
             "title": title,
             "author": "Rashi,",
             "date": "1999",
@@ -1000,6 +1006,22 @@ class TestSeriesOnConfirm:
             "series_title": series_title,
             "series_volume": series_volume,
         }
+        candidate.update(overrides)
+        return candidate
+
+    @classmethod
+    def work_volume(cls, title, part, series_volume, series_title=None):
+        """A candidate whose 130 names the work its series statement does."""
+        return cls.candidate(
+            title,
+            series_title or "Talmud Bavli.",
+            series_volume,
+            uniform_title={
+                "work": "Talmud Bavli",
+                "part_name": part,
+                "source": "130",
+            },
+        )
 
     @staticmethod
     def confirm(client, candidate):
@@ -1017,11 +1039,12 @@ class TestSeriesOnConfirm:
 
         record = self.confirm(
             client_logged_in,
-            self.candidate("Bereshit /", "ArtScroll series ;", "v. 1"),
+            self.work_volume("Pesahim /", "Pesahim", "v. 1"),
         )
 
         series = Series.objects.get()
-        assert series.title == "ArtScroll series"
+        assert series.title == "Talmud Bavli"
+        assert series.kind == Series.KIND_WORK
 
         volume = SeriesVolume.objects.get()
         assert volume.series == series
@@ -1043,11 +1066,13 @@ class TestSeriesOnConfirm:
 
         first = self.confirm(
             client_logged_in,
-            self.candidate("Bereshit /", "ArtScroll series ;", "v. 1"),
+            self.work_volume("Pesahim /", "Pesahim", "v. 1"),
         )
         second = self.confirm(
             client_logged_in,
-            self.candidate("Shemot /", "Artscroll Series.", "vol. II"),
+            self.work_volume(
+                "Sukkah /", "Sukkah", "vol. II", series_title="Talmud bavli ;"
+            ),
         )
 
         assert Series.objects.count() == 1
@@ -1068,12 +1093,14 @@ class TestSeriesOnConfirm:
         from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import create_series_volumes
 
-        series = Series.objects.create(title="ArtScroll series")
+        series = Series.objects.create(
+            title="Talmud Bavli", kind=Series.KIND_WORK
+        )
         create_series_volumes(series, "1-3")
 
         record = self.confirm(
             client_logged_in,
-            self.candidate("Vayikra /", "ArtScroll series ;", "v. 3"),
+            self.work_volume("Betsah /", "Betsah", "v. 3"),
         )
 
         assert SeriesVolume.objects.count() == 3
@@ -1104,6 +1131,66 @@ class TestSeriesOnConfirm:
         assert SeriesVolume.objects.count() == 0
 
     @patch("ingest.views.fetch_cover", return_value=None)
+    def test_a_publishers_series_gets_no_volume_positions(
+        self, _cover, client_logged_in
+    ):
+        """ArtScroll names no work, so the record joins it unnumbered."""
+        from catalog.models import Series, SeriesVolume
+
+        record = self.confirm(
+            client_logged_in,
+            self.candidate("Bereshit /", "ArtScroll series ;", ""),
+        )
+
+        series = Series.objects.get()
+        assert series.title == "ArtScroll series"
+        assert series.kind == Series.KIND_IMPRINT
+        assert list(record.series.all()) == [series]
+        assert SeriesVolume.objects.count() == 0
+
+    @patch("ingest.views.fetch_cover", return_value=None)
+    def test_two_books_under_one_imprint_are_not_volumes_of_each_other(
+        self, _cover, client_logged_in
+    ):
+        """Neither displaces the other, and neither is numbered."""
+        from catalog.models import Series, SeriesVolume
+
+        first = self.confirm(
+            client_logged_in,
+            self.candidate("Bereshit /", "ArtScroll series ;", ""),
+        )
+        second = self.confirm(
+            client_logged_in,
+            self.candidate("Shemot /", "Artscroll Series.", ""),
+        )
+
+        series = Series.objects.get()
+        assert set(series.records.all()) == {first, second}
+        assert SeriesVolume.objects.count() == 0
+
+    @patch("ingest.views.fetch_cover", return_value=None)
+    def test_a_persons_classification_survives_a_disagreeing_record(
+        self, _cover, client_logged_in
+    ):
+        """Copy cataloging is evidence about a set, not a vote on it."""
+        from catalog.models import Series, SeriesVolume
+
+        series = Series.objects.create(
+            title="Talmud Bavli",
+            kind=Series.KIND_IMPRINT,
+            kind_source=Series.SOURCE_ASSERTED,
+        )
+
+        self.confirm(
+            client_logged_in,
+            self.work_volume("Pesahim /", "Pesahim", "v. 1"),
+        )
+
+        series.refresh_from_db()
+        assert series.kind == Series.KIND_IMPRINT
+        assert SeriesVolume.objects.count() == 0
+
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_the_queue_confirm_places_the_record_too(
         self, _cover, client_logged_in, user
     ):
@@ -1113,9 +1200,7 @@ class TestSeriesOnConfirm:
         scan = ScanResult.objects.create(
             scan_type="isbn",
             status="pending",
-            candidate_records=[
-                self.candidate("Bamidbar /", "ArtScroll series ;", "v. 4")
-            ],
+            candidate_records=[self.work_volume("Sukkah /", "Sukkah", "v. 4")],
             scanned_by=user,
         )
 
@@ -1133,29 +1218,38 @@ class TestSeriesOnConfirm:
 
 @pytest.mark.django_db
 class TestLinkRecordToSeries:
-    """The helper both confirm paths run through."""
+    """The helper both confirm paths run through.
+
+    The kind argument is what the incoming record's evidence says. These
+    exercise the work-set path, where a record takes a position; the
+    publisher's-series path is covered where the classification is.
+    """
 
     @pytest.fixture
     def record(self, user):
         return Record.objects.create(title="Bereshit", created_by=user)
 
     def test_linking_twice_leaves_one_volume(self, record):
-        from catalog.models import SeriesVolume
+        from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import link_record_to_series
 
-        first = link_record_to_series(record, "ArtScroll series ;", "v. 1")
-        second = link_record_to_series(record, "ArtScroll series ;", "v. 1")
+        first = link_record_to_series(
+            record, "Talmud Bavli ;", "v. 1", Series.KIND_WORK
+        )
+        second = link_record_to_series(
+            record, "Talmud Bavli ;", "v. 1", Series.KIND_WORK
+        )
 
         assert first == second
         assert SeriesVolume.objects.count() == 1
 
     def test_a_record_offered_a_second_number_keeps_its_place(self, record):
         """One record holds one position in a series, not two."""
-        from catalog.models import SeriesVolume
+        from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import link_record_to_series
 
-        link_record_to_series(record, "ArtScroll series", "v. 1")
-        link_record_to_series(record, "ArtScroll series", "v. 2")
+        link_record_to_series(record, "Talmud Bavli", "v. 1", Series.KIND_WORK)
+        link_record_to_series(record, "Talmud Bavli", "v. 2", Series.KIND_WORK)
 
         assert SeriesVolume.objects.filter(record=record).count() == 1
 
@@ -1170,10 +1264,12 @@ class TestLinkRecordToSeries:
 
     def test_an_unnumbered_volume_still_joins_the_series(self, record):
         """A 490 with no $v is common; the link is still worth having."""
-        from catalog.models import SeriesVolume
+        from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import link_record_to_series
 
-        volume = link_record_to_series(record, "Sifriyat Dorot", "")
+        volume = link_record_to_series(
+            record, "Mishneh Torah", "", Series.KIND_WORK
+        )
 
         assert volume is not None
         assert volume.volume_number == ""
@@ -1184,28 +1280,41 @@ class TestLinkRecordToSeries:
     ):
         """(series, volume_number) is unique, so the empty slot holds one.
 
-        The second record keeps its own row in the catalog; it simply
-        gets no series position, which is the honest answer when the
-        source gave no number to tell the two apart by.
+        The second record keeps its membership in the set and simply
+        gets no position, which is the honest answer when the source
+        gave no number to tell the two apart by.
         """
-        from catalog.models import SeriesVolume
+        from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import link_record_to_series
 
         other = Record.objects.create(title="Shemot", created_by=user)
-        link_record_to_series(record, "Sifriyat Dorot", "")
+        link_record_to_series(record, "Mishneh Torah", "", Series.KIND_WORK)
 
-        assert link_record_to_series(other, "Sifriyat Dorot", "") is None
+        assert (
+            link_record_to_series(other, "Mishneh Torah", "", Series.KIND_WORK)
+            is None
+        )
         assert SeriesVolume.objects.count() == 1
         assert SeriesVolume.objects.get().record == record
+        assert list(other.series.values_list("title", flat=True)) == [
+            "Mishneh Torah"
+        ]
 
     def test_two_spellings_of_one_number_are_one_position(self, record, user):
         """Gematria and a Roman numeral for three are the same volume."""
-        from catalog.models import SeriesVolume
+        from catalog.models import Series, SeriesVolume
         from ingest.series_workflow import link_record_to_series
 
         other = Record.objects.create(title="Shemot", created_by=user)
-        link_record_to_series(record, "Mishneh Torah", "vol. III")
+        link_record_to_series(
+            record, "Mishneh Torah", "vol. III", Series.KIND_WORK
+        )
 
-        assert link_record_to_series(other, "Mishneh Torah", "חלק ג") is None
+        assert (
+            link_record_to_series(
+                other, "Mishneh Torah", "חלק ג", Series.KIND_WORK
+            )
+            is None
+        )
         assert SeriesVolume.objects.count() == 1
         assert SeriesVolume.objects.get().volume_number == "3"

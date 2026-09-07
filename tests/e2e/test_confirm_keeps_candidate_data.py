@@ -24,7 +24,9 @@ STATEMENT = (
 )
 
 # A candidate as the parser hands it over, the cataloger's transcribed
-# punctuation still on it.
+# punctuation still on it. Its series statement names the same work its
+# uniform title does, which is what says the series is a work in parts
+# rather than a label the publisher puts on unrelated books.
 VOLUME_TWO = {
     "title": "Rashi : the Torah, with Rashi's commentary /",
     "volume_part_number": "Volume 2,",
@@ -35,8 +37,13 @@ VOLUME_TWO = {
     "publisher": "Mesorah Publications",
     "place": "Brooklyn, N.Y.",
     "language": "eng",
-    "series_title": "ArtScroll series ;",
+    "series_title": "Perush Rashi ʻal ha-Torah ;",
     "series_volume": "v. 2",
+    "uniform_title": {
+        "work": "Perush Rashi ʻal ha-Torah",
+        "part_name": "Shemot",
+        "source": "130",
+    },
     "source_catalog": "LC",
 }
 
@@ -50,8 +57,13 @@ VOLUME_THREE = {
     "author": "Rashi,",
     "date": "1999",
     "language": "eng",
-    "series_title": "Artscroll Series.",
+    "series_title": "Perush Rashi ʻal ha-Torah.",
     "series_volume": "vol. III",
+    "uniform_title": {
+        "work": "Perush Rashi ʻal ha-Torah",
+        "part_name": "Vayikra",
+        "source": "130",
+    },
     "source_catalog": "NLI",
 }
 
@@ -129,7 +141,7 @@ class TestReviewPageConfirm:
 
         article = page.locator("article")
         expect(article).to_contain_text("Series")
-        expect(article).to_contain_text("ArtScroll series")
+        expect(article).to_contain_text("Perush Rashi ʻal ha-Torah")
         expect(article).to_contain_text("vol. 2")
 
 
@@ -160,7 +172,7 @@ class TestSecondVolumeJoinsTheSet:
         page.goto(record_url(live_server, second))
 
         article = page.locator("article")
-        expect(article).to_contain_text("ArtScroll series")
+        expect(article).to_contain_text("Perush Rashi ʻal ha-Torah")
         expect(article).to_contain_text("vol. 3")
 
         # The chip for the volume this record is not: it is a link

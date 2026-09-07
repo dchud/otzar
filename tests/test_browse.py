@@ -29,7 +29,9 @@ def sample_data(db):
     )
     location = Location.objects.create(label="Shelf A")
 
-    series = Series.objects.create(title="Test Series", total_volumes=5)
+    series = Series.objects.create(
+        title="Test Series", total_volumes=5, kind=Series.KIND_WORK
+    )
 
     records = []
     for i in range(30):
@@ -167,6 +169,23 @@ def test_series_browse_shows_held_gap(client, sample_data):
     content = response.content.decode()
     assert "3 held" in content
     assert "2 gaps" in content
+
+
+@pytest.mark.django_db
+def test_series_browse_counts_a_publishers_series_by_record(client, db):
+    """A publisher's line has no extent, so it reports members, not gaps."""
+    series = Series.objects.create(
+        title="ArtScroll series", kind=Series.KIND_IMPRINT
+    )
+    for title in ("Bereshit", "Shemot"):
+        Record.objects.create(title=title).series.add(series)
+
+    content = client.get("/browse/series/").content.decode()
+
+    assert "2 records" in content
+    assert "Publisher&#x27;s series" in content
+    assert "vols" not in content
+    assert "gaps" not in content
 
 
 # --- Place of publication browse ---

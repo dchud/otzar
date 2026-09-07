@@ -116,6 +116,14 @@ class Record(models.Model):
     locations = models.ManyToManyField(
         "Location", blank=True, related_name="records"
     )
+    # Which series this record belongs to, whatever kind they are. A
+    # record's other groupings are all plain many-to-many, and series
+    # membership is the same fact: this book is one of those. Where it
+    # sits within one, when the series is a work-set with positions, is
+    # SeriesVolume.
+    series = models.ManyToManyField(
+        "Series", blank=True, related_name="records"
+    )
 
     class Meta:
         ordering: ClassVar[list[str]] = ["-created_at"]
@@ -191,9 +199,69 @@ class Publisher(models.Model):
 
 
 class Series(models.Model):
+    """A series title, and otzar's opinion of what kind of thing it is.
+
+    A 490 or 830 series statement carries two different things under one
+    field. Some name a work issued in parts -- Talmud Bavli, Miqraot
+    Gedolot -- which somebody sets out to complete and can be missing a
+    volume of. Others name a publisher's line -- ArtScroll, Studia
+    Judaica -- whose books share nothing but their publisher, where
+    volume 3 is not something anyone holds or lacks.
+
+    ``kind`` is which of the two this row is. Only a work-set has
+    positions and gaps; a publisher's series has members and nothing
+    else, because a gap placeholder asserts that a volume exists and is
+    not held, and that is false of a line no one completes.
+
+    A numbered monographic series -- ``Schriften des Institutum Judaicum
+    in Berlin ; Nr. 38`` -- is a publisher's series whose books are
+    counted. It is not a third kind here: the number says the publisher
+    keeps a running count, not that the books are one work, and nothing
+    downstream would branch on it. Whether a number is present is a
+    fact about a record, and naming a kind for it would put in a
+    category what the data already says.
+    """
+
+    KIND_WORK = "work"
+    KIND_IMPRINT = "imprint"
+    KIND_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        (KIND_WORK, "Multi-volume work"),
+        (KIND_IMPRINT, "Publisher's series"),
+    ]
+
+    # Where the kind came from. An imported kind was inferred from a
+    # record; an asserted one is what a person said, and no incoming
+    # record may overwrite it. The vocabulary is the one the rest of
+    # the set work uses for the same distinction.
+    SOURCE_IMPORTED = "imported"
+    SOURCE_ASSERTED = "asserted"
+    KIND_SOURCE_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        (SOURCE_IMPORTED, "Read from a record"),
+        (SOURCE_ASSERTED, "Set by hand"),
+    ]
+
     title = models.CharField(max_length=500)
     title_romanized = models.CharField(max_length=500, blank=True)
     total_volumes = models.IntegerField(null=True, blank=True)
+    kind = models.CharField(
+        max_length=10,
+        choices=KIND_CHOICES,
+        default=KIND_IMPRINT,
+        help_text=(
+            "Whether this is a work issued in parts, which can be "
+            "completed and can have gaps, or a publisher's line, which "
+            "cannot."
+        ),
+    )
+    kind_source = models.CharField(
+        max_length=10,
+        choices=KIND_SOURCE_CHOICES,
+        default=SOURCE_IMPORTED,
+        help_text=(
+            "Set by hand once a person has decided the kind. Incoming "
+            "records stop changing it from then on."
+        ),
+    )
     publisher = models.ForeignKey(
         Publisher,
         on_delete=models.SET_NULL,
@@ -209,8 +277,21 @@ class Series(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def is_work_set(self) -> bool:
+        """Whether this series has volumes somebody can complete."""
+        return self.kind == self.KIND_WORK
+
 
 class SeriesVolume(models.Model):
+    """One position in a work-set, held or waiting to be.
+
+    Membership in a series is ``Record.series``; this says where in the
+    set a record sits, which only a work-set has. A row with no record
+    is a gap: a volume the set is known to contain and the collection
+    does not hold.
+    """
+
     series = models.ForeignKey(
         Series, on_delete=models.CASCADE, related_name="volumes"
     )
@@ -232,6 +313,8 @@ class SeriesVolume(models.Model):
 
     def __str__(self):
         status = "" if self.held else " (not held)"
+        if not self.volume_number:
+            return f"{self.series.title} (unnumbered){status}"
         return f"{self.series.title} vol. {self.volume_number}{status}"
 
 

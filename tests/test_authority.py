@@ -151,8 +151,19 @@ class TestFindMatchingSeries:
 
 @pytest.mark.django_db
 class TestCreateSeriesVolumes:
+    """Volume positions and the gaps between them.
+
+    Only a work-set gets them. A gap placeholder says a volume exists
+    and the collection does not hold it, which is a claim about a set
+    with a determinate extent.
+    """
+
+    @staticmethod
+    def work_set(title="Test Series"):
+        return Series.objects.create(title=title, kind=Series.KIND_WORK)
+
     def test_range_spec(self):
-        series = Series.objects.create(title="Test Series")
+        series = self.work_set()
         created = create_series_volumes(series, "1-5")
         assert len(created) == 5
         assert SeriesVolume.objects.filter(series=series).count() == 5
@@ -160,19 +171,19 @@ class TestCreateSeriesVolumes:
         assert vol_nums == ["1", "2", "3", "4", "5"]
 
     def test_all_n_spec(self):
-        series = Series.objects.create(title="Test Series")
+        series = self.work_set()
         created = create_series_volumes(series, "all 3")
         assert len(created) == 3
 
     def test_list_spec(self):
-        series = Series.objects.create(title="Test Series")
+        series = self.work_set()
         created = create_series_volumes(series, [1, 3, 7])
         assert len(created) == 3
         vol_nums = {sv.volume_number for sv in created}
         assert vol_nums == {"1", "3", "7"}
 
     def test_with_records_marks_held(self):
-        series = Series.objects.create(title="Test Series")
+        series = self.work_set()
         record = Record.objects.create(title="Vol 2 Book")
         created = create_series_volumes(series, "1-3", records={"2": record})
         assert len(created) == 3
@@ -184,12 +195,21 @@ class TestCreateSeriesVolumes:
         assert vol1.record is None
 
     def test_no_duplicate_volumes(self):
-        series = Series.objects.create(title="Test Series")
+        series = self.work_set()
         create_series_volumes(series, "1-3")
         created2 = create_series_volumes(series, "1-5")
         # Only 4 and 5 should be new
         assert len(created2) == 2
         assert SeriesVolume.objects.filter(series=series).count() == 5
+
+    def test_a_publishers_series_gets_no_volumes(self):
+        """Nobody is missing volume 3 of ArtScroll."""
+        series = Series.objects.create(
+            title="ArtScroll series", kind=Series.KIND_IMPRINT
+        )
+
+        assert create_series_volumes(series, "1-5") == []
+        assert SeriesVolume.objects.filter(series=series).count() == 0
 
 
 # The two headings the catalogs send for one person: the Library of
