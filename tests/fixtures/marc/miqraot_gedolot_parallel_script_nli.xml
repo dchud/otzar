@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>04070nam a2200577 i 4500</leader>
+          <controlfield tag="001">997013119866205171</controlfield>
+          <controlfield tag="005">20260904235442.0</controlfield>
+          <controlfield tag="008">241113s1992    nyu           000 0 heb d</controlfield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">1880582015</subfield>
+            <subfield code="q">(volume 1)</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(OCoLC)25674893</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="040">
+            <subfield code="b">eng</subfield>
+            <subfield code="e">rda</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="041">
+            <subfield code="a">heb</subfield>
+            <subfield code="a">eng</subfield>
+            <subfield code="h">heb</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="4" tag="050">
+            <subfield code="a">BS1510.Z72</subfield>
+            <subfield code="b">C6</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="090">
+            <subfield code="a">2024 B 8664</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="130">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Five scrolls.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">1992.</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="4" tag="245">
+            <subfield code="a">The Five Megilloth :</subfield>
+            <subfield code="b">a new English translation /</subfield>
+            <subfield code="c">translation of text, Rashi, and other commentaries by Rabbi A. J. Rosenberg.</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="246">
+            <subfield code="a">חמש מגילות :</subfield>
+            <subfield code="b">תורגם מחדש לאנגלית /</subfield>
+            <subfield code="g">מתוגם ומבואר עם דבורי רש"י ולקט המפרשים על ידי הרב אברהם י. ראזענברג</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="246">
+            <subfield code="i">בראש השער:</subfield>
+            <subfield code="a">מקראות גדולות</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="246">
+            <subfield code="i">On cover of volume 1:</subfield>
+            <subfield code="a">Books of Esther, Song of Songs, Ruth :</subfield>
+            <subfield code="b">a new English translation of the text, Rashi and a commentary digest</subfield>
+          </datafield>
+          <datafield ind1="3" ind2="3" tag="246">
+            <subfield code="a">Five Megilot</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="1" tag="264">
+            <subfield code="a">New York :</subfield>
+            <subfield code="b">Judaica Press,</subfield>
+            <subfield code="c">1992.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">volumes ;</subfield>
+            <subfield code="c">22 cm.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="336">
+            <subfield code="a">text</subfield>
+            <subfield code="b">txt</subfield>
+            <subfield code="2">rdacontent</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="337">
+            <subfield code="a">unmediated</subfield>
+            <subfield code="b">n</subfield>
+            <subfield code="2">rdamedia</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="338">
+            <subfield code="a">volume</subfield>
+            <subfield code="b">nc</subfield>
+            <subfield code="2">rdacarrier</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="490">
+            <subfield code="a">Judaica books of the Hagiographa - the Holy Writings</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">Each Biblical book has a special title page and pages are numbered separately.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">Volume 1. Esther -- The Song of Songs - Ruth.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="546">
+            <subfield code="a">Hebrew and English.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="546">
+            <subfield code="a">עברית ואנגלית.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">Field 050 imported from HAI (partial key)</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Hagiographa</subfield>
+            <subfield code="v">Commentaries</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Esther.</subfield>
+            <subfield code="l">English</subfield>
+            <subfield code="x">Versions</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Song of Songs.</subfield>
+            <subfield code="l">English</subfield>
+            <subfield code="x">Versions</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Ruth.</subfield>
+            <subfield code="l">English</subfield>
+            <subfield code="x">Versions</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="700">
+            <subfield code="a">Rosenberg, Avroham Yoseif</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="e">translator</subfield>
+            <subfield code="e">writer of supplementary textual content</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">תנ"ך.</subfield>
+            <subfield code="p">אסתר.</subfield>
+            <subfield code="f">תשנ"ב.</subfield>
+            <subfield code="g">ניו יורק</subfield>
+            <subfield code="9">heb</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">תנ"ך.</subfield>
+            <subfield code="p">שיר השירים.</subfield>
+            <subfield code="f">תשנ"ב.</subfield>
+            <subfield code="g">ניו יורק</subfield>
+            <subfield code="9">heb</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">תנ"ך.</subfield>
+            <subfield code="p">רות.</subfield>
+            <subfield code="f">תשנ"ב.</subfield>
+            <subfield code="g">ניו יורק</subfield>
+            <subfield code="9">heb</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Esther.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">1992.</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Song of Songs.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">1992.</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Ruth.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">1992.</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="751">
+            <subfield code="a">New York (N.Y.)</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="e">place of publication</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="0" tag="830">
+            <subfield code="a">Judaica books of the Hagiographa--the Holy Writings</subfield>
+            <subfield code="9">lat</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="903">
+            <subfield code="a">Library premises only;</subfield>
+            <subfield code="b">000000008</subfield>
+            <subfield code="c">Copyright status not determined</subfield>
+            <subfield code="d">No copyright analysis</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">GEN</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">qaz202409</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">lre 202411</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="939">
+            <subfield code="a">no license subject to copyright</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="964">
+            <subfield code="b">חל</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="999">
+            <subfield code="a">BOOK</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">997013119866205171</subfield>
+            <subfield code="8">22550585370005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">2024 B 8664</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">1</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="v">from:1 until:1</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">1</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVD">
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">12552283820005171</subfield>
+            <subfield code="c">REPRESENTATION</subfield>
+            <subfield code="e">997013119866205171_FRONT</subfield>
+            <subfield code="g">71805261050005171</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVD">
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">12552283870005171</subfield>
+            <subfield code="c">REPRESENTATION</subfield>
+            <subfield code="e">997013119866205171_BACK</subfield>
+            <subfield code="g">71805261050005171</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordIdentifier>997013119866205171</zs:recordIdentifier>
+      <zs:recordPosition>5</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>

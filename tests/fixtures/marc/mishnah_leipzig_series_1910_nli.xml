@@ -1,0 +1,250 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>02720nam a2200541 a 4500</leader>
+          <controlfield tag="001">990010551220205171</controlfield>
+          <controlfield tag="005">20260803104655.0</controlfield>
+          <controlfield tag="008">050527s1910    gw            000 0 ger d</controlfield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(IsJJNL)001055122NNL01-Aleph</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(OCoLC)343114</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="040">
+            <subfield code="b">eng</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="041">
+            <subfield code="a">ger</subfield>
+            <subfield code="a">heb</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="0" tag="050">
+            <subfield code="a">BM506</subfield>
+            <subfield code="b">.S2 1920</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="090">
+            <subfield code="a">24 A 551</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="091">
+            <subfield code="a">24 V 551</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="095">
+            <subfield code="a">12419</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="130">
+            <subfield code="a">Mishnah.</subfield>
+            <subfield code="p">Sanhedrin.</subfield>
+            <subfield code="l">German.</subfield>
+            <subfield code="f">1910.</subfield>
+            <subfield code="g">Leipzig</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="0" tag="245">
+            <subfield code="a">Sanhedrin-Makkoth :</subfield>
+            <subfield code="b">die Misnatraktate ueber Strafrecht und Gerichtsverfahren /</subfield>
+            <subfield code="c">nach Handschriften und alten Drucken herausgegeben, uebersetzt und erlaeutert von Hermann L. Strack.</subfield>
+          </datafield>
+          <datafield ind1="3" ind2="3" tag="246">
+            <subfield code="a">Mishna. Sanhedrin (German). 1910. Leipzig</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="260">
+            <subfield code="a">Leipzig :</subfield>
+            <subfield code="b">J. C. Hinrichs,</subfield>
+            <subfield code="c">1910.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">56, 60 pages ;</subfield>
+            <subfield code="c">21 cm.</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="490">
+            <subfield code="a">Schriften des Institutum Judaicum in Berlin ;</subfield>
+            <subfield code="v">Nr. 38</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">כותר נוסף: סנהדרין, מכות.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">Hebrew text and German translation.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="504">
+            <subfield code="a">Includes bibliographical references and index.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="562">
+            <subfield code="a">Copy 7: to be retained permanently</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">Copy 6: Added title in Hebrew wanting</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">LCC imported from MRC01-009340798</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">Book suggested to Google; rejected</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Mishnah</subfield>
+            <subfield code="x">Versions</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="740">
+            <subfield code="a">Mishna. Makkot (German). 1910. Leipzig</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="740">
+            <subfield code="a">משניות. סנהדרין. תר"ע. ליפציג</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="740">
+            <subfield code="a">משניות. מכות. תר"ע. ליפציג</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="8" tag="773">
+            <subfield code="w">990010551080205171</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="700">
+            <subfield code="a">Strack, Hermann Leberecht,</subfield>
+            <subfield code="d">1848-1922</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="2" ind2=" " tag="710">
+            <subfield code="a">Institutum Judaicum in Berlin</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">Mishnah.</subfield>
+            <subfield code="p">Makkot.</subfield>
+            <subfield code="l">German.</subfield>
+            <subfield code="f">1910.</subfield>
+            <subfield code="g">Leipzig</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="0" tag="830">
+            <subfield code="a">Schriften des Institutum Judaicum in Berlin ;</subfield>
+            <subfield code="v">Nr. 38</subfield>
+            <subfield code="9">lat</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="903">
+            <subfield code="a">No restrictions;</subfield>
+            <subfield code="b">000000001</subfield>
+            <subfield code="c">Public domain</subfield>
+            <subfield code="d">Over 70 years from author death date</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">GEN</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">SCH</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="919">
+            <subfield code="h">LOAN COPY</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">Shg</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">OL</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="939">
+            <subfield code="a">public domain free use</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="945">
+            <subfield code="a">משניות. סנהדרין. תר"ע. ליפציג</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="953">
+            <subfield code="a">GSL-0022048</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="999">
+            <subfield code="a">BOOK</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990010551220205171</subfield>
+            <subfield code="8">22482764160005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">24 A 551</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">5</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">1</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990010551220205171</subfield>
+            <subfield code="8">22293816030005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">24 V 551</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">1</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">2</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990010551080205171</subfield>
+            <subfield code="8">22326055900005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">23 A 5217</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">6</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">3</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990010551080205171</subfield>
+            <subfield code="8">22293800490005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">23 V 5217</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">1</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">4</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990010551080205171</subfield>
+            <subfield code="8">22293800450005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">Scholem Collection</subfield>
+            <subfield code="d">12419</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">1</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="j">SCH</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">5</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordIdentifier>990010551220205171</zs:recordIdentifier>
+      <zs:recordPosition>25</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>

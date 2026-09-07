@@ -1,0 +1,299 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>04042cam a2200793 i 4500</leader>
+          <controlfield tag="001">23966962</controlfield>
+          <controlfield tag="005">20250607132059.6</controlfield>
+          <controlfield tag="008">241231m20189999nyu      b    001 0 heb d</controlfield>
+          <datafield tag="035" ind1=" " ind2=" ">
+            <subfield code="a">23966962</subfield>
+          </datafield>
+          <datafield tag="906" ind1=" " ind2=" ">
+            <subfield code="a">7</subfield>
+            <subfield code="b">cbc</subfield>
+            <subfield code="c">copycat</subfield>
+            <subfield code="d">2</subfield>
+            <subfield code="e">ncip</subfield>
+            <subfield code="f">20</subfield>
+            <subfield code="g">y-nonroman</subfield>
+          </datafield>
+          <datafield tag="925" ind1="0" ind2=" ">
+            <subfield code="a">acquire</subfield>
+            <subfield code="b">1 shelf copy</subfield>
+            <subfield code="x">policy default</subfield>
+          </datafield>
+          <datafield tag="955" ind1=" " ind2=" ">
+            <subfield code="b">cd26 2024-12-31 z-processor JACKPHY ;</subfield>
+            <subfield code="i">cd26 2024-12-31 added v. 1 (Genesis) Completed, labeled, to GenColl</subfield>
+          </datafield>
+          <datafield tag="955" ind1=" " ind2=" ">
+            <subfield code="a">LCAP batch update 2025-06-02-04:00: LCAPM-893</subfield>
+          </datafield>
+          <datafield tag="010" ind1=" " ind2=" ">
+            <subfield code="a">  2024422850</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">1422622169</subfield>
+            <subfield code="q">(v. 1)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9781422622162</subfield>
+            <subfield code="q">(v. 1)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">1422622592</subfield>
+            <subfield code="q">(v. 2)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9781422622599</subfield>
+            <subfield code="q">(v. 2)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">1422623114</subfield>
+            <subfield code="q">(v. 3)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9781422623114</subfield>
+            <subfield code="q">(v. 3)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">1422623122</subfield>
+            <subfield code="q">(v. 4)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9781422623121</subfield>
+            <subfield code="q">(v. 4)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">1422623130</subfield>
+            <subfield code="q">(v. 5)</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9781422623138</subfield>
+            <subfield code="q">(v. 5)</subfield>
+          </datafield>
+          <datafield tag="035" ind1=" " ind2=" ">
+            <subfield code="a">(OCoLC)1062351556</subfield>
+          </datafield>
+          <datafield tag="040" ind1=" " ind2=" ">
+            <subfield code="a">HLS</subfield>
+            <subfield code="b">eng</subfield>
+            <subfield code="e">rda</subfield>
+            <subfield code="c">HLS</subfield>
+            <subfield code="d">OCLCO</subfield>
+            <subfield code="d">HLS</subfield>
+            <subfield code="d">OCLCF</subfield>
+            <subfield code="d">YYP</subfield>
+            <subfield code="d">OCL</subfield>
+            <subfield code="d">STF</subfield>
+            <subfield code="d">HLS</subfield>
+            <subfield code="d">HUC</subfield>
+            <subfield code="d">YDX</subfield>
+            <subfield code="d">HLS</subfield>
+            <subfield code="d">LGG</subfield>
+            <subfield code="d">HUL</subfield>
+            <subfield code="d">OCLCQ</subfield>
+            <subfield code="d">OCLCO</subfield>
+            <subfield code="d">SAZ</subfield>
+            <subfield code="d">OCL</subfield>
+            <subfield code="d">OCLCO</subfield>
+            <subfield code="d">OCLCL</subfield>
+            <subfield code="d">DLC</subfield>
+          </datafield>
+          <datafield tag="041" ind1="1" ind2=" ">
+            <subfield code="a">eng</subfield>
+            <subfield code="a">heb</subfield>
+            <subfield code="h">heb</subfield>
+          </datafield>
+          <datafield tag="042" ind1=" " ind2=" ">
+            <subfield code="a">lccopycat</subfield>
+          </datafield>
+          <datafield tag="050" ind1="0" ind2="0">
+            <subfield code="a">BS1225.53</subfield>
+            <subfield code="b">.B534 2018</subfield>
+          </datafield>
+          <datafield tag="066" ind1=" " ind2=" ">
+            <subfield code="c">(2</subfield>
+          </datafield>
+          <datafield tag="245" ind1="0" ind2="0">
+            <subfield code="6">880-01</subfield>
+            <subfield code="a">Ḥamishah ḥumshe Torah  ʻim liḳuṭe Bavli vi-Yerushalmi =</subfield>
+            <subfield code="b">the Chumash with the teachings of the Talmud : from Talmud Bavli and Yerushalmi and the commandments based on Sefer Hachinuch /</subfield>
+            <subfield code="c">by Rabbi Avrohom Biderman, Rabbi Nechemya Klugman [and others] ; editorial director Rabbi Avrohom Biderman.</subfield>
+          </datafield>
+          <datafield tag="880" ind1="0" ind2="0">
+            <subfield code="6">245-01/(2/r‏</subfield>
+            <subfield code="a">‏חמשה חומשי תורה עם ליקוטי בבלי וירושלמי =‏</subfield>
+            <subfield code="b">‏the Chumash with the teachings of the Talmud : from Talmud Bavli and Yerushalmi and the commandments based on Sefer Hachinuch /‏</subfield>
+            <subfield code="c">‏by Rabbi Avrohom Biderman, Rabbi Nechemya Klugman [and others] ; editorial director Rabbi Avrohom Biderman.</subfield>
+          </datafield>
+          <datafield tag="246" ind1="3" ind2="1">
+            <subfield code="a">Chumash with the teachings of the Talmud</subfield>
+          </datafield>
+          <datafield tag="250" ind1=" " ind2=" ">
+            <subfield code="a">First edition.</subfield>
+          </datafield>
+          <datafield tag="264" ind1=" " ind2="1">
+            <subfield code="a">Brooklyn, N.Y. ;</subfield>
+            <subfield code="b">Mesorah Publications, Ltd.,</subfield>
+            <subfield code="c">2018-2020</subfield>
+          </datafield>
+          <datafield tag="264" ind1=" " ind2="2">
+            <subfield code="a">Brooklyn, N.Y. ;</subfield>
+            <subfield code="b">Mesorah Publications, Ltd.,</subfield>
+            <subfield code="c">[2018-2020]</subfield>
+          </datafield>
+          <datafield tag="264" ind1=" " ind2="4">
+            <subfield code="c">©2018-©2020</subfield>
+          </datafield>
+          <datafield tag="300" ind1=" " ind2=" ">
+            <subfield code="a">5 volumes ;</subfield>
+            <subfield code="c">25 cm</subfield>
+          </datafield>
+          <datafield tag="336" ind1=" " ind2=" ">
+            <subfield code="a">text</subfield>
+            <subfield code="b">txt</subfield>
+            <subfield code="2">rdacontent</subfield>
+          </datafield>
+          <datafield tag="337" ind1=" " ind2=" ">
+            <subfield code="a">unmediated</subfield>
+            <subfield code="b">n</subfield>
+            <subfield code="2">rdamedia</subfield>
+          </datafield>
+          <datafield tag="338" ind1=" " ind2=" ">
+            <subfield code="a">volume</subfield>
+            <subfield code="b">nc</subfield>
+            <subfield code="2">rdacarrier</subfield>
+          </datafield>
+          <datafield tag="490" ind1="1" ind2=" ">
+            <subfield code="a">ArtScroll series</subfield>
+          </datafield>
+          <datafield tag="500" ind1=" " ind2=" ">
+            <subfield code="a">"Milstein edition."</subfield>
+          </datafield>
+          <datafield tag="500" ind1=" " ind2=" ">
+            <subfield code="a">LC has v. 1.</subfield>
+          </datafield>
+          <datafield tag="504" ind1=" " ind2=" ">
+            <subfield code="a">Includes bibliographical references and indexes,</subfield>
+          </datafield>
+          <datafield tag="505" ind1="0" ind2="0">
+            <subfield code="g">Vol, 1.</subfield>
+            <subfield code="t">Bereishis / Genesis (Sefer Be-reshit, 2018) --</subfield>
+            <subfield code="g">vol 2.</subfield>
+            <subfield code="t">Shemos / Exodus (Sefer Shemot, 2018) --</subfield>
+            <subfield code="g">vol. 3</subfield>
+            <subfield code="t">Vayikra / Leviticus (Sefer Ṿa-yiḳra, 2020) --</subfield>
+            <subfield code="g">vol. 4.</subfield>
+            <subfield code="t">Bamidbar / Numbers (Sefer Ba-midbar, 2020)--</subfield>
+            <subfield code="g">vol. 5.</subfield>
+            <subfield code="t">Devarim / Deuteronomy (Sefer Devarim, 2019)</subfield>
+          </datafield>
+          <datafield tag="546" ind1=" " ind2=" ">
+            <subfield code="a">Vocalized Hebrew texts of Pentateuch, Targum Onkelos and Rashi's commentary, with English translation of Pentateuch and annotations.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="0">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch</subfield>
+            <subfield code="v">Commentaries.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="0">
+            <subfield code="a">Talmud.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="0">
+            <subfield code="a">Talmud Yerushalmi.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="0">
+            <subfield code="a">Sefer ha-ḥinukh.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="6">
+            <subfield code="a">Talmud.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="7">
+            <subfield code="a">Talmud Yerushalmi</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="7">
+            <subfield code="a">Talmud</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="7">
+            <subfield code="a">Sefer ha-ḥinukh</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="7">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="650" ind1=" " ind2="0">
+            <subfield code="a">Commandments, Six hundred and thirteen.</subfield>
+          </datafield>
+          <datafield tag="650" ind1=" " ind2="6">
+            <subfield code="a">Six cent treize commandements.</subfield>
+          </datafield>
+          <datafield tag="650" ind1=" " ind2="7">
+            <subfield code="a">Commandments, Six hundred and thirteen</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="655" ind1=" " ind2="7">
+            <subfield code="a">Commentaries</subfield>
+            <subfield code="2">fast</subfield>
+          </datafield>
+          <datafield tag="655" ind1=" " ind2="7">
+            <subfield code="a">Commentaries.</subfield>
+            <subfield code="2">lcgft</subfield>
+            <subfield code="0">https://id.loc.gov/authorities/genreForms/gf2025026014</subfield>
+          </datafield>
+          <datafield tag="700" ind1="1" ind2=" ">
+            <subfield code="a">Biderman, Avrohom,</subfield>
+            <subfield code="e">editor.</subfield>
+          </datafield>
+          <datafield tag="700" ind1="1" ind2=" ">
+            <subfield code="a">Klugman, Nechemya,</subfield>
+            <subfield code="e">editor.</subfield>
+          </datafield>
+          <datafield tag="710" ind1="2" ind2=" ">
+            <subfield code="a">Mesorah Heritage Foundation,</subfield>
+            <subfield code="e">issuing body.</subfield>
+          </datafield>
+          <datafield tag="730" ind1="0" ind2=" ">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">Hebrew.</subfield>
+            <subfield code="f">2018.</subfield>
+          </datafield>
+          <datafield tag="730" ind1="0" ind2=" ">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">2018.</subfield>
+          </datafield>
+          <datafield tag="752" ind1=" " ind2=" ">
+            <subfield code="a">United States</subfield>
+            <subfield code="b">New York</subfield>
+            <subfield code="d">New York.</subfield>
+          </datafield>
+          <datafield tag="880" ind1=" " ind2=" ">
+            <subfield code="6">758-00/(2/r‏</subfield>
+            <subfield code="i">‏has work:‏</subfield>
+            <subfield code="a">‏חמשה חומשי תורה עם ליקוטי בבלי וירושלמי (Text)‏</subfield>
+            <subfield code="1">‏https://id.oclc.org/worldcat/entity/E39PCGKRdPCD93VFXXm9wDPHbq‏</subfield>
+            <subfield code="4">‏https://id.oclc.org/worldcat/ontology/hasWork</subfield>
+          </datafield>
+          <datafield tag="830" ind1=" " ind2="0">
+            <subfield code="a">ArtScroll series.</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordPosition>1</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>

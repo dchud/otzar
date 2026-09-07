@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>02172nam a2200421 a 4500</leader>
+          <controlfield tag="001">990011951360205171</controlfield>
+          <controlfield tag="005">20260903192844.0</controlfield>
+          <controlfield tag="008">191104s1990    nyu           000 0 eng d</controlfield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(IsJJNL)001195136NNL01-Aleph</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(OCoLC)233924858</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="041">
+            <subfield code="a">eng</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="4" tag="050">
+            <subfield code="a">BM499.5</subfield>
+            <subfield code="b">.E5</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="090">
+            <subfield code="a">91 A 1337=2</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="130">
+            <subfield code="a">Talmud Bavli.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">1990?</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="4" tag="245">
+            <subfield code="a">The Babylonian Talmud :</subfield>
+            <subfield code="b">Hebrew English edition.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="260">
+            <subfield code="a">[New York] :</subfield>
+            <subfield code="b">דפוס א"י פריעדמאן ומ' קאהן,</subfield>
+            <subfield code="c">[1990?].</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">3 v. (v. 1-2, 20) ;</subfield>
+            <subfield code="c">27 cm.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">English and Hebrew on opposite pages.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">שער נוסף: ... תלמוד בבלי.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">Cover title.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">Added title: Hebrew-English edition of the Babylonian Talmud.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">Contents:</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">1. Tractate Brachot.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">2. Tractate Shabbath.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">20. Tractate Nidah.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">Field 050 imported from HAI (partial key)</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Talmud Bavli</subfield>
+            <subfield code="x">Versions</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="740">
+            <subfield code="a">Hebrew-English edition of the Babylonian Talmud</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="8" tag="773">
+            <subfield code="w">990011538570205171</subfield>
+            <subfield code="t">... תלמוד בבלי : מוגה = . HEBREW-ENGLISH EDITION OF THE BABYLONIAN TALMUD..</subfield>
+            <subfield code="4">ANA</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">Talmud Bavli.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="k">Selections.</subfield>
+            <subfield code="f">n.d.</subfield>
+            <subfield code="g">New York</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="903">
+            <subfield code="a">Library premises only;</subfield>
+            <subfield code="b">000000008</subfield>
+            <subfield code="c">Copyright status not determined</subfield>
+            <subfield code="d">No copyright analysis</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">GEN</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">Shg</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="930">
+            <subfield code="a">KS</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">OL</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="939">
+            <subfield code="a">no license subject to copyright</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="945">
+            <subfield code="a">תלמוד בבלי. תשנ"א. ניו-יורק: ... תלמוד בבלי</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="999">
+            <subfield code="a">BOOK</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990011538570205171</subfield>
+            <subfield code="8">22489025420005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">2= 91 A 1337</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">3</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="v">from:1 until:20</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">1</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordIdentifier>990011951360205171</zs:recordIdentifier>
+      <zs:recordPosition>2</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>

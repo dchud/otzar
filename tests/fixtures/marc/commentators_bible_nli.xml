@@ -1,0 +1,241 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>03407cam a22006734a 4500</leader>
+          <controlfield tag="001">990024989820205171</controlfield>
+          <controlfield tag="005">20260904173921.0</controlfield>
+          <controlfield tag="008">051104m20052018pau           000 0 eng c</controlfield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">9780827609426 (v. [1])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">0827608128 (v. [2])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="z">0827608979 (v. [3])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">9780827608979 (v. [3])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">9780827609211 (v. [4])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">9780827609396 (v. [5])</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(IsJJNL)002498982NNL01-Aleph</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(OCoLC)57349069</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="040">
+            <subfield code="b">eng</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="041">
+            <subfield code="a">eng</subfield>
+            <subfield code="a">heb</subfield>
+            <subfield code="h">heb</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="4" tag="050">
+            <subfield code="a">BS1223.C37 2005</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="090">
+            <subfield code="a">2006 B 2896=2</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="094">
+            <subfield code="a">ט 479.5</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="130">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="f">2005.</subfield>
+            <subfield code="g">Philadelphia</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="4" tag="245">
+            <subfield code="a">The commentators' Bible :</subfield>
+            <subfield code="b">the JPS miqra'ot gedolot /</subfield>
+            <subfield code="c">edited, translated, and annotated by Michael Carasik.</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="246">
+            <subfield code="i">בשער גם:</subfield>
+            <subfield code="a">מקראות גדולות.</subfield>
+          </datafield>
+          <datafield ind1="3" ind2="3" tag="246">
+            <subfield code="a">JPS miqra'ot gedolot</subfield>
+          </datafield>
+          <datafield ind1="3" ind2="3" tag="246">
+            <subfield code="a">Jewish Publication Society miqraot gedolot</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="246">
+            <subfield code="i">On cover of some volumes:</subfield>
+            <subfield code="a">Rubin JPS miqra'ot gedolot.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="260">
+            <subfield code="a">Philadelphia :</subfield>
+            <subfield code="b">Jewish Publication Society,</subfield>
+            <subfield code="c">2005 5765 - 2018 5778.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">5v. (v. [1-5]) ;</subfield>
+            <subfield code="c">32 cm.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">LCC imported from: HAI-001357750</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">"With the 1917 and 1985 English translations of the Jewish Publication Society Tanakh, the questions of Abarbanel, the commentaries of Rashi, Rashbam, Ibn Ezra, and Nahmanides, and selections from the Masorah and from the commentaries of Bekhor Shor, Kimhi, Hizkuni, Gersonides, Abarbanel, and Sforno."</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">"Hebrew text based on Biblia Hebraica Stuttgartensia."-- Verso t.p.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">[1]. Genesis = בראשית‎. 2018 5778.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">[2]. Exodus = שמות‎. 2005 5765.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">[3]. Leviticus = ויקרא‎. 2009 5770.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">[4]. Numbers = במדבר‎. 2011 5771.</subfield>
+          </datafield>
+          <datafield ind1="8" ind2=" " tag="505">
+            <subfield code="a">[5]. Deuteronomy = דברים‎. 2015 5775.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="546">
+            <subfield code="a">Bible text in Hebrew and English; commentaries in English only.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="590">
+            <subfield code="a">Subjects imported from: HAI-001357750</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="7" tag="630">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch</subfield>
+            <subfield code="v">Commentaries</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="2">nli</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="700">
+            <subfield code="a">Carasik, Michael</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="2" ind2=" " tag="710">
+            <subfield code="a">Jewish Publication Society</subfield>
+            <subfield code="9">lat</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1="0" ind2=" " tag="730">
+            <subfield code="a">תנ"ך.</subfield>
+            <subfield code="p">תורה.</subfield>
+            <subfield code="f">תשס"ה.</subfield>
+            <subfield code="g">פילדלפיה</subfield>
+            <subfield code="9">heb</subfield>
+            <subfield code="8">PreferredLanguageHeading</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="901">
+            <subfield code="a">Judaica</subfield>
+            <subfield code="b">A</subfield>
+            <subfield code="c">ns</subfield>
+            <subfield code="d">השלמת כרך ד'- ספר במדבר</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="903">
+            <subfield code="a">Library premises only;</subfield>
+            <subfield code="b">000000008</subfield>
+            <subfield code="c">Copyright status not determined</subfield>
+            <subfield code="d">No copyright analysis</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">GEN</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">JRR</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="906">
+            <subfield code="a">QRS</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">lre 200606</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="921">
+            <subfield code="a">csr 200607</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">lre 201001</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">lre 201305</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">lre 201508</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">lre 201810</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">csr 201001</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">csr 201002</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="933">
+            <subfield code="a">csr 201305</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="939">
+            <subfield code="a">no license subject to copyright</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="999">
+            <subfield code="a">BOOK</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990024989820205171</subfield>
+            <subfield code="8">22292925970005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">Judaica &amp; Islam</subfield>
+            <subfield code="d">ט 479.5</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">5</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="v">from:1 until:5</subfield>
+            <subfield code="j">JRR</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">1</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="AVA">
+            <subfield code="0">990024989820205171</subfield>
+            <subfield code="8">22490999870005171</subfield>
+            <subfield code="a">972NNL_INST</subfield>
+            <subfield code="b">NLI</subfield>
+            <subfield code="c">NLX Stacks</subfield>
+            <subfield code="d">2= 2006 B 2896</subfield>
+            <subfield code="e">available</subfield>
+            <subfield code="f">3</subfield>
+            <subfield code="g">0</subfield>
+            <subfield code="v">from:2 until:5</subfield>
+            <subfield code="j">NLX_STACKS</subfield>
+            <subfield code="k">8</subfield>
+            <subfield code="p">2</subfield>
+            <subfield code="q">NLI Library</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordIdentifier>990024989820205171</zs:recordIdentifier>
+      <zs:recordPosition>1</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>
