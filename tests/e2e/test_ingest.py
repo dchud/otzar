@@ -7,6 +7,7 @@ from playwright.sync_api import expect
 
 from catalog.models import Record
 from catalog.search import ensure_fts_table
+from ingest.models import ScanResult
 from sources.sru import SRUResult
 from tests.e2e.conftest import login
 from tests.test_marc import DNB_SRU_XML, LC_SUBJECTS_SRU_XML
@@ -70,12 +71,28 @@ MOCK_GERMAN_ISBN_RESULT = {
 
 @pytest.mark.django_db(transaction=True)
 class TestIngestLanding:
-    def test_ingest_shows_three_methods(self, page, live_server, staff_user):
+    def test_ingest_root_shows_the_review_queue(
+        self, page, live_server, staff_user
+    ):
+        """The landing page renders the queue itself rather than three
+        cards duplicating the mode bar above them."""
+        ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="0875847625",
+            candidate_records=[dict(MOCK_ISBN_RESULT["nli_records"][0])],
+            scanned_by=staff_user,
+        )
+
         login(page, live_server)
         page.goto(f"{live_server.url}/ingest/")
-        expect(page.locator("text=Scan barcode")).to_be_visible()
-        expect(page.locator("text=Photograph title page")).to_be_visible()
-        expect(page.locator("text=Enter manually")).to_be_visible()
+
+        expect(page.locator("h1")).to_contain_text("Review Queue")
+        expect(page.get_by_text("ISBN: 0875847625")).to_be_visible()
+
+    def test_ingest_root_empty_state(self, page, live_server, staff_user):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/")
+        expect(page.get_by_text("No pending scans")).to_be_visible()
 
 
 @pytest.mark.django_db(transaction=True)

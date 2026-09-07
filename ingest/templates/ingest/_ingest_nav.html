@@ -1,4 +1,6 @@
-{% comment %}The three ways into the catalog, on every ingest page.
+{% load ingest_extras %}
+{% comment %}The three ways into the catalog, plus the queue, on every
+   ingest page.
 
    Cataloguing is item-by-item and the right route changes with the
    book: a barcode if it has one, a title-page photo for older or
@@ -8,7 +10,9 @@
    breakpoint, which left a phone on a scan page with no way out of it.
 
    The current route is read from the resolver rather than passed in, so
-   no view needs to know this bar exists.{% endcomment %}
+   no view needs to know this bar exists. The pending count works the
+   same way, through a tag rather than context every view would have to
+   supply.{% endcomment %}
 {% with current=request.resolver_match.url_name %}
 <nav id="ingest-mode-nav" aria-label="Ingest method"
      class="mb-6 border-b border-gray-200 dark:border-gray-700">
@@ -24,6 +28,12 @@
     <li>
       <a class="inline-flex items-center min-h-[44px] px-4 py-2 text-sm border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded {% if current == 'manual_entry' %}border-blue-600 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600{% endif %}"
          href="{% url 'manual_entry' %}"{% if current == 'manual_entry' %} aria-current="page"{% endif %}>Enter manually</a>
+    </li>
+    <li>
+      <a class="inline-flex items-center min-h-[44px] px-4 py-2 text-sm border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded {% if current == 'review_queue' or current == 'ingest' %}border-blue-600 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600{% endif %}"
+         href="{% url 'review_queue' %}"{% if current == 'review_queue' or current == 'ingest' %} aria-current="page"{% endif %}>Queue
+        <span class="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] px-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">{% pending_scan_count %}</span>
+      </a>
     </li>
   </ul>
 </nav>

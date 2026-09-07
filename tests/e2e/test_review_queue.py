@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+from django.contrib.auth.models import User
 from playwright.sync_api import expect
 
 from catalog.models import Record
@@ -173,3 +174,27 @@ class TestZeroCandidateScan:
 
         empty_scan.refresh_from_db()
         assert len(empty_scan.candidate_records) == 1
+
+
+@pytest.mark.django_db(transaction=True)
+class TestQueueVisibilityAcrossUsers:
+    """Several people scan while one reviews; that only works if every
+    logged-in cataloger sees the whole queue, not just their own scans.
+    """
+
+    def test_a_different_cataloger_sees_and_can_discard_the_scan(
+        self, page, live_server, staff_user, queued_scan
+    ):
+        User.objects.create_user(username="cataloger2", password="testpass123")
+        login(page, live_server, username="cataloger2", password="testpass123")
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        row = page.locator(f"#scan-{queued_scan.pk}-row-0")
+        expect(row).to_be_visible()
+
+        page.get_by_role("button", name="Discard").click()
+        page.wait_for_url("**/ingest/queue/", timeout=10000)
+        expect(page.get_by_text("No pending scans")).to_be_visible()
+
+        queued_scan.refresh_from_db()
+        assert queued_scan.status == "discarded"

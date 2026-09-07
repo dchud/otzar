@@ -459,9 +459,13 @@ class TestScanClosedOnConfirm:
         assert scan.status == "discarded"
 
     @patch("ingest.views.fetch_cover_url", return_value=None)
-    def test_another_users_scan_is_not_touched(
+    def test_another_users_scan_is_confirmed_too(
         self, _cover, client_logged_in, django_user_model
     ):
+        """Confirming from the queue closes the scan even when the
+        confirming cataloger is not the one who made it -- otherwise it
+        stays pending forever and a second cataloger could confirm it
+        again."""
         from ingest.models import ScanResult
 
         other = django_user_model.objects.create_user(
@@ -476,8 +480,8 @@ class TestScanClosedOnConfirm:
         self._select_and_confirm(client_logged_in, scan.pk)
 
         scan.refresh_from_db()
-        assert scan.status == "pending"
-        assert scan.created_record is None
+        assert scan.status == "confirmed"
+        assert scan.created_record is not None
 
 
 @pytest.mark.django_db
