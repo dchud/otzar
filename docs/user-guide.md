@@ -140,9 +140,12 @@ found, you can photograph the title page or enter the record manually.
 #### Title page photograph
 
 Go to `/ingest/scan-title/`. Photograph the title page with your phone camera.
-The image is sent to Claude Vision, which extracts structured metadata: title,
-author, publisher, place, date, and romanized forms. This metadata drives a
-search against external catalogs to find matching records.
+The image is sent to the Anthropic API, which returns structured metadata:
+title, author, publisher, place, date, and romanized forms. That metadata
+drives a search against external catalogs to find matching records.
+
+The photograph leaves your machine to be read. Nothing else about the book
+is sent with it, and the ISBN and manual paths do not use it at all.
 
 Best for older materials without ISBNs. The image is resized client-side before
 upload for speed.

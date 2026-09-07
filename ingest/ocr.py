@@ -1,4 +1,4 @@
-"""OCR module: extract bibliographic metadata from title page images via Claude Vision."""
+"""OCR module: extract bibliographic metadata from title page images using the Anthropic Messages API with image input."""
 
 import base64
 import json
@@ -126,20 +126,20 @@ def extract_metadata_from_image(image_bytes):
             ],
         )
     except anthropic.APIError:
-        logger.exception("Claude Vision API error")
+        logger.exception("OCR API error")
         return None
     except Exception:
-        logger.exception("Unexpected error calling Claude Vision API")
+        logger.exception("Unexpected error calling the Anthropic API")
         return None
 
     # The schema binds the answer, not the turn: a reply the model never
     # finished, or declined to give, is outside it.
     if message.stop_reason == "max_tokens":
-        logger.error("Claude Vision reply was truncated at the token limit")
+        logger.error("OCR response was truncated at the token limit")
         return None
     if message.stop_reason == "refusal":
         logger.error(
-            "Claude Vision refused the image: %s", message.stop_details
+            "The OCR call refused the image: %s", message.stop_details
         )
         return None
 
@@ -149,7 +149,7 @@ def extract_metadata_from_image(image_bytes):
     ).strip()
     if not text:
         logger.error(
-            "No text block in Claude Vision response (stop_reason=%s)",
+            "No text block in OCR response (stop_reason=%s)",
             message.stop_reason,
         )
         return None
@@ -158,7 +158,7 @@ def extract_metadata_from_image(image_bytes):
         return json.loads(text)
     except json.JSONDecodeError:
         logger.exception(
-            "Claude Vision reply is not schema-constrained JSON: %.200s",
+            "OCR response is not schema-constrained JSON: %.200s",
             text,
         )
         return None

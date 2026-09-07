@@ -22,8 +22,8 @@ typing as possible. There are three ways in:
 - **Scan a barcode.** The ISBN is looked up simultaneously in the
   National Library of Israel, the Library of Congress and the Deutsche
   Nationalbibliothek over SRU. Candidate records are shown for review.
-- **Photograph the title page.** The image goes to Claude Vision, which
-  returns the title, author, publisher, place and date — handling Hebrew
+- **Photograph the title page.** The image is sent to the Anthropic API,
+  which returns the title, author, publisher, place and date — handling Hebrew
   typography, ALA-LC romanization and gematria dates. The extracted
   fields are editable, then used to search the same catalogs through a
   cascade of progressively broader queries.

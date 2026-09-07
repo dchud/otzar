@@ -18,7 +18,7 @@ template.
 | `CSRF_TRUSTED_ORIGINS` | No | (empty) | Comma-separated list of origins for CSRF validation. Set to the full site URL including scheme (e.g. `https://catalog.example.org`). |
 | `DATA_DIR` | No | Project root | Directory for the SQLite database, cache, and media files. In production, point it at storage that survives a restart or a rebuilt container. Locally, defaults to the project directory. |
 
-### Claude Vision OCR
+### Title page OCR through the Anthropic API
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
