@@ -18,6 +18,11 @@
         <span class="text-xs text-gray-500 dark:text-gray-300">
           {{ scan.created_at|timesince }} ago{% if scan.scanned_by %} &middot; scanned by {{ scan.scanned_by.username }}{% endif %}
         </span>
+        {% if scan.is_long_pending %}
+        <span class="inline-block text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+          Long pending
+        </span>
+        {% endif %}
       </div>
 
       <p class="mt-1 text-sm font-medium" dir="auto">
@@ -33,6 +38,7 @@
 
     <form method="post" action="{% url 'discard_scan' scan.pk %}" class="shrink-0">
       {% csrf_token %}
+      {% if show_old_only %}<input type="hidden" name="age" value="old">{% endif %}
       <button type="submit"
               class="text-sm px-3 py-1 min-h-[44px] border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500">
         Discard
@@ -149,6 +155,7 @@
                 <form method="post" action="{% url 'confirm_scan' scan.pk %}">
                   {% csrf_token %}
                   <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
+                  {% if show_old_only %}<input type="hidden" name="age" value="old">{% endif %}
                   <button type="submit"
                           class="text-sm px-4 py-1 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
                     Confirm

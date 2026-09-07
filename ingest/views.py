@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+from datetime import timedelta
 
 import qrcode
 from django.conf import settings
@@ -13,6 +14,7 @@ from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -1090,6 +1092,30 @@ def series_manage(request, series_id):
 # Review queue & QR handoff
 # ---------------------------------------------------------------------------
 
+# How long a pending scan can sit unconfirmed before the queue marks it
+# long-pending. A display threshold, not a deletion one: nothing about
+# the scan changes, it only becomes easier to find and act on
+# deliberately. Kept in the same range as cleanup_staging.py's own
+# --days default (30) for discarded scans, so a scan crossing into
+# "long pending" here is roughly the age that command would already be
+# willing to delete once somebody discards it -- the two numbers are
+# about the same kind of "nobody's coming back to this soon" judgment,
+# not independent guesses.
+LONG_PENDING_DAYS = 30
+
+
+def _is_long_pending(scan):
+    """True once a pending scan has sat unconfirmed long enough that
+    whoever took it has plainly moved on.
+
+    Read off ``created_at`` rather than ``updated_at``: a repeated
+    search (see ``_scan_for_repeat_search``) touches ``updated_at``
+    without anyone having looked at the scan since, and a scan that
+    keeps re-searching itself into looking fresh defeats the point.
+    """
+    cutoff = timezone.now() - timedelta(days=LONG_PENDING_DAYS)
+    return scan.created_at < cutoff
+
 
 @login_required
 def review_queue(request):
@@ -1106,12 +1132,51 @@ def review_queue(request):
     lives on the scan being rendered, so unlike the search results
     page, no candidate needs a JSON payload of its own -- "Confirm"
     and "See full record" both name their pick by index.
+
+    ``?age=old`` narrows the list to scans past ``LONG_PENDING_DAYS``,
+    so the queue can be worked down deliberately rather than only from
+    the top. Filtering only removes rows; it never reorders what is
+    left, which stays newest-first exactly as the unfiltered queue
+    does.
     """
+    show_old_only = request.GET.get("age") == "old"
+
     scans = list(ScanResult.objects.filter(status="pending"))
     for scan in scans:
         scan.candidates = _candidates_for_display(scan.candidate_records)
+        scan.is_long_pending = _is_long_pending(scan)
 
-    return render(request, "ingest/review_queue.html", {"scans": scans})
+    long_pending_count = sum(1 for scan in scans if scan.is_long_pending)
+    if show_old_only:
+        scans = [scan for scan in scans if scan.is_long_pending]
+
+    return render(
+        request,
+        "ingest/review_queue.html",
+        {
+            "scans": scans,
+            "show_old_only": show_old_only,
+            "long_pending_count": long_pending_count,
+        },
+    )
+
+
+def _queue_action_redirect(request):
+    """Return to wherever a confirm or discard on a queue row was
+    launched from.
+
+    The ISBN scan page carries its own inline confirm/discard, so an
+    action taken there returns to it rather than the queue. Otherwise
+    this returns to the queue, preserving an ``age=old`` filter so
+    working down the long-pending scans one at a time does not reset
+    to the full list after every row.
+    """
+    referer = request.META.get("HTTP_REFERER", "")
+    if "/ingest/scan/" in referer:
+        return redirect("isbn_scan")
+    if request.POST.get("age") == "old":
+        return redirect(f"{reverse('review_queue')}?age=old")
+    return redirect("review_queue")
 
 
 @login_required
@@ -1142,11 +1207,7 @@ def confirm_scan(request, scan_id):
     scan.created_record = record
     scan.save()
 
-    # Redirect back to where the user came from (scan page or review queue).
-    referer = request.META.get("HTTP_REFERER", "")
-    if "/ingest/scan/" in referer:
-        return redirect("isbn_scan")
-    return redirect("review_queue")
+    return _queue_action_redirect(request)
 
 
 @login_required
@@ -1158,11 +1219,7 @@ def discard_scan(request, scan_id):
     scan.status = "discarded"
     scan.save()
 
-    # Redirect back to where the user came from (scan page or review queue).
-    referer = request.META.get("HTTP_REFERER", "")
-    if "/ingest/scan/" in referer:
-        return redirect("isbn_scan")
-    return redirect("review_queue")
+    return _queue_action_redirect(request)
 
 
 _QR_TARGETS = ("isbn", "title")

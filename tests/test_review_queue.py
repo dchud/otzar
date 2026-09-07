@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import ClassVar
 from unittest.mock import patch
 
@@ -5,8 +6,10 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.signing import TimestampSigner
 from django.test import Client
+from django.utils import timezone
 
 from ingest.models import ScanResult
+from ingest.views import LONG_PENDING_DAYS, _is_long_pending
 
 
 @pytest.fixture
@@ -567,3 +570,150 @@ class TestRepeatIsbnSearch:
         assert theirs.candidate_records[0]["title"] == (
             "Found on the second pass"
         )
+
+
+def _backdated_scan(user, days, isbn="9780000000001"):
+    scan = ScanResult.objects.create(
+        scan_type="isbn",
+        isbn=isbn,
+        candidate_records=[],
+        scanned_by=user,
+    )
+    ScanResult.objects.filter(pk=scan.pk).update(
+        created_at=timezone.now() - timedelta(days=days)
+    )
+    scan.refresh_from_db()
+    return scan
+
+
+@pytest.mark.django_db
+class TestLongPendingClassification:
+    """A scan nobody finishes stays in the queue forever by design --
+    this is what tells "kept forever" apart from "kept and forgotten."
+    """
+
+    def test_a_scan_just_under_the_threshold_is_not_long_pending(self, user):
+        scan = _backdated_scan(user, LONG_PENDING_DAYS - 1)
+        assert _is_long_pending(scan) is False
+
+    def test_a_scan_just_over_the_threshold_is_long_pending(self, user):
+        scan = _backdated_scan(user, LONG_PENDING_DAYS + 1)
+        assert _is_long_pending(scan) is True
+
+    def test_a_brand_new_scan_is_not_long_pending(self, user):
+        scan = ScanResult.objects.create(
+            scan_type="isbn",
+            isbn="9780000000001",
+            candidate_records=[],
+            scanned_by=user,
+        )
+        assert _is_long_pending(scan) is False
+
+
+@pytest.mark.django_db
+class TestLongPendingBadge:
+    def test_a_recent_scan_shows_no_badge(self, client_logged_in, user):
+        _backdated_scan(user, 1)
+        assert "Long pending" not in _queue_html(client_logged_in)
+
+    def test_an_old_scan_shows_the_badge(self, client_logged_in, user):
+        _backdated_scan(user, LONG_PENDING_DAYS + 5)
+        assert "Long pending" in _queue_html(client_logged_in)
+
+
+@pytest.mark.django_db
+class TestLongPendingFilter:
+    """Not an expiry and not a default filter: the unfiltered queue
+    keeps showing every pending scan, old or not. ``?age=old`` only
+    exists to narrow it on request.
+    """
+
+    def test_no_filter_link_when_nothing_is_old(self, client_logged_in, user):
+        _backdated_scan(user, 1)
+        html = _queue_html(client_logged_in)
+        assert "age=old" not in html
+
+    def test_filter_link_names_the_count(self, client_logged_in, user):
+        _backdated_scan(user, LONG_PENDING_DAYS + 1, isbn="9780000000001")
+        _backdated_scan(user, LONG_PENDING_DAYS + 2, isbn="9780000000002")
+        _backdated_scan(user, 1, isbn="9780000000003")
+
+        response = client_logged_in.get("/ingest/queue/")
+        assert response.context["long_pending_count"] == 2
+        assert "Show 2 long-pending scans" in response.content.decode()
+
+    def test_unfiltered_queue_still_shows_the_old_scan(
+        self, client_logged_in, user
+    ):
+        """Old scans stay visible by default -- this is not an expiry
+        and filtering is opt-in, not the default view."""
+        old = _backdated_scan(user, LONG_PENDING_DAYS + 1)
+        html = _queue_html(client_logged_in)
+        assert old.isbn in html
+
+    def test_filtering_narrows_to_the_old_ones(self, client_logged_in, user):
+        recent = _backdated_scan(user, 1, isbn="9780000000001")
+        old = _backdated_scan(
+            user, LONG_PENDING_DAYS + 1, isbn="9780000000002"
+        )
+
+        response = client_logged_in.get("/ingest/queue/", {"age": "old"})
+        html = response.content.decode()
+        assert old.isbn in html
+        assert recent.isbn not in html
+
+    def test_filtering_does_not_reorder_the_survivors(
+        self, client_logged_in, user
+    ):
+        older = _backdated_scan(
+            user, LONG_PENDING_DAYS + 10, isbn="9780000000001"
+        )
+        newer = _backdated_scan(
+            user, LONG_PENDING_DAYS + 1, isbn="9780000000002"
+        )
+
+        unfiltered = client_logged_in.get("/ingest/queue/").content.decode()
+        filtered = client_logged_in.get(
+            "/ingest/queue/", {"age": "old"}
+        ).content.decode()
+
+        # Both stay newest-first: the more recently backdated scan
+        # (still older than the threshold) appears before the older one
+        # in both views.
+        assert unfiltered.index(newer.isbn) < unfiltered.index(older.isbn)
+        assert filtered.index(newer.isbn) < filtered.index(older.isbn)
+
+    def test_empty_filtered_view_says_so(self, client_logged_in, user):
+        _backdated_scan(user, 1)
+        response = client_logged_in.get("/ingest/queue/", {"age": "old"})
+        assert b"No long-pending scans" in response.content
+
+    def test_discarding_from_the_filtered_view_returns_to_it(
+        self, client_logged_in, user
+    ):
+        old = _backdated_scan(user, LONG_PENDING_DAYS + 1)
+
+        response = client_logged_in.post(
+            f"/ingest/discard/{old.pk}/", {"age": "old"}
+        )
+        assert response.status_code == 302
+        assert response.url == "/ingest/queue/?age=old"
+
+        old.refresh_from_db()
+        assert old.status == "discarded"
+
+    def test_discarding_from_the_filtered_view_removes_the_scan(
+        self, client_logged_in, user
+    ):
+        old = _backdated_scan(user, LONG_PENDING_DAYS + 1)
+        client_logged_in.post(f"/ingest/discard/{old.pk}/", {"age": "old"})
+
+        response = client_logged_in.get("/ingest/queue/", {"age": "old"})
+        assert old.isbn not in response.content.decode()
+
+    def test_discard_without_the_filter_returns_to_the_plain_queue(
+        self, client_logged_in, user
+    ):
+        old = _backdated_scan(user, LONG_PENDING_DAYS + 1)
+        response = client_logged_in.post(f"/ingest/discard/{old.pk}/")
+        assert response.url == "/ingest/queue/"
