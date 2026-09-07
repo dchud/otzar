@@ -247,9 +247,7 @@ not that a set exists.
 
 `773` runs from none at all at LC (0 of 1,164) and 6 records at Oxford
 to 35% at K10plus. `245$n`/`$p` runs from 1% at LC and NLI to 18% at
-K10plus — though for Oxford that figure is an artifact of the draw, and
-the [set survey](sets.md) finds it at 19% once multi-volume works are
-asked for by name. `440` is 10% at LC and
+K10plus, where it accompanies a coded dependent part. `440` is 10% at LC and
 0% everywhere else. It was made obsolete in 2008 and only LC's
 unconverted legacy records carry it here; the German catalogs never
 emitted it, since their MARC output postdates the change, so their zero
@@ -276,14 +274,17 @@ field the material uses.
 
 ## What this corpus cannot see
 
-**Pattern 6. A corpus drawn on non-title axes under-samples the volumes
-of sets, and every figure in this chapter is affected.**
+**Pattern 6. Prevalence measured over a whole catalog is a different
+quantity from prevalence within multi-volume works, and this chapter
+reports the first.**
 
 The draw axes — language, subject heading, publisher, year — say
 nothing about which fields a record carries, which is what makes the
 sample usable for the questions above. They also say nothing about
-whether a record describes a volume of a set, and volumes of sets are a
-small fraction of any catalog. Nothing in the draw sought them out.
+whether a record describes a volume of a set. The draw did reach them —
+273 records across DNB and K10plus code a dependent part — but few
+identifiable ones from the three catalogs that do not code the
+position, and none by design.
 
 The [set survey](sets.md) asked the same catalogs for 22 multi-volume
 works by name. Where the two disagree, they disagree in a measurable
@@ -291,20 +292,18 @@ direction:
 
 | | This corpus | Targeted at 22 sets |
 |---|---|---|
-| Oxford, `245 $n`/`$p` | 15 of 662 books (2%) | 40 of 215 records (19%) |
-| Oxford, `245 $n`/`$p` on one set | — | 31 of 37 records for *Die Mischna* (84%) |
-| K10plus, `leader/19=c` | 195 of 1,090 books (18%) | 314 of 501 records (63%) |
+| K10plus, leader/19 coded | 265 of 1,090 books (24%) | 235 of 295 records (79%) |
+| DNB, leader/19 coded | 101 of 739 books (14%) | 80 of 119 records (67%) |
 
-The 2% figure for Oxford is correct about Oxford's books in general and
-badly misleading as a statement about how Oxford handles a set. On a
-multi-volume work Oxford enumerates volumes routinely.
+Both are correct. The first is a base rate across a catalog's books,
+most of which are not part of a set; the second is conditional on a
+multi-volume work. A marker that is uncommon overall can be the normal
+mechanism within the material that matters.
 
-Two consequences. Prevalence figures in this chapter describe *these
+The consequence for reading this chapter: its figures describe *these
 catalogs' holdings as sampled*, not their treatment of any particular
-kind of material — the material-type table above is the same warning in
-a different form. And a marker that is rare overall can be the normal
-mechanism within the material that matters: 3% of a catalog is a large
-fraction of its multi-volume sets.
+kind of material. The material-type table above is the same warning in
+a different form.
 
 Where a claim in this chapter is about sets specifically, the set
 survey supersedes it.

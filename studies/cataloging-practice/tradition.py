@@ -1,8 +1,9 @@
 """Do the clusters recover a cataloging tradition rather than an
 institution?
 
-LC, Oxford and NLI share no software: a Z39.50 gateway and two separate
-Alma installations, in three countries. DNB and K10plus share PICA. If
+LC, Oxford and NLI do not share one system: a Z39.50 gateway and two
+separate Alma installations, in three countries. DNB and K10plus share
+PICA. If
 the structural clusters track the two-way split rather than the
 five-way one, the variation is a property of tradition rather than of
 each institution's local practice.

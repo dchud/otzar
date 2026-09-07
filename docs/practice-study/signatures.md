@@ -202,5 +202,6 @@ indistinguishable:
 
 They stay distinguishable. So on general record structure the unit of
 variation is the institution, and the [set survey](sets.md) finding
-that three of them behave identically is specific to the part-whole
-mechanism rather than a general convergence.
+that three of them never code leader/19 is specific to that one
+position rather than a general convergence — their set-level extent
+rates differ widely, at 63%, 59% and 24%.

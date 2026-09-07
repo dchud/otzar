@@ -1,180 +1,243 @@
 # How catalogs describe a set
 
-**Pattern 1. Two traditions handle the part-whole relationship
-differently. One creates a record per volume and declares it in the
-leader. The other describes the set as a whole and enumerates its parts
-in a note.**
+**Pattern 1. Two of the five catalogs create hierarchical descriptions —
+a record for the set and linked records for its volumes. The other three
+never do, and the difference is documented policy rather than
+idiosyncrasy.**
 
-This is the pattern the study was written to find, and the corpus could
-not show it. A sample drawn on language and year contains almost no
-volumes of sets. So this chapter asks the question directly: take works
-that are unambiguously multi-volume, ask every catalog for them by
-title, and look at what comes back.
+A multipart resource can be described at three levels. A
+**comprehensive description** covers the whole in one record. An
+**analytical description** covers a part in its own record, standing
+alone. A description covering both the whole and its parts, with the
+parts linked to the whole, is what AACR2 called **multilevel
+description** and RDA calls **hierarchical description**. MARC encodes
+the third in leader position 19, *multipart resource record level*: `a`
+for the set record, `b` for a part with an independent title, `c` for a
+part whose title depends on the set.
+
+The Library of Congress rule interpretation on multilevel description
+is a single sentence: *do not employ the technique of multilevel
+description in any case*.[^lcri136] The successor guidance under RDA
+continues not to create hierarchical descriptions.[^lcpcc] That is what
+this chapter finds in the records, and the prohibition is old enough to
+explain records catalogued long before RDA existed.
 
 ## The survey
 
-Twenty-two works, chosen as the multi-volume works a Torah-study
-collection is built from, asked of all five catalogs — in Hebrew at
-NLI, romanized elsewhere, since that is how each indexes.
+Twenty-two multi-volume works a Torah-study collection is built from,
+asked of all five catalogs — in Hebrew at NLI, romanized elsewhere,
+since that is how each indexes.
 
-A title query returns more than the work asked for, so every record is
-matched against the work before it is counted. The first pass reported
-43 NLI records and 6 DNB records for one encyclopedia; filtering showed
-22 and 0, the DNB hits being a different encyclopedia the title index
-matched. Counts below are records whose `245` names the work.
+Three filters, each of which moved the numbers:
 
-Several cells reached the fifty-record cap on a single SRU response, so
-those are records examined rather than exhaustive counts. Nothing in
-the pattern depends on the difference.
+- **Title.** A title query returns more than the work asked for, so each
+  record's `245` is matched against the work, anchored at the start. An
+  earlier pass counted 20 NLI records for *Sifre* of which none was the
+  midrash: the Hebrew ספרי also begins ספרי ילדים, children's books.
+- **Leader/07 `m`.** The responses carry archival subunits, journal
+  articles and analytic entries. An earlier pass reported 116 NLI
+  records linked with `773`, most of which were folios within a codex,
+  sections of anthologies, and — through a loose pattern — song tracks
+  on albums.
+- **Publisher records.** Counted separately. Oxford's 36 apparent
+  per-tractate records for *Die Mischna* are one vendor's e-book
+  series: every one carries `300 $a "1 online resource"` and a `776` to
+  the print edition. They are not Oxford's cataloging of a set.
+
+What remains is 1,018 records that a library created, describing an
+edition of the work asked for.
+
+Sixty-six of the 110 catalog-work cells returned the fifty-record cap,
+so those are records examined, not exhaustive counts. Query forms differ
+per catalog, so the totals are not comparable holdings figures.
 
 ## What each catalog does
 
-| Catalog | Works held | Records | `leader/19=c` | `773` | `245 $n`/`$p` | `300` volume count | `505` |
+| Catalog | Records | leader/19 coded | `773` | `245 $n`/`$p` | Set-level extent | `505` | Vendor records set aside |
 |---|---|---|---|---|---|---|---|
-| LC | 22 | 521 | **0** | 1 | 6 | 176 | 122 |
-| NLI | 22 | 444 | **0** | 116 | 5 | 90 | 123 |
-| Oxford | 20 | 215 | **0** | 9 | 40 | 64 | 79 |
-| DNB | 14 | 291 | 97 | 110 | 98 | 0 | 10 |
-| K10plus | 20 | 501 | 314 | 359 | 314 | 10 | 18 |
+| LC | 321 | **0%** | 0% | 5 | **63%** | 24% | 1 |
+| Oxford | 96 | **0%** | 7% | 2 | **59%** | 32% | 36 |
+| NLI | 187 | **0%** | 10% | 4 | 24% | 32% | 0 |
+| DNB | 119 | **67%** | 47% | 56 | 0% | 8% | 0 |
+| K10plus | 295 | **79%** | 74% | 219 | 0% | 3% | 11 |
 
-**Across LC, Oxford and NLI: `leader/19=c` appears on 0 of 1,180
-records.** Not rarely — never, across 22 works that all three hold. On
-the other side K10plus declares 314 of 501 and DNB 97 of 291. In 19 of
-the 22 works a PICA catalog declares per-volume records while none of
-the other three does.
+**Leader/19 is coded on 0 of 604 records at LC, Oxford and NLI** — not
+rarely, never, across 22 works all three hold. At DNB and K10plus it is
+coded on two records in three.
 
-![Four mechanisms by catalog](figures/fig6-set-mechanisms.svg)
+The mirror image is the extent statement. A set-level extent — `3 v.`,
+`9 Bände`, or the open-ended `v. <1-27, 29-53>` — appears on 63% of LC
+records and 59% of Oxford's, and on **one** record in 414 across the two
+PICA catalogs.
+
+Neither side is describing less. They are describing at different
+levels, and the level is what the leader records.
+
+![Markers by catalog](figures/fig6-set-mechanisms.svg)
+
+## The three leader/19 values are three different records
+
+Where a catalog codes leader/19, the value predicts the rest of the
+record almost without exception.
+
+| leader/19 | n | `773` | `245 $n`/`$p` | `490` | `830` |
+|---|---|---|---|---|---|
+| `c` part with dependent title | 273 | **100%** | **100%** | 13% | 9% |
+| `b` part with independent title | 57 | 0% | 0% | **100%** | 81% |
+| `a` set record | 36 | 0% | 0% | 19% | 6% |
+
+A part whose title does not stand alone is linked to its set and
+enumerated. A part with its own title is not linked at all — it is
+described as a book that belongs to a series. The set record is the
+thing pointed at.
+
+That is the rule the cataloging manuals give, visible in the records:
+separate records when a volume has a distinctive title, one record when
+the parts are numbered without titles of their own.
+
+![What each leader/19 value carries](figures/fig8-leader19-mechanisms.svg)
 
 ## Work by work
 
-Records naming the work, with declared dependent parts in bold.
+Library records naming the work. Bold is records coding leader/19; `s`
+marks records with a set-level extent.
 
 | Work | LC | Oxford | NLI | DNB | K10plus |
 |---|---|---|---|---|---|
-| Talmud Bavli | 46 | 20 | 12 | 32 (**11**) | 34 (**28**) |
-| Miqraot Gedolot | 41 | 13 | 20 | — | 16 (**14**) |
-| Shulhan Arukh | 48 | 19 | 6 | 31 (**2**) | 28 (**18**) |
-| Mishneh Torah | 41 | 15 | 8 | 10 (**6**) | 23 (**16**) |
-| Zohar | 46 | 27 | 25 | 32 | 31 (**21**) |
-| Mishnah Berurah | 36 | 3 | 21 | — | 18 (**13**) |
-| Talmud Yerushalmi | 32 | 3 | 17 | 20 (**3**) | 14 (**8**) |
-| Tosefta | 43 | 5 | 12 | 43 (**27**) | 28 (**3**) |
-| Sifre | 47 | 7 | 20 | 12 (**2**) | 1 |
-| Or ha-Hayim | 36 | 6 | 38 | 1 | — |
-| Yalkut Shimoni | 29 | 19 | 31 | 50 (**5**) | 49 (**6**) |
-| Ein Yaakov | 23 | 8 | 8 | 2 (**1**) | 36 (**23**) |
-| Arbaah Turim | 14 | 3 | 40 | — | 10 (**4**) |
-| Encyclopaedia Judaica | 10 | 8 | 16 | 47 (**38**) | 45 (**42**) |
-| Otsar ha-Geonim | 5 | 5 | 34 | — | 17 (**13**) |
-| Torah Shelemah | 5 | 4 | 19 | — | 48 (**47**) |
-| Die Mischna (Giessen) | 5 | 37 | 10 | — | 24 (**5**) |
-| Midrash Rabbah | 5 | — | 2 | 4 | — |
-| Pesiqta Rabbati | 4 | 6 | 36 | 6 (**2**) | 41 (**19**) |
-| Arukh ha-Shulhan | 2 | 5 | 33 | — | 5 (**4**) |
-| Schottenstein Talmud | 2 | — | 14 | 1 | 2 |
-| Entsiklopedyah talmudit | 1 | 2 | 22 | — | 31 (**30**) |
+| Entsiḳlopedyah talmudit | 2 (2s) | 2 (2s) | 12 (3s) | — | 30 (**30**) |
+| Encyclopaedia Judaica | 9 (4s) | 7 (4s) | 4 | 44 (**41**) | 42 (**42**) |
+| Torah Shelemah | 1 (1s) | — | 3 (1s) | — | 35 (**35**) |
+| Talmud Bavli | 36 (20s) | 5 (3s) | 8 (7s) | 11 (**11**) | 19 (**18**) |
+| Miqraot Gedolot | 28 (28s) | 12 (9s) | — | — | 14 (**14**) |
+| Shulhan Arukh | 33 (20s) | 7 (1s) | 2 | 3 (**2**) | 15 (**14**) |
+| Mishneh Torah | 22 (15s) | 10 (6s) | 2 (1s) | 3 (**2**) | 18 (**18**) |
+| Yalkut Shimoni | 18 (6s) | 12 (7s) | 21 (6s) | 49 (**24**) | 37 (**9**) |
+| Talmud Yerushalmi | 20 (13s) | 1 | 3 (3s) | — | 9 (**8**) |
+| Otsar ha-Geonim | 5 (1s) | 4 (1s) | 9 (2s) | — | 17 (**15**) |
+| Miḳraot / Mishnah Berurah | 17 (11s) | — | 18 (15s) | — | 3 (**2**) |
+| Zohar | 31 (29s) | 17 (14s) | 4 | 3 | 5 (**1**) |
+| Pesiqta Rabbati | 3 (3s) | 2 (2s) | 18 | — | 13 (**11**) |
+| Arbaah Turim | 13 (8s) | 1 (1s) | 40 | — | 7 (**7**) |
+| Arukh ha-Shulhan | 2 | 5 (4s) | 4 (3s) | — | 5 (**5**) |
+| Die Mischna (Giessen) | 4 (1s) | 3 (1s) | 7 (3s) | — | 24 (**6**) |
+| Sifre | 32 (17s) | 2 | — | 4 | 1 |
+| Ein Yaakov | 13 (11s) | 2 (1s) | — | — | — |
+| Tosefta | 15 (6s) | 1 | 2 | 1 | 1 |
+| Or ha-Hayim | 12 (4s) | 3 (1s) | 18 (2s) | — | — |
+| Schottenstein Talmud | 2 (1s) | — | 12 | 1 | — |
+| Midrash Rabbah | 3 (2s) | — | — | — | — |
 
-![Declared per-volume records by work](figures/fig7-declared-by-work.svg)
+![Declared records by work](figures/fig7-declared-by-work.svg)
 
-**Entsiḳlopedyah talmudit is the sharpest contrast.** The Library of
-Congress describes the whole encyclopedia with **one record**, extent
-`300 $a "v."`. K10plus describes it with **31**, thirty of them
-declared dependent parts carrying `773` and `245 $n`/`$p`. One
-bibliographic situation; a thirty-one-fold difference in how many
-records describe it.
+**Entsiḳlopedyah talmudit** is the clearest case. LC holds it as **two
+records**, both with open-ended set-level extents — `v. <1-27, 29-53>`
+for the Hebrew original and `v.` for the English translation — where
+K10plus holds **thirty**, every one coded as a dependent part. Fifty-odd
+volumes described once, against thirty volumes described thirty times.
 
-**Torah Shelemah** runs the same way: 48 records at K10plus, 47
-declared, against 5 at LC and 4 at Oxford. **Encyclopaedia Judaica** is
-declared 38 times at DNB and 42 at K10plus, against 10 at LC and 8 at
-Oxford.
+**Encyclopaedia Judaica** runs the same way and is held by all five: 41
+of 44 coded at DNB and 42 of 42 at K10plus, against 9 records at LC and
+7 at Oxford, most with a volume count.
 
-**The Schottenstein Talmud is the exception worth naming.** Held by
-four catalogs — 14 records at NLI, 2 at LC, 2 at K10plus, 1 at DNB —
-and declared by none of them. The modern English-language Talmud, the
-one a contemporary collection is most likely to contain, is the one no
-catalog in this survey treats as a declared multipart set.
+**The Schottenstein Talmud is the exception.** Held by four catalogs —
+12 records at NLI, 2 at LC, 1 at DNB — and coded by none. The modern
+English Talmud, the edition a contemporary collection is most likely to
+hold, is the one nobody describes hierarchically.
 
-## Why the convergence is better evidence on one side
+## The pattern is older than RDA
 
-The three catalogs that never declare share no software. LC answers
-through a Z39.50 gateway; Oxford and NLI run separate Alma
-installations, in different countries, under different cataloging
-agencies. Three independent systems producing the same treatment across
-1,180 records is evidence about a cataloging tradition rather than
-about one system's export.[^anglo]
+RDA was implemented in 2013 and fewer than a third of the corpus
+records declare it in `040 $e`, so a rule change cannot be what
+produced this. Coding rates by the imprint's own date, across the
+corpus rather than the survey:
 
-The two that do declare share PICA, and K10plus is a union catalog
-built on the same software family as DNB. Their agreement is weaker
-evidence for the same reason the first group's is strong: a shared data
-model can produce shared output without any shared decision.[^pica]
+| Imprint era | PICA books | coded | Anglo books | coded |
+|---|---|---|---|---|
+| before 1970 | 640 | 28% | 866 | **0** |
+| 1970–89 | 124 | 31% | 250 | **0** |
+| 1990–2004 | 371 | 13% | 428 | **0** |
+| 2005–12 | 194 | 13% | 278 | **0** |
+| 2013 onward | 498 | 14% | 786 | 1 |
 
-So the pattern is asymmetric. That the Anglo-American tradition does
-not use `leader/19` is well supported. That the German tradition does
-is supported by two catalogs that may amount to one observation.
+Not one of 866 pre-1970 Anglo-American books codes the position, and
+the PICA catalogs code throughout. The AACR2-era prohibition and its
+RDA-era successor bracket the whole span.
 
-## Four idioms, not two
+The usual caveat on this axis applies: `008` gives the date of the
+book, not of the record, so a 1930 imprint may have been catalogued in
+2015. What the table shows is stability across the material, which is
+weaker than stability across cataloging eras but points the same way.
 
-Within those traditions the survey shows four distinct mechanisms.
+## How good is this evidence
 
-**Declare and link.** K10plus and DNB: a record per volume,
-`leader/19=c`, `773` to the parent, `245 $n`/`$p` carrying the volume
-designation. K10plus applies it to 314 records here, DNB to 97.
+**Strong for the absence.** Zero across 604 records, 22 works and three
+institutions, and it agrees with published LC-PCC policy. Two of those
+three — Oxford and NLI — run the same Alma software, so they are not
+three independent systems; but LC answers through an unrelated Z39.50
+gateway, and records demonstrably move between these catalogs through
+shared cataloging.[^shared]
 
-**Describe the set as a whole.** LC most consistently: 176 of its 521
-records carry a volume count in `300 $a` and 122 carry a `505` contents
-note, with a single `773` in the entire set of records. The volumes are
-listed inside one record rather than given records of their own.
+**Weaker for the presence.** DNB and K10plus both run PICA, and
+leader/19 is reportedly system-generated rather than keyed by a
+cataloger.[^gen] Their agreement may be one observation of one export
+routine rather than two institutions choosing the same thing.
 
-**Enumerate without linking.** Oxford: 40 records carry `245 $n`/`$p`
-with no `773` and no leader declaration. Its 37 records for *Die
-Mischna* are one per tractate — Nidda, Gittin, Schabbat, Abôt — each
-naming its tractate in `245 $p`, each with a contents note, none linked
-to a parent or declared in the leader. Oxford does create per-volume
-records; it just does not say so anywhere a machine can read it as a
-relationship.
-
-**Link without declaring.** NLI: **116 of 444 records carry `773`**,
-more than a quarter, and none carries `leader/19`. The relationship is
-recorded as a link but never as a record type.
+**One thing this survey does not show.** LC's own rule interpretation
+says LC analyzes and classes separately, creating a record for each
+dependent-titled part with the comprehensive title as the common
+title — which in MARC is `245 $a` plus `$n`/`$p`.[^lcri] Five such
+records appear among LC's 321 here. Either this material falls under
+the stated exceptions, or those records exist outside the fifty-record
+responses this survey saw. It is unresolved, and it is the first thing
+to check before relying on the comprehensive-description reading.
 
 ## What follows for otzar
 
-**Read `leader/19` when it is there, and expect it from two sources.**
-It is the only place in this material where set membership is stated
-rather than inferred. It will arrive from K10plus and DNB and from
-nowhere else in the current source list.
+**Read leader/19 when present.** It is the only place set membership is
+stated rather than inferred, and it distinguishes a volume from an
+article, which `773` alone does not.
 
-**Expect a one-to-many mismatch when reconciling across catalogs.** The
-same set is one record from LC and thirty-one from K10plus. Any
-identity rule that assumes records correspond one-to-one across sources
-will be wrong on exactly the material otzar is built for. This is a
-data-model consequence, not a parsing one.
+**Expect a one-to-many mismatch across sources.** The same encyclopedia
+is two records from LC and thirty from K10plus. Any identity rule
+assuming one-to-one correspondence will be wrong on the material otzar
+exists to catalogue.
 
-**Do not read absence as absence of the relationship.** An LC record
-with no `773` and no `leader/19` is not a record of a standalone book.
-It is likely the set-level record, and the volume list is in its `505`.
+**Parse the extent statement.** A set-level extent — including
+open-ended forms like `v.` and `v. <1-27>` — is the Anglo-American
+signal that a record describes a whole set, on 63% of LC records here.
+An earlier version of this study missed 168 such records by requiring a
+leading digit.
 
-**`773` means different things by source.** At K10plus it accompanies a
-declared dependent part. At NLI it appears on a quarter of records with
-nothing declared. Reading it as the same evidence at both is a mistake
-in the direction of over-matching.
+**Parse `505` for volume lists.** Where these catalogs describe a set
+comprehensively they put the parts in a contents note: 78 records at LC,
+61 at NLI, 31 at Oxford.
 
-**Parse `505` for volume lists.** Where the Anglo-American catalogs
-describe a set they put the volumes in a contents note: 122 records at
-LC, 123 at NLI, 79 at Oxford. For those sources that note is the volume
-list, and it is the only machine-readable one available.
+**Set publisher e-records aside before drawing conclusions.** They
+imitate per-volume cataloging and are not it.
 
-[^anglo]: **Inference, and the load-bearing one in this chapter.** What
-    is counted is that three catalogs return no `leader/19=c` across
-    1,180 records for 22 works. That this reflects a shared
-    Anglo-American cataloging tradition rather than three independent
-    coincidences is a reading, supported by those catalogs running
-    unrelated systems in three countries. Confirming it means checking
-    AACR2 and RDA guidance on multipart monographs, and asking whether
-    the tradition prescribes set-level description.
+[^lcri136]: **Not verified here.** The rule interpretation was read
+    through a vendor mirror rather than from the Library of Congress
+    directly. Confirming it means reading LCRI 13.6 in Cataloger's
+    Desktop or the free rule interpretation files LC publishes.
 
-[^pica]: **Inference.** DNB and K10plus both run PICA, and their
-    per-volume records agree closely. Whether that reflects a German
-    cataloging tradition or one export routine is not distinguished
-    here. A third PICA-independent German-tradition catalog would
-    separate the two.
+[^lcpcc]: **Not verified here.** That LC and PCC practice does not
+    create hierarchical descriptions comes from the LC-PCC guidance
+    reached through search. It is the explanation this chapter's
+    central finding fits, which is a reason to check it carefully
+    rather than to accept it.
+
+[^shared]: **Inference.** Records moving between catalogs is
+    established for one item in the [case chapter](cases.md), where LC
+    and Oxford hold the same record, and by 41 NLI rows carrying
+    `040 $aDLC`. How much of the agreement across the three is shared
+    records rather than shared practice is not measured.
+
+[^gen]: **Not verified here.** That leader/19 is usually system
+    generated comes from vendor MARC documentation, not from the MARC
+    21 specification or from the two catalogs. Confirming it means
+    asking DNB and K10plus how their export populates the position.
+
+[^lcri]: **Not verified here.** The rule interpretation on analysis of
+    monographic series and multipart monographs was read through a
+    vendor mirror rather than from LC directly, and the exception
+    categories it names were not checked against this material.

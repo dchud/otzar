@@ -45,7 +45,42 @@ literature documents the decision — see below — but this study did not
 find a published count of how many records different catalogs produce
 for the same multi-volume work.
 
-### The practitioner literature explains the split
+### Cataloging policy on levels of description
+
+A multipart resource may be described at three levels:
+**comprehensive** description of the whole in one record,
+**analytical** description of a part standing alone, and a description
+of the whole together with its linked parts — **multilevel description**
+under AACR2, **hierarchical description** under RDA. MARC encodes the
+third in leader/19.
+
+The rule that explains this study's central finding is old and blunt.
+LCRI 13.6 instructs: *do not employ the technique of multilevel
+description in any case*. The LC-PCC guidance under RDA continues not
+to create hierarchical descriptions.
+
+Dating matters here. RDA was implemented in 2013 and most records
+examined predate it, so RDA alone could not explain a practice visible
+in pre-1970 imprints. The AACR2-era prohibition and its RDA successor
+together bracket the period the records cover, and the
+[set chapter](sets.md) shows the coding rates are stable across it.
+
+The rule interpretation on analysis of monographic series and multipart
+monographs states that LC analyzes and classes parts separately, giving
+a dependent-titled part its own record with the comprehensive title as
+common title, subject to listed exceptions. The survey finds few such
+records, which the set chapter records as unresolved.
+
+**These are policies about bibliographic description.** The separate
+body of policy governing series authority records — the authorized form
+of a series heading, and whether a series is traced — is what bears on
+this study's `490` and `830` findings, and is not the same thing. The
+NACO series documentation belongs to that second body, and nothing in
+this study rests on it. Anyone extending the series half of the marker
+chapter should start there rather than from the description policies
+above.
+
+### The practitioner literature explains the volume-title split
 
 Cataloging manuals give the rule this study measures the effect of.
 Guidance from Yale, the CCS Cataloging Manual, PINES and others
@@ -60,7 +95,8 @@ title is `c`; a part with an independent title is `b`. The survey finds
 volumes are numbered ranges — which is the documented rule, visible in
 the records.
 
-One documentation note bears on an inference this study footnotes.
+One further documentation note bears on an inference this study
+footnotes.
 MARC reference documentation states that users typically do not have
 access to leader/19 and that the entry is usually system generated. If
 that is generally true, the presence of leader/19 at the two PICA

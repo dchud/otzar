@@ -44,18 +44,23 @@ corpus, are wrong in a measurable direction.
 
 | | Pattern | Strength |
 |---|---|---|
-| 1 | [Two traditions handle part-whole differently](sets.md): one declares each volume and links it, the other describes the set as a whole | **Strong** one way, weaker the other |
+| 1 | [Two catalogs create hierarchical descriptions](sets.md) — a set record with linked volume records — and three never do | **Strong** for the absence, weaker for the presence |
 | 2 | [House style is institutional](signatures.md), and survives holding the tradition constant | **Strong** |
 | 3 | [Type of material overrides the part-whole markers](markers.md) entirely | **Strong** |
 | 4 | [The vocabulary shifted across eras](markers.md#change-over-publication-era) | **Moderate** |
 | 5 | [Records propagate between catalogs](cases.md), so agreement is not always independent | **Weak** |
-| 6 | [A corpus drawn on non-title axes under-samples set volumes](markers.md#what-this-corpus-cannot-see) | **Strong** |
+| 6 | [Corpus prevalence describes holdings as sampled](markers.md#what-this-corpus-cannot-see), not how a catalog treats a set | Scope, not a finding |
 | 7 | [Script placement has four mechanisms](cases.md), not one | **Strong** on prevalence |
 | 8 | [Name identifiers take four shapes](cases.md) | **Weak** |
 
-Patterns 1 and 2 disagree about the unit of variation. Patterns 1 and 6
-disagree about Oxford. Neither disagreement is resolved here; both are
-described where they occur.
+Patterns 1 and 2 disagree about the unit of variation: the part-whole
+mechanism travels with a cataloging tradition, while everything else
+stays local to the institution. Both are supported and the study holds
+both rather than choosing.
+
+Pattern 6 is a scope statement rather than a conflict. A base rate over
+all of a catalog's books and a rate conditional on multi-volume works
+are different quantities, and the study reports each where it applies.
 
 Each pattern ends with what follows for otzar, and the strength of the
 pattern governs how firm that is. [What follows for

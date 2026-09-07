@@ -106,14 +106,15 @@ save(fig, "fig5-material-types.svg")
 # --- Fig 6: the four idioms, from the set survey ----------------------
 S = json.loads((HERE / "set_summary.json").read_text())
 CATS = ["lc", "oxford", "nli", "dnb", "k10plus"]
-tot = {c: {"n": 0, "c": 0, "773": 0, "np": 0, "vol": 0, "505": 0} for c in CATS}
+tot = {c: {"n": 0, "c": 0, "773": 0, "np": 0, "vol": 0, "505": 0} for c in CATS}  # noqa
 for work, cats in S.items():
     for c in CATS:
         v = cats[c]
-        tot[c]["n"] += v["n"]; tot[c]["c"] += v["l19c"]
+        tot[c]["n"] += v["library"]
+        tot[c]["c"] += v["l19_a"] + v["l19_b"] + v["l19_c"]
         tot[c]["773"] += v["t773"]; tot[c]["np"] += v["np"]
-        tot[c]["vol"] += v["vol"]; tot[c]["505"] += v["t505"]
-SERIES = [("leader/19=c declared", "c", "#1f4e79"),
+        tot[c]["vol"] += v["set_level_extent"]; tot[c]["505"] += v["t505"]
+SERIES = [("leader/19 coded", "c", "#1f4e79"),
           ("773 host link", "773", "#c44e52"),
           ("245 $n/$p enumerated", "np", "#dd8452"),
           ("300 volume count", "vol", "#55a868"),
@@ -129,9 +130,9 @@ ax.set_xticklabels([f"{NAMES[c]}\n(n={tot[c]['n']})" for c in CATS])
 ax.set_ylabel("% of records naming the work")
 ax.grid(axis="y", alpha=.2)
 ax.legend(fontsize=8, frameon=False, labelcolor=GREY, ncol=2)
-ax.set_title("Four mechanisms for the part-whole relationship\n"
-             "22 multi-volume works, records whose 245 names the work",
-             color=GREY)
+ax.set_title("How each catalog describes a multi-volume set\n"
+             "22 works; library records naming the work, publisher "
+             "e-records excluded", color=GREY)
 save(fig, "fig6-set-mechanisms.svg")
 
 # --- Fig 7: declared per-volume records, work by work -----------------
@@ -140,8 +141,8 @@ mat = np.full((len(works), len(CATS)), np.nan)
 for i, wk in enumerate(works):
     for j, c in enumerate(CATS):
         v = S[wk][c]
-        if v["n"]:
-            mat[i, j] = 100 * v["l19c"] / v["n"]
+        if v["library"]:
+            mat[i, j] = 100 * (v["l19_a"] + v["l19_b"] + v["l19_c"]) / v["library"]
 fig, ax = plt.subplots(figsize=(6.0, 8.0))
 cmap = plt.get_cmap("YlGnBu").copy()
 cmap.set_bad("#e8e8e8")
@@ -160,8 +161,8 @@ for i in range(len(works)):
             ax.text(j, i, f"{mat[i, j]:.0f}", ha="center", va="center",
                     fontsize=7,
                     color="white" if mat[i, j] > 55 else "#333333")
-ax.set_title("Records declared as a dependent part (leader/19=c)\n"
-             "% of records naming the work; grey = work not held",
+ax.set_title("Records coding leader/19, any value\n"
+             "% of library records naming the work; grey = none held",
              color=GREY, pad=10)
 save(fig, "fig7-declared-by-work.svg")
 
@@ -225,7 +226,7 @@ save(fig, "fig8-leader19-mechanisms.svg")
 # --- Fig 9: AMI with bootstrap intervals ------------------------------
 C = json.loads((HERE / "confidence.json").read_text())
 LBL = {"server": "catalog", "agency": "040 $a agency",
-       "desc_form": "leader/18 description form",
+       "desc_form": "leader/18 descriptive cataloging form",
        "rec_type": "leader/06 record type",
        "bib_level": "leader/07 bib level", "decade": "decade"}
 fig, axes = plt.subplots(1, 2, figsize=(11, 3.6), sharex=True)

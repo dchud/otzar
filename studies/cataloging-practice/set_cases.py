@@ -26,7 +26,7 @@ WORKS = {
         "nli": 'alma.title="אנציקלופדיה תלמודית"',
         "oxford": 'alma.title="Entsiklopedyah talmudit"',
         "k10plus": 'pica.tit="Entsiklopedyah talmudit"',
-        "lc": 'dc.title="Encyclopedia talmudica"',
+        "lc": 'dc.title="Entsiklopedyah talmudit"',
         "dnb": "TIT=Entsiklopedyah",
     },
     "Die Mischna (Giessen)": {
@@ -89,7 +89,7 @@ WORKS = {
         "nli": 'alma.title="ספר הזהר"',
         "oxford": 'alma.title="Sefer ha-Zohar"',
         "k10plus": 'pica.tit="Sefer ha-Zohar"',
-        "lc": 'dc.title="Zohar"',
+        "lc": 'dc.title="Sefer ha-Zohar"',
         "dnb": "TIT=Sohar",
     },
     "Arukh ha-Shulhan": {
@@ -201,7 +201,21 @@ def describe(xml_text):
                 title = " ".join(subs.get(c, "") for c in ("a", "n", "p"))
             if tag == "300" and not a300:
                 a300 = subs.get("a", "")
+        agency = ""
+        rel4 = []
+        for df in rec.findall(f"{M}datafield"):
+            subs = {s.get("code"): (s.text or "")
+                    for s in df.findall(f"{M}subfield")}
+            if df.get("tag") == "040" and not agency:
+                agency = subs.get("a", "")
+            if df.get("tag") == "773" and subs.get("4"):
+                rel4.append(subs["4"])
         out.append({
+            "agency": agency,
+            "rel4": rel4,
+            "online": "online resource" in a300.lower(),
+            "t776": tags["776"] > 0,
+            "l19_any": (ldr[19] if len(ldr) > 19 and ldr[19] in "abc" else ""),
             "l07": ldr[7] if len(ldr) > 7 else "?",
             "l19": ldr[19] if len(ldr) > 19 and ldr[19].strip() else "-",
             "np": bool(s245 & {"n", "p"}),

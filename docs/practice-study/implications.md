@@ -1,82 +1,80 @@
 # What follows for otzar
 
-Each practice below names the pattern it rests on and how strong that
-pattern is. A weak pattern earns a cautious practice.
+Each practice names the pattern it rests on and how strong that pattern
+is. A weak pattern earns a cautious practice.
 
-## Expect one record or thirty for the same set
+## Expect a set as two records or as thirty
 
 *From [pattern 1](sets.md). Strong.*
 
-The [set survey](sets.md) asked five catalogs for 22 multi-volume works
-by name. The Library of Congress describes *Entsiḳlopedyah talmudit*
-with **one** record; K10plus describes it with **31**, thirty of them
-declared volumes. *Torah Shelemah* is 48 records at K10plus and 5 at
-LC. *Encyclopaedia Judaica* is declared 42 times at K10plus and 38 at
-DNB, against 10 records at LC.
+The [set survey](sets.md) asked five catalogs for 22 multi-volume works.
+LC holds *Entsiḳlopedyah talmudit* as **two** records, both with
+open-ended set-level extents covering some fifty volumes; K10plus holds
+**thirty**, each coded as a dependent part. *Encyclopaedia Judaica* is
+41 coded records at DNB and 42 at K10plus against 9 at LC.
 
-Any identity rule that assumes records correspond one-to-one across
-sources will be wrong on precisely the material otzar exists to
-catalogue. This is a data-model consequence, not a parsing one, and it
-belongs in the design before the matching rules are written.
+Any identity rule assuming records correspond one-to-one across sources
+will be wrong on precisely the material otzar exists to catalogue. That
+is a data-model consequence and it belongs in the design before the
+matching rules are written.
 
-## Read leader/19 where it is present, and expect it from two sources
+## Read leader/19, and expect it from two sources
 
 *From [pattern 1](sets.md). Strong for its absence, weaker for its
 presence.*
 
-Leader position 19 declares multipart resource level: `a` set, `b` part
-with an independent title, `c` part with a dependent title. Where a
-catalog populates it the value is exact and comes with `773` and
-`245 $n`/`$p`.
+Leader/19 records the level at which a multipart resource is described:
+`a` set, `b` part with an independent title, `c` part with a dependent
+title. Coded, it predicts the rest of the record — `c` comes with `773`
+and `245 $n`/`$p` on all 273 such records, `b` with `490` always and
+`830` usually and `773` never.
 
-It will arrive from K10plus and DNB. Across 22 multi-volume works held
-by LC, Oxford and NLI, it appears on **0 of 1,180 records**. That
-absence is well supported: the three catalogs share no software and
-converge anyway. Its presence rests on two catalogs that share PICA and
-may amount to one observation.[^pica]
+It will arrive from K10plus and DNB. Across 22 works held by LC, Oxford
+and NLI it is coded on **0 of 604** records, which is what LC and PCC
+practice of not creating hierarchical descriptions predicts.
 
 ## Absence of a link is not absence of a set
 
 *From [pattern 1](sets.md). Strong.*
 
-An LC record with no `773`, no `leader/19` and no series statement is
-very often the set-level record for a multi-volume work, with the
-volumes listed in `505` and the extent in `300 $a`. Across the survey
-LC carries 176 volume counts and 122 contents notes against a single
-`773`.
+A record from LC, Oxford or NLI with no `773` and no leader/19 may still
+describe a whole multi-volume set. The signal is the extent: 63% of LC
+records and 59% of Oxford's carry a set-level extent, and the
+open-ended forms matter as much as the numbered ones — `v.`,
+`v. <1-27, 29-53>`. An earlier version of this study missed 168 LC
+records by requiring a leading digit.
 
-Treating those records as standalone books is the most likely
-first-order error. Where the Anglo-American catalogs describe a set,
-the contents note is the volume list, and it is the only
-machine-readable one on offer.
+Where those catalogs describe a set comprehensively, the volume list is
+in `505`: 78 records at LC, 61 at NLI, 31 at Oxford.
 
 ## `773` is not one kind of evidence
 
 *From [pattern 1](sets.md) and [pattern 3](markers.md). Strong.*
 
-`773` carries at least three different meanings in this material:
+`773` carries several meanings in this material:
 
-- At K10plus and DNB, on a record declaring `leader/19=c`, it links a
-  volume to its set.
-- At K10plus it also appears on 177 `leader/07=a` component parts —
+- At K10plus and DNB, on a record coding `leader/19=c`, it links a
+  volume to its set. That is 220 and 56 records in the survey.
+- At K10plus it also appears on `leader/07=a` component parts —
   articles inside a host, not volumes inside a set. The leader tells
   them apart; the field alone does not.
-- At NLI it appears on 116 of 444 survey records with nothing declared
-  at all, in Alma's related-record form with `$4 ANA` or `$4 UP`.
-- On archival and image material it is near-universal — 97% of mixed
-  material — and means a component of a collection.
+- At NLI it appears on analytic entries: folios within a codex,
+  sections of anthologies, tracks on recordings.
+- On archival and image material it is near-universal, 97% of mixed
+  material, and means a component of a collection.
 
-Read on its own it will over-match. Read together with `leader/06`,
-`leader/07` and `leader/19` it is precise.
+Read alone it will over-match. Read with `leader/06`, `leader/07` and
+`leader/19` it is precise.
 
-## Parse `505` for volume lists
+## Set publisher e-records aside
 
 *From [pattern 1](sets.md). Strong.*
 
-122 records at LC, 123 at NLI and 79 at Oxford carry a contents note
-across the survey. For those sources it is where the volumes are named.
-An enhanced note carrying `$t` is rare — under 1% of the corpus — so
-expect to parse running text rather than structured subfields.
+Thirty-six Oxford records for one work looked like per-volume
+cataloging and were a vendor's e-book series: `300 $a "1 online
+resource"`, a `776` to the print edition, one record per tractate. They
+imitate the pattern a set-detection rule looks for without being
+produced by the practice that rule is trying to detect.
 
 ## Condition on the catalog, because it is free
 
@@ -218,6 +216,13 @@ figures. What the survey establishes is that the two treatments both
 occur, widely, on works every catalog holds — not their prevalence in
 any population.
 
+**LC's own rule interpretation is not visible in the survey.** It says
+LC analyzes and classes dependent-titled parts separately, giving each
+a record with the comprehensive title as common title, which in MARC is
+`245 $a` plus `$n`/`$p`. Five such records appear among LC's 321 here.
+Either the material falls under the stated exceptions or those records
+lie outside the responses this survey saw, and that is unresolved.
+
 **Several survey cells hit the fifty-record response cap**, so those
 counts are records examined rather than exhaustive. The zero for
 `leader/19` across LC, Oxford and NLI is a zero among 1,180 records
@@ -263,10 +268,3 @@ plus `001`. Requests were spaced at least four seconds per host.
 
 
 
-[^pica]: **Inference.** See the [marker chapter](markers.md). The
-    corpus shows the two catalogs populating leader/19 are the two
-    running PICA and that their records agree; the shared export
-    routine is a reading of that, not a measurement. No K10plus record
-    here carries `DE-101` in `040 $d`, so record ingestion is not
-    evidenced either. Confirming it means reading the CBS
-    PICA-to-MARC 21 export documentation or asking the agencies.

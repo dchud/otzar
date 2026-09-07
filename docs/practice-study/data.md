@@ -161,18 +161,28 @@ the [set chapter](sets.md) is computed from this file.
 
 | Column | Meaning |
 |---|---|
-| `work` | The work as named in the survey |
-| `catalog` | `lc`, `oxford`, `nli`, `dnb`, `k10plus` |
-| `records_naming_work` | Records returned whose `245` matches the work. A title query returns more than the work asked for, so this is the filtered count, not the catalog's hit total |
-| `leader19_b`, `leader19_c` | Records declaring a part with an independent title, and with a dependent title |
-| `has_773` | Records carrying a host item entry |
-| `has_245_n_or_p` | Records enumerating a part in `245 $n` or `$p` |
-| `has_300_volume_count` | Records whose `300 $a` states a number of volumes, which marks a set-level description |
-| `has_505` | Records carrying a contents note |
-| `response_truncated` | 1 where the catalog returned the fifty-record cap, so the row is a floor rather than a count |
+| `work`, `catalog` | The work as named in the survey; `lc`, `oxford`, `nli`, `dnb`, `k10plus` |
+| `returned` | Records in the SRU response, before any filter |
+| `named` | Of those, records whose `245` begins with the work's name. A title query returns books *about* a work as well as editions of it |
+| `monograph` | Of those, records with `leader/07` `m`. The remainder are archival subunits, journal articles and analytic entries |
+| `vendor_online` | Of the monographs, records whose `300 $a` says "online resource". Publisher-supplied e-records, counted separately because a run of them imitates per-volume library cataloging |
+| `library` | `monograph` minus `vendor_online`. This is the denominator for every rate in the set chapter |
+| `l19_a`, `l19_b`, `l19_c` | Library records coding leader/19 as a set, a part with an independent title, or a part with a dependent title |
+| `t773` | Records carrying a host item entry |
+| `np` | Records enumerating a part in `245 $n` or `$p` |
+| `t505` | Records carrying a contents note |
+| `extent_counted` | `300 $a` states a number of volumes: `3 v.`, `9 Bände` |
+| `extent_open` | `300 $a` is open-ended: `v.`, `volumes`, `v. <1-27, 29-53>`. An earlier version of this study missed 168 LC records by requiring a leading digit |
+| `set_level_extent` | The two above summed: records whose extent says the description covers a whole set |
+| `truncated` | 1 where the response hit the fifty-record cap, so the row is a floor. 66 of the 110 rows are truncated |
 
-The queries are in `set_cases.py`; the title-matching patterns that
-filter each response are in `set_report.py`, both under
+Query forms differ per catalog — Hebrew at NLI, romanized elsewhere,
+German forms at DNB — so `returned` and `library` are not comparable
+holdings figures between catalogs. They support comparison of *rates
+within* a catalog.
+
+The queries are in `set_cases.py`; the title patterns and filters in
+`set_report.py`, both under
 [`studies/cataloging-practice/`](https://github.com/dchud/otzar/tree/main/studies/cataloging-practice).
 
 The works were chosen by hand as the multi-volume works a Torah-study

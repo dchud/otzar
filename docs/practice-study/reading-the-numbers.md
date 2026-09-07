@@ -6,8 +6,8 @@ what the values here actually indicate.
 
 ## Percentages with an interval
 
-Most tables give a percentage — 26% of DNB books carry a `490` — and
-sometimes a bracketed range beside it, like `[23-30]`. That range is a
+Most tables give a percentage — 26% of DNB books carry a `490`. Where a
+range appears beside one, in the prose or as a band on a figure, it is a
 **95% Wilson interval**.
 
 The percentage is what this sample showed. The interval is the range of
@@ -28,13 +28,13 @@ much does knowing the catalog tell you about whether a record carries
 this field?**
 
 It runs from 0 to 1. Near 0 means the field appears at about the same
-rate everywhere, so the catalog tells you nothing. Near 1 means the
-field is essentially a signature of one catalog.
+rate everywhere, so the catalog tells you nothing. Near 1 means presence
+of the field sorts the catalogs almost without exception.
 
 In this study `V=0.04` for uniform titles — every catalog uses them at
 6-9%, so the catalog is uninformative. `V=0.51` for `880` linked script
-and `V=0.57` for `300 $c` dimensions — those two are almost pure house
-style, at 62% versus 1% and 90% versus 19%.
+and `V=0.57` for `300 $c` dimensions — moderate to strong associations,
+running 62% against 1% and 90% against 19%.
 
 A chi-square p-value sits beside it. That answers only whether a
 difference exists at all, not whether it is large. With thousands of
@@ -60,6 +60,11 @@ catalogs. Values near 0.33 mean a real but loose relationship. 0.00 for
 leader/19 within the two catalogs that declare it means the clustering
 carries no information about it at all.
 
+One comparison to make carefully: a score against a two-value label
+like a cataloging tradition is not directly comparable to one against a
+five-value label like the catalog, since the coarser label can only be
+recovered in part by a partition that recovers the finer one.
+
 **Three values near 0.33 with overlapping intervals cannot be ranked.**
 Where the study says nothing dominates, that is what the overlap means,
 not caution about a real ordering.
@@ -69,13 +74,15 @@ not caution about a real ordering.
 This is the most important caveat in the study, because two of its
 findings look contradictory until you see it.
 
-AMI scores whether records **clump together**. It does not score
-whether you can **pick them out**.
+AMI scores whether the clustering's groups **line up with** a label. A
+low score means the algorithm did not form a group corresponding to
+those records — not that no rule could find them.
 
-The 273 records declaring a dependent part score AMI 0.000 against the
-clustering: they are scattered inside one large cluster rather than
-forming a cluster of their own. The same records are identified by a
-two-field test with **no errors**. Both statements are true. A rule does
+The 273 records coding a dependent part score AMI 0.000 against the
+clustering: they sit together inside the largest cluster, alongside
+some 1,600 other records, rather than forming a group of their own.
+The same records are identified by a two-field test with **no
+errors**. Both statements are true. A rule does
 not need its targets grouped, only distinguishable.
 
 So AMI answered the question the study opened with — do records fall
@@ -124,8 +131,10 @@ convention is that a mean recovery below 0.75 marks an unstable
 cluster, and 0.85 or above a highly stable one
 ([Hennig 2007](references.md)).
 
-Every cluster here recovers between 0.92 and 1.00, highly stable by
-that convention. That is worth stating alongside its limit: **a group can
-be perfectly reproducible and still mean nothing.** The most stable
+Every cluster of ten or more records recovers between 0.92 and 1.00,
+highly stable by that convention. The two smallest clusters, of seven
+and three records, were not tested. That is worth stating alongside
+its limit: **a group can be perfectly reproducible and still mean
+nothing.** The most stable
 clusters in this study are stable because accession-number formats are
 consistent within an institution.

@@ -1,11 +1,24 @@
-"""Filter the set survey to records that actually name the work, and
-report how each catalog describes it.
+"""Filter the set survey and report how each catalog describes a work.
 
-A title query returns more than the work asked for. Counting raw hits
-would overstate every figure, so each record's 245 is matched against
-the work before it is counted.
+Three filters, each of which changed the numbers when it was added:
+
+* A title query returns more than the work asked for, so a record's 245
+  is matched against the work. The patterns are anchored at the start of
+  the title, because a work name appearing mid-title usually belongs to
+  a book *about* the work.
+* Only leader/07 `m` records are counted. The unfiltered responses carry
+  archival subunits, journal articles and analytic entries, none of
+  which is an edition of the work.
+* Publisher-supplied electronic records are counted separately. A run of
+  per-tractate records that looked like library cataloguing turned out
+  to be one vendor's e-book series.
+
+Extent is classified rather than pattern-matched for a leading digit:
+`v.` and `v. <1-27, 29-53>` are set-level extents and an earlier version
+of this script missed both.
 """
 import collections
+import csv
 import json
 import pathlib
 import re
@@ -15,99 +28,114 @@ HERE = pathlib.Path("tmp/vagf")
 CATALOGS = ("lc", "oxford", "nli", "dnb", "k10plus")
 
 PATTERNS = {
-    "Entsiklopedyah talmudit": r"(entsi.?lopedyah talmudit|encyclopedia talmudica|אנציקלופדיה תלמודית)",
-    "Die Mischna (Giessen)": r"die mischna",
-    "Talmud Bavli": r"(talmud bavli|talmud babli|תלמוד בבלי)",
-    "Miqraot Gedolot": r"(mi.?ra.?ot gedolot|mikraot gedolot|מקראות גדולות)",
-    "Mishnah Berurah": r"(mishnah berurah|mishnah berurah|משנה ברורה)",
-    "Shulhan Arukh": r"(shul.?an .?arukh|schulchan aruch|שלחן ערוך|שולחן ערוך)",
-    "Mishneh Torah": r"(mishneh torah|משנה תורה)",
-    "Talmud Yerushalmi": r"(talmud yerushalmi|תלמוד ירושלמי)",
-    "Midrash Rabbah": r"(midrash rabbah|midrasch rabba|מדרש רבה)",
-    "Zohar": r"(zohar|sohar|זהר|הזהר)",
-    "Arukh ha-Shulhan": r"(.?arukh ha.?shul.?an|ערוך השלחן)",
-    "Encyclopaedia Judaica": r"encyclopaedia judaica",
-    "Torah Shelemah": r"(torah shelemah|תורה שלמה)",
+    "Entsiklopedyah talmudit": r"^(entsi.?lopedyah talmudit|encyclopedia talmudica|אנציקלופדיה תלמודית)",
+    "Die Mischna (Giessen)": r"^die mischna",
+    "Talmud Bavli": r"^(talmud bavli|talmud babli|תלמוד בבלי)",
+    "Miqraot Gedolot": r"^(mi.?ra.?ot gedolot|mikraot gedolot|מקראות גדולות)",
+    "Mishnah Berurah": r"^(mishnah berurah|משנה ברורה)",
+    "Shulhan Arukh": r"^(shul.?an .?arukh|schulchan aruch|שלחן ערוך|שולחן ערוך)",
+    "Mishneh Torah": r"^(mishneh torah|משנה תורה)",
+    "Talmud Yerushalmi": r"^(talmud yerushalmi|תלמוד ירושלמי)",
+    "Midrash Rabbah": r"^(midrash rabbah|midrasch rabba|מדרש רבה)",
+    "Zohar": r"^(sefer ha.?zohar|zohar|sohar|ספר הזהר|הזהר)",
+    "Arukh ha-Shulhan": r"^(.?arukh ha.?shul.?an|ערוך השלחן)",
+    "Encyclopaedia Judaica": r"^encyclopaedia judaica",
+    "Torah Shelemah": r"^(torah shelemah|תורה שלמה)",
     "Schottenstein Talmud": r"schottenstein",
-    "Ein Yaakov": r"(.?en ya.?a.?ov|en jaakob|עין יעקב)",
-    "Yalkut Shimoni": r"(yal.?ut shim.?oni|jalkut schimoni|ילקוט שמעוני)",
-    "Tosefta": r"(tosefta|tosephta|תוספתא)",
-    "Arbaah Turim": r"(arba.?ah turim|arba.?a turim|ארבעה טורים)",
-    "Otsar ha-Geonim": r"(otsar ha.?ge.?onim|אוצר הגאונים)",
-    "Sifre": r"(sifre|siphre|ספרי)",
-    "Or ha-Hayim": r"(or ha.?.?ayim|אור החיים)",
-    "Pesiqta Rabbati": r"(pesi.?ta rabbati|pesikta rabbati|פסיקתא רבתי)",
+    "Ein Yaakov": r"^(.?en ya.?a.?ov|en jaakob|עין יעקב)",
+    "Yalkut Shimoni": r"^(yal.?ut shim.?oni|jalkut schimoni|ילקוט שמעוני)",
+    "Tosefta": r"^(tosefta|tosephta|תוספתא)",
+    "Arbaah Turim": r"^(arba.?ah turim|arba.?a turim|ארבעה טורים)",
+    "Otsar ha-Geonim": r"^(otsar ha.?ge.?onim|אוצר הגאונים)",
+    # 'Sifre' alone matches ספרי ילדים (children's books) and ספרי
+    # זכרונות (memory books), so the Hebrew form requires one of the
+    # midrash's actual continuations.
+    "Sifre": r"^(sifre|siphre)\b|^ספרי\s*(דבי|במדבר|דברים|זוטא|$)",
+    "Or ha-Hayim": r"^(or ha.?.?ayim|אור החיים)",
+    "Pesiqta Rabbati": r"^(pesi.?ta rabbati|pesikta rabbati|פסיקתא רבתי)",
 }
+
+COUNTED = re.compile(r"\b\d+\s*(v\.|vols?\b|volumes?\b|B(?:ä|ae)nde\b|Bde\b|"
+                     r"כרכים)", re.I)
+OPEN = re.compile(r"^\s*(v\.|vols?\b|volumes?\b|B(?:ä|ae)nde\b)|<\s*\d", re.I)
 
 
 def norm(s):
     s = unicodedata.normalize("NFKD", s.lower())
     s = "".join(c for c in s if not unicodedata.combining(c))
-    return re.sub(r"[^\w\s֐-׿]", " ", s)
+    return re.sub(r"[^\w\s֐-׿]", " ", s).strip()
+
+
+def extent(a300):
+    if "online resource" in a300.lower():
+        return "online"
+    if COUNTED.search(a300):
+        return "counted"
+    if OPEN.search(a300):
+        return "open"
+    return "single"
 
 
 data = json.loads((HERE / "set_cases.json").read_text())
-summary = {}
+summary, dropped = {}, collections.Counter()
 
-print(f"{'work':26}" + "".join(f"{c.upper()[:7]:>16}" for c in CATALOGS))
-print(f"{'':26}" + "".join(f"{'n  l19c  np/505':>16}" for c in CATALOGS))
 for work, cats in data.items():
-    rx = re.compile(PATTERNS.get(work, re.escape(work.lower())))
-    row, held = "", 0
+    rx = re.compile(PATTERNS[work])
     summary[work] = {}
     for c in CATALOGS:
         recs = cats.get(c, {}).get("records", [])
-        hit = [r for r in recs if rx.search(norm(r["title"]))]
-        if hit:
-            held += 1
-        l19c = sum(1 for r in hit if r["l19"] == "c")
-        l19b = sum(1 for r in hit if r["l19"] == "b")
-        np = sum(1 for r in hit if r["np"])
-        vol = sum(1 for r in hit if r["volcount"])
-        t505 = sum(1 for r in hit if r["t505"])
-        t773 = sum(1 for r in hit if r["t773"])
-        summary[work][c] = {"n": len(hit), "l19c": l19c, "l19b": l19b,
-                            "np": np, "vol": vol, "t505": t505,
-                            "t773": t773,
-                            "truncated": len(recs) >= 50}
-        row += f"{len(hit):5}{l19c:6}{np:4}/{t505:<3}"
-    print(f"{work:26}{row}   [{held} catalogs]")
+        named = [r for r in recs if rx.search(norm(r["title"]))]
+        dropped[f"{c}:title"] += len(recs) - len(named)
+        mono = [r for r in named if r["l07"] == "m"]
+        dropped[f"{c}:not-monograph"] += len(named) - len(mono)
+        vendor = [r for r in mono if r.get("online")]
+        lib = [r for r in mono if not r.get("online")]
+        ext = collections.Counter(extent(r["a300"]) for r in lib)
+        l19 = collections.Counter(r.get("l19_any", "") for r in lib)
+        summary[work][c] = {
+            "returned": len(recs), "named": len(named), "monograph": len(mono),
+            "vendor_online": len(vendor), "library": len(lib),
+            "l19_a": l19["a"], "l19_b": l19["b"], "l19_c": l19["c"],
+            "l19_any": l19["a"] + l19["b"] + l19["c"],
+            "t773": sum(1 for r in lib if r["t773"]),
+            "np": sum(1 for r in lib if r["np"]),
+            "t505": sum(1 for r in lib if r["t505"]),
+            "extent_counted": ext["counted"], "extent_open": ext["open"],
+            "set_level_extent": ext["counted"] + ext["open"],
+            "truncated": int(len(recs) >= 50),
+        }
 
-print("\nWorks held by at least three catalogs, "
-      "with a per-volume/set-level contrast:")
-for work, cats in summary.items():
-    held = [c for c in CATALOGS if cats[c]["n"]]
-    if len(held) < 3:
-        continue
-    declared = [c for c in held if cats[c]["l19c"] > 0]
-    setlevel = [c for c in held if cats[c]["vol"] > 0 and cats[c]["l19c"] == 0]
-    enumerated = [c for c in held
-                  if cats[c]["np"] > 0 and cats[c]["l19c"] == 0]
-    if declared and (setlevel or enumerated):
-        print(f"  {work}")
-        print(f"    declared per-volume (leader/19=c): "
-              f"{', '.join(f'{c}={cats[c]['l19c']}' for c in declared)}")
-        if setlevel:
-            print(f"    set-level (300 volume count):     "
-                  f"{', '.join(f'{c}={cats[c]['vol']}' for c in setlevel)}")
-        if enumerated:
-            print(f"    enumerated in 245 only:           "
-                  f"{', '.join(f'{c}={cats[c]['np']}' for c in enumerated)}")
+CAP = sum(v[c]["truncated"] for v in summary.values() for c in CATALOGS)
+print(f"records dropped by each filter: {dict(dropped)}")
+print(f"cells that hit the fifty-record cap: {CAP} of "
+      f"{len(summary) * len(CATALOGS)}\n")
+
+print(f"{'catalog':9}{'lib recs':>9}{'l19 a':>7}{'l19 b':>7}{'l19 c':>7}"
+      f"{'773':>6}{'n/p':>6}{'set ext':>9}{'505':>6}{'vendor':>8}")
+tot = collections.Counter()
+for c in CATALOGS:
+    r = {k: sum(summary[w][c][k] for w in summary) for k in
+         ("library", "l19_a", "l19_b", "l19_c", "t773", "np",
+          "set_level_extent", "t505", "vendor_online")}
+    print(f"{c:9}{r['library']:9}{r['l19_a']:7}{r['l19_b']:7}{r['l19_c']:7}"
+          f"{r['t773']:6}{r['np']:6}{r['set_level_extent']:9}{r['t505']:6}"
+          f"{r['vendor_online']:8}")
+    tot[c] = r["library"]
+
+anglo = sum(summary[w][c]["l19_any"] for w in summary
+            for c in ("lc", "oxford", "nli"))
+anglo_n = sum(tot[c] for c in ("lc", "oxford", "nli"))
+print(f"\nleader/19 coded at LC + Oxford + NLI: {anglo} of {anglo_n} records")
 
 (HERE / "set_summary.json").write_text(json.dumps(summary, indent=1))
-
-# The published table: one row per work and catalog.
-import csv
 out = pathlib.Path("docs/practice-study/data/set-survey.csv")
 with out.open("w", newline="", encoding="utf-8") as fh:
     w = csv.writer(fh)
-    w.writerow(["work", "catalog", "records_naming_work", "leader19_b",
-                "leader19_c", "has_773", "has_245_n_or_p",
-                "has_300_volume_count", "has_505", "response_truncated"])
+    cols = ["returned", "named", "monograph", "vendor_online", "library",
+            "l19_a", "l19_b", "l19_c", "t773", "np", "t505",
+            "extent_counted", "extent_open", "set_level_extent", "truncated"]
+    w.writerow(["work", "catalog"] + cols)
     for work, cats in summary.items():
         for c in CATALOGS:
-            v = cats[c]
-            w.writerow([work, c, v["n"], v["l19b"], v["l19c"], v["t773"],
-                        v["np"], v["vol"], v["t505"],
-                        int(bool(v["truncated"]))])
-print(f"\nwrote tmp/vagf/set_summary.json and {out}")
+            w.writerow([work, c] + [cats[c][k] for k in cols])
+print(f"wrote {out}")
