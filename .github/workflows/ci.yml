@@ -117,7 +117,7 @@ jobs:
 
       - name: Cache the Tailwind CLI
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .django_tailwind_cli
           key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -202,7 +202,7 @@ jobs:
 
       - name: Cache the Tailwind CLI
         if: steps.relevant.outputs.run == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .django_tailwind_cli
           key: tailwind-cli-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -216,7 +216,7 @@ jobs:
       - name: Cache Playwright browsers
         if: steps.relevant.outputs.run == 'true'
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
