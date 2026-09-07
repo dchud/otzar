@@ -166,7 +166,7 @@ class TestTitlePageHandoff:
 
         expect(page.locator("h1")).to_contain_text("Title page capture")
         # Phone view: no QR sidebar.
-        expect(page.locator("text=Capture on your phone")).to_have_count(0)
+        expect(page.get_by_text("Capture on your phone")).to_have_count(0)
         # Capture form is present.
         expect(page.locator("#image-input")).to_have_count(1)
         # Guard against multi-line {# ... #} comment leaks: Django's
@@ -209,7 +209,7 @@ class TestTitlePageHandoff:
         desktop_page.goto(f"{live_server.url}/ingest/scan-title/")
 
         # Initial poll shows empty state.
-        expect(desktop_page.locator("text=Waiting for photos")).to_be_visible()
+        expect(desktop_page.get_by_text("Waiting for photos")).to_be_visible()
 
         # Phone context — authenticates via QR token.
         phone = browser.new_context()
@@ -292,7 +292,7 @@ class TestTitlePageHandoff:
 
         # Click Run OCR; the metadata edit partial appears.
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=10000
         )
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
@@ -302,7 +302,7 @@ class TestTitlePageHandoff:
         # The metadata form must survive a poll cycle (>3s) without being
         # wiped by the polling div.
         page.wait_for_timeout(4000)
-        expect(page.locator("text=Extracted metadata")).to_be_visible()
+        expect(page.get_by_text("Extracted metadata")).to_be_visible()
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "Mishneh Torah"
         )
@@ -422,7 +422,7 @@ class TestTitlePageHandoff:
         )
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=10000
         )
 
@@ -430,7 +430,7 @@ class TestTitlePageHandoff:
         # Use the Discard button inside the metadata form (avoid card-level Discard).
         page.locator('#title-page-metadata button:text("Discard")').click()
 
-        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+        expect(page.get_by_text("Extracted metadata")).to_have_count(0)
         scan.refresh_from_db()
         assert scan.status == "discarded"
         assert not scan.image
@@ -511,7 +511,7 @@ class TestTitlePageHandoff:
         expect(run_ocr.locator(".btn-idle")).to_be_hidden()
         expect(run_ocr).to_be_disabled()
 
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=15000
         )
         expect(page.locator(".btn-busy:visible")).to_have_count(0)
@@ -541,7 +541,7 @@ class TestTitlePageHandoff:
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(
-            page.locator("text=OCR could not extract metadata")
+            page.get_by_text("OCR could not extract metadata")
         ).to_be_visible(timeout=10000)
 
         expect(page.locator("img[alt='Uploaded title page']")).to_have_count(1)
@@ -578,10 +578,10 @@ class TestTitlePageHandoff:
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(
-            page.locator("text=OCR could not extract metadata")
+            page.get_by_text("OCR could not extract metadata")
         ).to_be_visible(timeout=10000)
-        expect(page.locator("text=Try OCR again")).to_be_visible()
-        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+        expect(page.get_by_text("Try OCR again")).to_be_visible()
+        expect(page.get_by_text("Extracted metadata")).to_have_count(0)
 
         # The card keeps its Run OCR button, so the photo stays workable.
         scan.refresh_from_db()
@@ -723,7 +723,7 @@ class TestTitlePageHandoff:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
                 timeout=10000
             )
             page.click('#search-controls button[type="submit"]')
@@ -791,7 +791,7 @@ class TestTitlePageHandoff:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
                 timeout=10000
             )
             page.click('#search-controls button[type="submit"]')
@@ -915,7 +915,7 @@ class TestSharedOCRProgress:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
                 timeout=10000
             )
 
