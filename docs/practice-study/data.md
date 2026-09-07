@@ -1,6 +1,6 @@
 # The data
 
-Three files carry the record-level data the study measured. They are
+Four files carry the record-level data the study measured. They are
 published so the tables can be checked, and they are frozen: nothing
 here is revised after publication.
 
@@ -15,7 +15,7 @@ are not — those need the 725-feature vector, which is not published.
 | [`corpus-features.csv`](data/corpus-features.csv) | 1.3 MB | 5,252 rows, one per record |
 | [`queries.csv`](data/queries.csv) | 10 KB | 133 of the 136 SRU queries that drew the corpus |
 | [`case-records.xml`](data/case-records.xml) | 205 KB | 21 MARCXML records: the six matched items |
-| [`set-survey.csv`](data/set-survey.csv) | 4 KB | 110 rows: how each catalog describes each of 22 multi-volume works |
+| [`set-survey.csv`](data/set-survey.csv) | 6 KB | 110 rows: how each catalog describes each of 22 multi-volume works |
 
 ## Why derived data rather than the records
 

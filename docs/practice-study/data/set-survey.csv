@@ -1,111 +1,111 @@
 work,catalog,returned,named,monograph,vendor_online,library,l19_a,l19_b,l19_c,t773,np,t505,extent_counted,extent_open,set_level_extent,truncated
-Entsiklopedyah talmudit,lc,17,2,2,0,2,0,0,0,0,0,0,0,2,2,0
-Entsiklopedyah talmudit,oxford,7,2,2,0,2,0,0,0,0,0,0,0,2,2,0
-Entsiklopedyah talmudit,nli,43,13,12,0,12,0,0,0,0,0,8,3,0,3,0
+Entsiklopedyah talmudit,lc,17,4,4,0,4,0,0,0,0,0,0,0,2,2,0
+Entsiklopedyah talmudit,oxford,7,3,3,0,3,0,0,0,0,0,0,0,2,2,0
+Entsiklopedyah talmudit,nli,43,19,18,0,18,0,0,0,0,0,8,3,0,3,0
 Entsiklopedyah talmudit,dnb,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Entsiklopedyah talmudit,k10plus,50,30,30,0,30,0,0,30,30,30,0,0,0,0,1
+Entsiklopedyah talmudit,k10plus,50,31,31,0,31,0,1,30,30,30,0,0,0,0,1
 Die Mischna (Giessen),lc,15,4,4,0,4,0,0,0,0,0,1,0,1,1,0
-Die Mischna (Giessen),oxford,50,34,34,31,3,0,0,0,0,0,1,0,1,1,1
-Die Mischna (Giessen),nli,34,8,7,0,7,0,0,0,2,0,5,2,1,3,0
+Die Mischna (Giessen),oxford,50,35,35,31,4,0,0,0,0,0,1,0,1,1,1
+Die Mischna (Giessen),nli,34,11,10,0,10,0,0,0,3,0,5,2,1,3,0
 Die Mischna (Giessen),dnb,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
 Die Mischna (Giessen),k10plus,50,24,24,0,24,1,0,5,5,5,2,0,0,0,1
-Talmud Bavli,lc,50,36,36,0,36,0,0,0,0,1,9,10,10,20,1
-Talmud Bavli,oxford,50,5,5,0,5,0,0,0,0,0,1,2,1,3,1
-Talmud Bavli,nli,50,8,8,0,8,0,0,0,1,0,6,5,2,7,1
-Talmud Bavli,dnb,50,11,11,0,11,0,0,11,11,11,10,0,0,0,1
-Talmud Bavli,k10plus,50,19,19,0,19,0,0,18,18,18,0,0,0,0,1
-Miqraot Gedolot,lc,50,28,28,0,28,0,0,0,0,0,9,20,8,28,1
-Miqraot Gedolot,oxford,18,12,12,0,12,0,0,0,0,0,8,8,1,9,0
-Miqraot Gedolot,nli,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+Talmud Bavli,lc,50,38,38,0,38,0,0,0,0,1,10,10,11,21,1
+Talmud Bavli,oxford,50,7,7,0,7,0,0,0,0,0,2,2,2,4,1
+Talmud Bavli,nli,50,15,15,0,15,0,0,0,1,0,11,10,2,12,1
+Talmud Bavli,dnb,50,12,12,0,12,1,0,11,11,11,10,0,0,0,1
+Talmud Bavli,k10plus,50,21,21,0,21,0,0,18,18,18,0,0,0,0,1
+Miqraot Gedolot,lc,50,33,33,0,33,0,0,0,0,0,12,22,10,32,1
+Miqraot Gedolot,oxford,18,15,15,0,15,0,0,0,0,0,9,9,3,12,0
+Miqraot Gedolot,nli,50,14,14,0,14,0,0,0,0,0,8,5,0,5,1
 Miqraot Gedolot,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Miqraot Gedolot,k10plus,50,15,14,0,14,0,0,14,14,14,0,0,0,0,1
-Mishnah Berurah,lc,50,17,17,0,17,0,0,0,0,0,5,6,5,11,1
-Mishnah Berurah,oxford,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Mishnah Berurah,nli,50,18,18,0,18,0,0,0,0,0,17,5,10,15,1
+Miqraot Gedolot,k10plus,50,17,16,0,16,0,0,16,16,16,0,0,0,0,1
+Mishnah Berurah,lc,50,41,38,0,38,0,0,0,0,0,15,10,18,28,1
+Mishnah Berurah,oxford,8,2,2,0,2,0,0,0,0,0,0,1,1,2,0
+Mishnah Berurah,nli,50,30,30,0,30,0,0,0,0,0,19,7,10,17,1
 Mishnah Berurah,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Mishnah Berurah,k10plus,50,3,3,0,3,1,0,1,1,1,0,0,0,0,1
-Shulhan Arukh,lc,50,33,33,0,33,0,0,0,0,1,8,17,3,20,1
-Shulhan Arukh,oxford,50,7,7,0,7,0,0,0,0,0,1,1,0,1,1
-Shulhan Arukh,nli,50,2,2,0,2,0,0,0,0,0,2,0,0,0,1
-Shulhan Arukh,dnb,45,3,3,0,3,1,0,1,1,1,0,0,0,0,0
-Shulhan Arukh,k10plus,50,15,15,0,15,1,0,13,13,13,0,0,0,0,1
-Mishneh Torah,lc,50,23,23,1,22,0,0,0,0,0,3,12,3,15,1
-Mishneh Torah,oxford,50,10,10,0,10,0,0,0,7,0,0,6,0,6,1
+Mishnah Berurah,k10plus,50,18,18,0,18,3,0,13,13,13,0,1,0,1,1
+Shulhan Arukh,lc,50,35,35,0,35,0,0,0,0,1,8,17,3,20,1
+Shulhan Arukh,oxford,50,15,15,0,15,0,0,0,1,0,2,3,1,4,1
+Shulhan Arukh,nli,50,15,15,0,15,0,0,0,2,0,6,4,0,4,1
+Shulhan Arukh,dnb,45,9,9,0,9,3,0,1,1,1,0,0,0,0,0
+Shulhan Arukh,k10plus,50,21,21,0,21,5,0,14,14,14,0,0,0,0,1
+Mishneh Torah,lc,50,32,32,1,31,0,0,0,0,0,5,12,7,19,1
+Mishneh Torah,oxford,50,14,14,0,14,0,0,0,7,0,0,6,0,6,1
 Mishneh Torah,nli,50,6,2,0,2,0,0,0,1,0,1,1,0,1,1
-Mishneh Torah,dnb,12,3,3,0,3,1,0,1,1,1,0,0,0,0,0
-Mishneh Torah,k10plus,50,18,18,0,18,2,0,16,16,16,0,1,0,1,1
-Talmud Yerushalmi,lc,50,20,20,0,20,0,0,0,0,1,5,6,7,13,1
-Talmud Yerushalmi,oxford,50,1,1,0,1,0,0,0,0,0,0,0,0,0,1
-Talmud Yerushalmi,nli,50,3,3,0,3,0,0,0,0,0,3,1,2,3,1
-Talmud Yerushalmi,dnb,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Talmud Yerushalmi,k10plus,50,11,9,0,9,0,0,8,8,8,0,0,0,0,1
-Midrash Rabbah,lc,50,3,3,0,3,0,0,0,0,0,1,2,0,2,1
+Mishneh Torah,dnb,12,10,10,0,10,2,0,6,6,6,0,0,0,0,0
+Mishneh Torah,k10plus,50,29,29,1,28,3,0,16,16,16,0,2,0,2,1
+Talmud Yerushalmi,lc,50,27,27,0,27,0,0,0,0,1,6,8,9,17,1
+Talmud Yerushalmi,oxford,50,2,2,0,2,0,0,0,0,0,0,0,0,0,1
+Talmud Yerushalmi,nli,50,16,16,0,16,0,0,0,0,0,5,4,2,6,1
+Talmud Yerushalmi,dnb,30,4,4,0,4,1,0,0,0,0,0,0,0,0,0
+Talmud Yerushalmi,k10plus,50,15,13,1,12,0,0,8,8,8,3,0,0,0,1
+Midrash Rabbah,lc,50,5,5,0,5,0,0,0,0,0,3,2,2,4,1
 Midrash Rabbah,oxford,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-Midrash Rabbah,nli,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-Midrash Rabbah,dnb,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Midrash Rabbah,k10plus,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-Zohar,lc,50,31,31,0,31,0,0,0,0,0,6,21,8,29,1
-Zohar,oxford,42,17,17,0,17,0,0,0,0,0,5,12,2,14,0
-Zohar,nli,50,4,4,0,4,0,0,0,0,0,1,0,0,0,1
-Zohar,dnb,50,3,3,0,3,0,0,0,0,0,0,0,0,0,1
-Zohar,k10plus,50,5,5,0,5,0,1,0,0,0,0,0,0,0,1
-Arukh ha-Shulhan,lc,50,2,2,0,2,0,0,0,0,0,0,0,0,0,1
+Midrash Rabbah,nli,50,10,10,0,10,0,0,0,1,2,5,4,2,6,1
+Midrash Rabbah,dnb,6,2,1,0,1,0,0,0,0,0,0,0,0,0,0
+Midrash Rabbah,k10plus,50,1,1,0,1,1,0,0,0,0,0,0,0,0,1
+Zohar,lc,50,38,38,0,38,0,0,0,0,0,6,22,9,31,1
+Zohar,oxford,42,29,29,0,29,0,0,0,0,0,5,14,3,17,0
+Zohar,nli,50,18,18,0,18,0,0,0,0,0,5,4,0,4,1
+Zohar,dnb,50,16,16,0,16,1,0,0,0,0,0,0,0,0,1
+Zohar,k10plus,50,21,20,0,20,0,1,5,5,5,0,0,0,0,1
+Arukh ha-Shulhan,lc,50,3,3,0,3,0,0,0,0,0,0,0,0,0,1
 Arukh ha-Shulhan,oxford,5,5,5,0,5,0,0,0,0,0,3,2,2,4,0
-Arukh ha-Shulhan,nli,50,4,4,0,4,0,0,0,0,0,4,3,0,3,1
+Arukh ha-Shulhan,nli,50,6,5,0,5,0,0,0,0,0,4,3,0,3,1
 Arukh ha-Shulhan,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 Arukh ha-Shulhan,k10plus,50,5,5,0,5,1,0,4,4,4,0,0,0,0,1
-Encyclopaedia Judaica,lc,12,10,9,0,9,0,0,0,0,2,2,4,0,4,0
-Encyclopaedia Judaica,oxford,24,8,8,1,7,0,0,0,0,2,4,3,1,4,0
-Encyclopaedia Judaica,nli,50,11,4,0,4,0,0,0,0,0,1,0,0,0,1
-Encyclopaedia Judaica,dnb,50,46,44,0,44,3,0,38,38,38,0,0,0,0,1
-Encyclopaedia Judaica,k10plus,50,42,42,0,42,0,0,42,42,42,0,0,0,0,1
-Torah Shelemah,lc,17,1,1,0,1,0,0,0,0,0,0,1,0,1,0
+Encyclopaedia Judaica,lc,12,11,10,0,10,0,0,0,0,2,3,4,0,4,0
+Encyclopaedia Judaica,oxford,24,9,9,1,8,0,0,0,0,2,5,3,1,4,0
+Encyclopaedia Judaica,nli,50,12,5,0,5,0,0,0,0,0,1,0,0,0,1
+Encyclopaedia Judaica,dnb,50,48,46,0,46,3,0,38,38,38,0,0,0,0,1
+Encyclopaedia Judaica,k10plus,50,45,45,0,45,0,0,42,42,42,2,0,0,0,1
+Torah Shelemah,lc,17,4,4,0,4,0,0,0,0,0,1,2,1,3,0
 Torah Shelemah,oxford,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Torah Shelemah,nli,26,3,3,0,3,0,0,0,0,0,1,1,0,1,0
+Torah Shelemah,nli,26,5,5,0,5,0,0,0,0,0,1,1,0,1,0
 Torah Shelemah,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Torah Shelemah,k10plus,50,35,35,0,35,0,0,35,35,35,0,0,0,0,1
-Schottenstein Talmud,lc,50,2,2,0,2,0,0,0,0,0,2,1,0,1,1
-Schottenstein Talmud,oxford,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Schottenstein Talmud,nli,22,14,12,0,12,0,0,0,0,0,1,0,0,0,0
-Schottenstein Talmud,dnb,10,1,1,0,1,0,0,0,0,0,0,0,0,0,0
-Schottenstein Talmud,k10plus,50,2,0,0,0,0,0,0,0,0,0,0,0,0,1
-Ein Yaakov,lc,50,13,13,0,13,0,0,0,0,0,2,9,2,11,1
-Ein Yaakov,oxford,21,2,2,0,2,0,0,0,0,0,0,1,0,1,0
-Ein Yaakov,nli,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-Ein Yaakov,dnb,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Ein Yaakov,k10plus,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-Yalkut Shimoni,lc,49,18,18,0,18,0,0,0,0,0,4,5,1,6,0
-Yalkut Shimoni,oxford,29,16,16,4,12,0,0,0,0,0,6,6,1,7,0
-Yalkut Shimoni,nli,50,22,21,0,21,0,0,0,3,0,6,6,0,6,1
+Torah Shelemah,k10plus,50,36,36,0,36,1,0,35,35,35,0,1,0,1,1
+Schottenstein Talmud,lc,50,3,3,0,3,0,0,0,0,0,2,1,0,1,1
+Schottenstein Talmud,oxford,41,1,1,0,1,0,0,0,0,0,1,0,1,1,0
+Schottenstein Talmud,nli,22,8,8,0,8,0,0,0,0,0,0,0,0,0,0
+Schottenstein Talmud,dnb,10,6,0,0,0,0,0,0,0,0,0,0,0,0,0
+Schottenstein Talmud,k10plus,50,1,1,0,1,0,0,1,1,1,0,0,0,0,1
+Ein Yaakov,lc,50,24,24,0,24,0,0,0,0,0,6,16,4,20,1
+Ein Yaakov,oxford,21,8,8,0,8,0,0,0,0,0,1,5,0,5,0
+Ein Yaakov,nli,50,17,16,0,16,0,0,0,3,0,5,6,0,6,1
+Ein Yaakov,dnb,2,2,2,0,2,1,0,1,1,1,0,0,0,0,0
+Ein Yaakov,k10plus,50,31,31,0,31,7,0,23,23,23,1,2,0,2,1
+Yalkut Shimoni,lc,49,27,27,0,27,0,0,0,0,0,7,7,3,10,0
+Yalkut Shimoni,oxford,29,17,17,4,13,0,0,0,0,0,6,6,1,7,0
+Yalkut Shimoni,nli,50,29,28,0,28,0,0,0,4,0,6,6,0,6,1
 Yalkut Shimoni,dnb,50,49,49,0,49,4,15,5,5,5,0,0,0,0,1
 Yalkut Shimoni,k10plus,50,48,48,11,37,3,0,6,6,6,7,0,0,0,1
-Tosefta,lc,50,16,15,0,15,0,0,0,0,0,1,3,3,6,1
-Tosefta,oxford,50,1,1,0,1,0,0,0,0,0,0,0,0,0,1
-Tosefta,nli,50,4,2,0,2,0,0,0,1,0,0,0,0,0,1
-Tosefta,dnb,47,1,1,0,1,0,0,0,0,0,0,0,0,0,0
-Tosefta,k10plus,50,3,1,0,1,0,0,0,0,0,0,0,0,0,1
-Arbaah Turim,lc,48,13,13,0,13,0,0,0,0,0,4,6,2,8,0
-Arbaah Turim,oxford,14,1,1,0,1,0,0,0,0,0,1,1,0,1,0
-Arbaah Turim,nli,50,40,40,0,40,0,0,0,0,0,0,0,0,0,1
+Tosefta,lc,50,23,22,0,22,0,0,0,0,1,1,4,3,7,1
+Tosefta,oxford,50,11,11,2,9,0,0,0,0,0,0,0,0,0,1
+Tosefta,nli,50,19,16,0,16,0,0,0,2,0,1,0,0,0,1
+Tosefta,dnb,47,3,3,0,3,0,0,0,0,0,0,0,0,0,0
+Tosefta,k10plus,50,13,10,2,8,0,0,0,1,0,1,0,0,0,1
+Arbaah Turim,lc,48,26,26,0,26,0,0,0,0,0,5,10,3,13,0
+Arbaah Turim,oxford,14,5,5,0,5,0,0,0,0,0,1,3,0,3,0
+Arbaah Turim,nli,50,44,44,0,44,0,0,0,0,0,2,0,0,0,1
 Arbaah Turim,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Arbaah Turim,k10plus,50,7,7,0,7,3,0,4,4,4,0,0,0,0,1
+Arbaah Turim,k10plus,50,11,11,0,11,3,0,4,4,4,0,0,0,0,1
 Otsar ha-Geonim,lc,15,5,5,0,5,0,0,0,0,0,0,1,0,1,0
 Otsar ha-Geonim,oxford,5,4,4,0,4,0,0,0,0,0,0,1,0,1,0
-Otsar ha-Geonim,nli,37,25,9,0,9,0,0,0,0,0,3,2,0,2,0
+Otsar ha-Geonim,nli,37,26,10,0,10,0,0,0,0,0,3,2,0,2,0
 Otsar ha-Geonim,dnb,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 Otsar ha-Geonim,k10plus,18,17,17,0,17,2,0,13,13,13,0,0,0,0,0
-Sifre,lc,50,34,32,0,32,0,0,0,0,0,14,15,2,17,1
-Sifre,oxford,50,2,2,0,2,0,0,0,0,0,0,0,0,0,1
+Sifre,lc,50,37,35,0,35,0,0,0,0,0,15,15,4,19,1
+Sifre,oxford,50,3,3,0,3,0,0,0,0,0,0,0,0,0,1
 Sifre,nli,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
 Sifre,dnb,50,5,4,0,4,0,0,0,0,0,0,0,0,0,1
 Sifre,k10plus,50,1,1,0,1,0,0,0,0,0,0,0,0,0,1
-Or ha-Hayim,lc,50,12,12,0,12,0,0,0,0,0,1,3,1,4,1
-Or ha-Hayim,oxford,13,3,3,0,3,0,0,0,0,0,1,1,0,1,0
-Or ha-Hayim,nli,50,21,18,0,18,0,0,0,5,4,2,2,0,2,1
+Or ha-Hayim,lc,50,29,29,0,29,0,0,0,0,0,9,9,5,14,1
+Or ha-Hayim,oxford,13,4,4,0,4,0,0,0,0,0,1,2,0,2,0
+Or ha-Hayim,nli,50,25,22,0,22,0,0,0,5,4,3,2,0,2,1
 Or ha-Hayim,dnb,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 Or ha-Hayim,k10plus,50,0,0,0,0,0,0,0,0,0,0,0,0,0,1
 Pesiqta Rabbati,lc,15,3,3,0,3,0,0,0,0,0,1,2,1,3,0
-Pesiqta Rabbati,oxford,14,2,2,0,2,0,0,0,0,0,0,1,1,2,0
-Pesiqta Rabbati,nli,50,19,18,0,18,0,0,0,7,0,0,0,0,0,1
+Pesiqta Rabbati,oxford,14,5,5,1,4,0,0,0,0,0,0,1,1,2,0
+Pesiqta Rabbati,nli,50,26,25,0,25,0,0,0,8,0,0,0,0,0,1
 Pesiqta Rabbati,dnb,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Pesiqta Rabbati,k10plus,50,15,13,0,13,1,0,10,11,10,0,0,0,0,1
+Pesiqta Rabbati,k10plus,50,20,16,1,15,1,0,10,11,10,1,0,0,0,1

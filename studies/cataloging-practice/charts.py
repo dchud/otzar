@@ -7,7 +7,10 @@ HERE = pathlib.Path("tmp/vagf")
 FIG = pathlib.Path("docs/practice-study/figures"); FIG.mkdir(parents=True, exist_ok=True)
 D = json.loads((HERE/"final_stats.json").read_text())
 GREY = "#8a8a8a"
-plt.rcParams.update({"savefig.transparent": True, "figure.facecolor": "none",
+plt.rcParams.update({"savefig.transparent": True,
+    # text as text, not glyph outlines, so figure labels are
+    # searchable and reachable by assistive technology
+    "svg.fonttype": "none", "figure.facecolor": "none",
     "axes.facecolor": "none", "text.color": GREY, "axes.labelcolor": GREY,
     "xtick.color": GREY, "ytick.color": GREY, "axes.edgecolor": GREY,
     "font.size": 9})

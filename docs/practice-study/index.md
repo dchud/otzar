@@ -34,11 +34,10 @@ Gedolot, Shulhan Arukh, Mishneh Torah, Zohar, Mishnah Berurah and
 sixteen others — asked of all five catalogs by title. Every work is
 held by at least three of them.
 
-The two disagree, and the disagreement is one of the findings. A corpus
-drawn on language and year contains almost no volumes of sets, because
-they are a small fraction of any catalog and nothing in the draw sought
-them out. Estimates of how catalogs handle sets, taken from that
-corpus, are wrong in a measurable direction.
+The two measure different things. Prevalence over a whole catalog and
+prevalence within multi-volume works are different quantities, and the
+corpus can only give the first. Where a claim about sets rests on the
+corpus, the survey supersedes it.
 
 ## The patterns
 

@@ -88,9 +88,9 @@ That is the second possible outcome sitting alongside the third: the
 treatments are real enough to show up, and not sharp enough to sort
 records by.
 
-The [marker chapter](markers.md) shows the same taxonomy declared
-explicitly in leader/19 at K10plus and DNB, and expressed there almost
-without exception by two fields that are in this vector, `773` and
+The [set chapter](sets.md) shows the same taxonomy coded explicitly in
+leader/19 at K10plus and DNB, and expressed there almost without
+exception by two fields that are in this vector, `773` and
 `245 $n`/`$p`. The clustering does not organise on them. Scored against
 these partitions and restricted to those two catalogs, adjusted mutual
 information with leader/19 is 0.000: all 287 dependent-part records fall
@@ -204,4 +204,4 @@ They stay distinguishable. So on general record structure the unit of
 variation is the institution, and the [set survey](sets.md) finding
 that three of them never code leader/19 is specific to that one
 position rather than a general convergence — their set-level extent
-rates differ widely, at 63%, 59% and 24%.
+rates differ widely, at 61%, 50% and 24%.

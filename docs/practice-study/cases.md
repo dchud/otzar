@@ -248,7 +248,7 @@ None of the six shows a `leader/19` value, and none carries a `773`, a
 `245 $n`/`$p` or a volume count in `300`. That is not an accident of
 selection but a property of it: ISBN matching cannot reach the material
 where those fields live. The [set survey](sets.md) reaches it by
-querying titles, and finds all four mechanisms in use.
+querying titles.
 
 [^six]: **Not verified here.** That `(2` is the MARC-8 escape for the
     Hebrew character set and `Hebr` the ISO 15924 script code, and that

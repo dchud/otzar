@@ -8,10 +8,10 @@ is. A weak pattern earns a cautious practice.
 *From [pattern 1](sets.md). Strong.*
 
 The [set survey](sets.md) asked five catalogs for 22 multi-volume works.
-LC holds *Entsiḳlopedyah talmudit* as **two** records, both with
-open-ended set-level extents covering some fifty volumes; K10plus holds
-**thirty**, each coded as a dependent part. *Encyclopaedia Judaica* is
-41 coded records at DNB and 42 at K10plus against 9 at LC.
+LC describes *Entsiḳlopedyah talmudit* in two records carrying
+open-ended set-level extents, one per publication; K10plus holds
+**thirty-one**, each coded. *Encyclopaedia Judaica* is 41 coded
+records at DNB and 42 at K10plus, against 10 at LC.
 
 Any identity rule assuming records correspond one-to-one across sources
 will be wrong on precisely the material otzar exists to catalogue. That
@@ -31,8 +31,8 @@ cleanest measurement and its least immediately actionable one.
 Leader/19 records the level at which a multipart resource is described:
 `a` set, `b` part with an independent title, `c` part with a dependent
 title. Coded, it predicts the rest of the record — `c` comes with `773`
-and `245 $n`/`$p` on all 273 such records, `b` with `490` always and
-`830` usually and `773` never.
+and `245 $n`/`$p` on 272 of 273 such records in the corpus, `b` with
+`490` always and `830` usually and `773` never.
 
 It will arrive from K10plus and DNB. Across 22 works held by LC, Oxford
 and NLI it is coded on **0 of 604** records, which is what LC and PCC
@@ -43,8 +43,8 @@ practice of not creating hierarchical descriptions predicts.
 *From [pattern 1](sets.md). Strong.*
 
 A record from LC, Oxford or NLI with no `773` and no leader/19 may still
-describe a whole multi-volume set. The signal is the extent: 63% of LC
-records and 59% of Oxford's carry a set-level extent, and the
+describe a whole multi-volume set. The signal is the extent: 61% of LC
+records and 50% of Oxford's carry a set-level extent, and the
 open-ended forms matter as much as the numbered ones — `v.`,
 `v. <1-27, 29-53>`. An earlier version of this study missed 168 LC
 records by requiring a leading digit.
@@ -59,7 +59,7 @@ in `505`: 78 records at LC, 61 at NLI, 31 at Oxford.
 `773` carries several meanings in this material:
 
 - At K10plus and DNB, on a record coding `leader/19=c`, it links a
-  volume to its set. That is 220 and 56 records in the survey.
+  volume to its set. That is 263 and 62 records in the survey.
 - At K10plus it also appears on `leader/07=a` component parts —
   articles inside a host, not volumes inside a set. The leader tells
   them apart; the field alone does not.
@@ -75,7 +75,7 @@ Read alone it will over-match. Read with `leader/06`, `leader/07` and
 
 *From [pattern 1](sets.md). Strong.*
 
-Thirty-six Oxford records for one work looked like per-volume
+Thirty-one Oxford records for one work looked like per-volume
 cataloging and were a vendor's e-book series: `300 $a "1 online
 resource"`, a `776` to the print edition, one record per tractate. They
 imitate the pattern a set-detection rule looks for without being

@@ -198,7 +198,9 @@ def describe(xml_text):
                     for s in df.findall(f"{M}subfield")}
             if tag == "245":
                 s245 = set(subs)
-                title = " ".join(subs.get(c, "") for c in ("a", "n", "p"))
+                title = " ".join(subs.get(c, "") for c in
+                                 ("a", "n", "p"))
+                title_b = subs.get("b", "")
             if tag == "300" and not a300:
                 a300 = subs.get("a", "")
         agency = ""
@@ -224,6 +226,7 @@ def describe(xml_text):
             "volcount": bool(VOL.search(a300)),
             "a300": a300[:34],
             "title": title[:60],
+            "title_b": title_b[:60],
         })
     return out
 

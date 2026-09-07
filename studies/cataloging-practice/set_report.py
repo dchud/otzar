@@ -60,6 +60,16 @@ COUNTED = re.compile(r"\b\d+\s*(v\.|vols?\b|volumes?\b|B(?:ä|ae)nde\b|Bde\b|"
 OPEN = re.compile(r"^\s*(v\.|vols?\b|volumes?\b|B(?:ä|ae)nde\b)|<\s*\d", re.I)
 
 
+# Editions are commonly titled "Sefer X" / "ספר X" / "Ḥamishah ḥumshe
+# X". Anchoring the work name at the very start of the title drops them:
+# an earlier version of this script reported zero K10plus records for
+# Ein Yaakov while the response held 23 coded ones titled "Sefer ʿEn
+# Yaʿaḳov 5", and zero NLI records for Miqraot Gedolot. The anchor is
+# kept, because a work name appearing mid-title usually belongs to a
+# book about the work, but an edition prefix may precede it.
+PREFIX = r"(?:(?:sefer|siddur|mahzor|hamishah|humshe|ha)\s+){0,3}"
+
+
 def norm(s):
     s = unicodedata.normalize("NFKD", s.lower())
     s = "".join(c for c in s if not unicodedata.combining(c))
@@ -80,11 +90,17 @@ data = json.loads((HERE / "set_cases.json").read_text())
 summary, dropped = {}, collections.Counter()
 
 for work, cats in data.items():
-    rx = re.compile(PATTERNS[work])
+    rx = re.compile("^" + PREFIX + PATTERNS[work].lstrip("^"))
+    # The work name in $b identifies an edition whose title proper is
+    # something else ("The Five Megilloth : miqraot gedolot"). Searched
+    # unanchored, since $b is already the remainder of the title.
+    rx_b = re.compile(PATTERNS[work].lstrip("^"))
     summary[work] = {}
     for c in CATALOGS:
         recs = cats.get(c, {}).get("records", [])
-        named = [r for r in recs if rx.search(norm(r["title"]))]
+        named = [r for r in recs
+                 if rx.search(norm(r["title"]))
+                 or (r.get("title_b") and rx_b.search(norm(r["title_b"])))]
         dropped[f"{c}:title"] += len(recs) - len(named)
         mono = [r for r in named if r["l07"] == "m"]
         dropped[f"{c}:not-monograph"] += len(named) - len(mono)
