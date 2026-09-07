@@ -1,0 +1,71 @@
+site_name: otzar
+site_description: >-
+  A browsable, searchable, multilingual catalog for a shared collection
+  of books.
+site_url: https://dchud.github.io/otzar/
+repo_url: https://github.com/dchud/otzar
+repo_name: dchud/otzar
+edit_uri: edit/main/docs/
+copyright: MIT licensed
+
+# docs/plans/ holds working artifacts. They are exempt from the
+# persistent-artifact rules, so they carry bead IDs, pull request
+# references and time-state wording, and several describe work that has
+# since landed. Publishing them would put the least durable writing in
+# the project in front of the most casual reader.
+exclude_docs: |
+  plans/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.sections
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - User guide: user-guide.md
+  - Administration: administration.md
+  - Development: development.md
+  - MARC in practice: marc-in-practice.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+extra_css:
+  - stylesheets/bidi.css
+
+plugins:
+  - search
