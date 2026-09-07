@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='utf-8'?>
+<zs:searchRetrieveResponse xmlns="http://www.loc.gov/MARC21/slim" xmlns:zs="http://www.loc.gov/zing/srw/">
+  <zs:version>1.1</zs:version>
+  <zs:numberOfRecords>1</zs:numberOfRecords>
+  <zs:records>
+    <zs:record>
+      <zs:recordSchema>marcxml</zs:recordSchema>
+      <zs:recordPacking>xml</zs:recordPacking>
+      <zs:recordData>
+        <record>
+          <leader>02995cam a22004814a 4500</leader>
+          <controlfield tag="001">13821559</controlfield>
+          <controlfield tag="005">20250606213607.4</controlfield>
+          <controlfield tag="008">041220m20059999pau      b    000 0 eng  </controlfield>
+          <datafield tag="035" ind1=" " ind2=" ">
+            <subfield code="a">13821559</subfield>
+          </datafield>
+          <datafield tag="906" ind1=" " ind2=" ">
+            <subfield code="a">7</subfield>
+            <subfield code="b">cbc</subfield>
+            <subfield code="c">orignew</subfield>
+            <subfield code="d">1</subfield>
+            <subfield code="e">ecip</subfield>
+            <subfield code="f">20</subfield>
+            <subfield code="g">y-gencatlg</subfield>
+          </datafield>
+          <datafield tag="925" ind1="0" ind2=" ">
+            <subfield code="a">acquire</subfield>
+            <subfield code="b">1 shelf copy</subfield>
+            <subfield code="x">policy default</subfield>
+          </datafield>
+          <datafield tag="955" ind1=" " ind2=" ">
+            <subfield code="a">ye03 2004-12-20</subfield>
+            <subfield code="i">ye03 2004-12-20 to ye91 for rev.; to shelfl.</subfield>
+            <subfield code="e">ye10 2004-12-28 to Dewey</subfield>
+            <subfield code="a">aa17 2004-12-28</subfield>
+            <subfield code="a">ps05 2005-09-27 1 copy rec'd., to CIP ver.</subfield>
+            <subfield code="f">sh04 2005-10-26</subfield>
+            <subfield code="g">sh04 2005-10-26 to BCCD</subfield>
+            <subfield code="e">pv03 2006-03-07 copy 2 to BCCD</subfield>
+            <subfield code="a">ye19 2007-02-26 rectified erroneous changes made in CIP Ver</subfield>
+            <subfield code="a">ye91 2007-04-03 verified changes; to ye19</subfield>
+            <subfield code="a">ye19 2007-04-13 c. 1 to BCCD for relabeling</subfield>
+            <subfield code="a">ye19 2007-05-25 c. 2 to BCCD for relabeling;</subfield>
+            <subfield code="c">cd05 2010-01-15 telework added vol. 3; to shelf listing</subfield>
+            <subfield code="a">Barcode 00217869584 returned from bindery 2010-01-25 ;</subfield>
+            <subfield code="c">cd06 2016-08-01 added 2 copies of (vol. 5) ;</subfield>
+            <subfield code="s">cd06 2018-06-25 (vol. 5, copy 3) to surplus;</subfield>
+            <subfield code="u">cd01 2018-10-10 added "Rubin" to 245 oti per td06; please send volume 1 to IJ Section ;</subfield>
+            <subfield code="c">cd06 2019-05-14 added (vol. 1, copy 1) to Hebraic Section ;</subfield>
+            <subfield code="t">cd06 2024-07-15 added (vol. 1, copy 2) to GenColl.</subfield>
+          </datafield>
+          <datafield tag="955" ind1=" " ind2=" ">
+            <subfield code="a">LCAP batch update 2025-06-01-04:00: LCAPM-644, LCAPM-893</subfield>
+          </datafield>
+          <datafield tag="010" ind1=" " ind2=" ">
+            <subfield code="a">  2004030331</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9780827609426</subfield>
+            <subfield code="q">v. 1</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">0827608128</subfield>
+            <subfield code="q">v. 2</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">0827608977</subfield>
+            <subfield code="q">v. 3</subfield>
+          </datafield>
+          <datafield tag="020" ind1=" " ind2=" ">
+            <subfield code="a">9780827609396</subfield>
+            <subfield code="q">v. 5</subfield>
+          </datafield>
+          <datafield tag="040" ind1=" " ind2=" ">
+            <subfield code="a">DLC</subfield>
+            <subfield code="c">DLC</subfield>
+            <subfield code="d">DLC</subfield>
+          </datafield>
+          <datafield tag="041" ind1="0" ind2=" ">
+            <subfield code="a">eng</subfield>
+            <subfield code="a">heb</subfield>
+          </datafield>
+          <datafield tag="042" ind1=" " ind2=" ">
+            <subfield code="a">pcc</subfield>
+          </datafield>
+          <datafield tag="050" ind1="0" ind2="0">
+            <subfield code="a">BS1223</subfield>
+            <subfield code="b">.C37 2005</subfield>
+          </datafield>
+          <datafield tag="082" ind1="0" ind2="0">
+            <subfield code="a">222/.1077</subfield>
+            <subfield code="2">22</subfield>
+          </datafield>
+          <datafield tag="130" ind1="0" ind2=" ">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="s">Jewish Publication Society.</subfield>
+            <subfield code="f">2005.</subfield>
+          </datafield>
+          <datafield tag="245" ind1="1" ind2="4">
+            <subfield code="a">The commentators' Bible :</subfield>
+            <subfield code="b">the Rubin JPS Miqra'ot gedolot = [Miḳraʼot gedolot] /</subfield>
+            <subfield code="c">edited, translated, and annotated by Michael Carasik.</subfield>
+          </datafield>
+          <datafield tag="246" ind1="3" ind2="1">
+            <subfield code="a">Miḳraʼot gedolot</subfield>
+          </datafield>
+          <datafield tag="250" ind1=" " ind2=" ">
+            <subfield code="a">1st ed.</subfield>
+          </datafield>
+          <datafield tag="260" ind1=" " ind2=" ">
+            <subfield code="a">Philadelphia, PA :</subfield>
+            <subfield code="b">The Jewish Publication Society,</subfield>
+            <subfield code="c">2005-&lt;2018&gt;</subfield>
+          </datafield>
+          <datafield tag="300" ind1=" " ind2=" ">
+            <subfield code="a">v. &lt;1-3,5&gt; ;</subfield>
+            <subfield code="c">32 cm.</subfield>
+          </datafield>
+          <datafield tag="336" ind1=" " ind2=" ">
+            <subfield code="a">text</subfield>
+            <subfield code="b">txt</subfield>
+            <subfield code="2">rdacontent</subfield>
+          </datafield>
+          <datafield tag="337" ind1=" " ind2=" ">
+            <subfield code="a">unmediated</subfield>
+            <subfield code="b">n</subfield>
+            <subfield code="2">rdamedia</subfield>
+          </datafield>
+          <datafield tag="338" ind1=" " ind2=" ">
+            <subfield code="a">volume</subfield>
+            <subfield code="b">nc</subfield>
+            <subfield code="2">rdacarrier</subfield>
+          </datafield>
+          <datafield tag="500" ind1=" " ind2=" ">
+            <subfield code="a">Latin script other title information on volumes &lt;2-3&gt;: the JPS Miqra'ot gedolot</subfield>
+          </datafield>
+          <datafield tag="500" ind1=" " ind2=" ">
+            <subfield code="a">Hebrew text based on Biblia Hebraica Stuttgartensia.</subfield>
+          </datafield>
+          <datafield tag="504" ind1=" " ind2=" ">
+            <subfield code="a">"Resources for further study": v. 1, p. 348; "Other English translations": v. 1, p. 349.</subfield>
+          </datafield>
+          <datafield tag="505" ind1="1" ind2=" ">
+            <subfield code="a">[1] Genesis = [Be-Reshit] -- [2] Exodus = [Shemot] -- [3] Leviticus = [Ṿa-yiḳra] -- -- [5] Deuteronomy = [Devarim]</subfield>
+          </datafield>
+          <datafield tag="546" ind1=" " ind2=" ">
+            <subfield code="a">Bible text in Hebrew and English; commentaries in English.</subfield>
+          </datafield>
+          <datafield tag="630" ind1="0" ind2="0">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch</subfield>
+            <subfield code="v">Commentaries.</subfield>
+          </datafield>
+          <datafield tag="655" ind1=" " ind2="7">
+            <subfield code="a">Commentaries.</subfield>
+            <subfield code="2">lcgft</subfield>
+            <subfield code="0">https://id.loc.gov/authorities/genreForms/gf2025026014</subfield>
+          </datafield>
+          <datafield tag="700" ind1="1" ind2=" ">
+            <subfield code="a">Carasik, Michael.</subfield>
+          </datafield>
+          <datafield tag="730" ind1="0" ind2="2">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">Hebrew</subfield>
+            <subfield code="s">Biblia Hebraica Stuttgartensia</subfield>
+            <subfield code="f">2005.</subfield>
+          </datafield>
+          <datafield tag="730" ind1="0" ind2="2">
+            <subfield code="a">Bible.</subfield>
+            <subfield code="p">Pentateuch.</subfield>
+            <subfield code="l">English.</subfield>
+            <subfield code="s">Jewish Publication Society (1985)</subfield>
+            <subfield code="f">2005.</subfield>
+          </datafield>
+          <datafield tag="952" ind1=" " ind2=" ">
+            <subfield code="a">Editor plans to include all five books of the Pentateuch, with the possible addition of other books of the Bible (per 2/24/07 email).</subfield>
+          </datafield>
+        </record>
+      </zs:recordData>
+      <zs:recordPosition>1</zs:recordPosition>
+    </zs:record>
+  </zs:records>
+</zs:searchRetrieveResponse>
