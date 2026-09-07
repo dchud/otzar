@@ -84,6 +84,10 @@ lan: tailwind
     CSRF_TRUSTED_ORIGINS="https://$IP:8000" \
     uv run python manage.py runserver_plus 0.0.0.0:8000 --cert-file "$CERT" --key-file "$KEY"
 
-# Clean up old discarded scans
+# Report what cleaning up old discarded scans would remove
 cleanup-staging days="30":
     uv run python manage.py cleanup_staging --days {{days}}
+
+# Delete what `cleanup-staging` reports. Not reversible.
+cleanup-staging-apply days="30":
+    uv run python manage.py cleanup_staging --days {{days}} --apply

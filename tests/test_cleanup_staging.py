@@ -145,21 +145,17 @@ class TestRowCleanup:
 
         assert ScanResult.objects.filter(pk=scan.pk).exists()
 
-    def test_stale_awaiting_ocr_row_goes_with_its_file(self, media_root):
-        path = write_file(media_root, STAGED, age_days=8)
-        scan = make_scan(image=STAGED, status="awaiting_ocr", age_days=8)
+    def test_an_old_awaiting_ocr_row_is_kept_with_its_file(self, media_root):
+        """Unfinished work is not rejected work.
 
-        output = run("--days=30", "--stale-ocr-days=7", "--apply")
+        A scan nobody confirmed or discarded is a photograph its owner
+        never chose to throw away, and no age makes that untrue. The
+        sweep answers for discarded scans only.
+        """
+        path = write_file(media_root, STAGED, age_days=400)
+        scan = make_scan(image=STAGED, status="awaiting_ocr", age_days=400)
 
-        assert not ScanResult.objects.filter(pk=scan.pk).exists()
-        assert not path.exists()
-        assert counts(output)["Stale awaiting_ocr scans"] == 1
-
-    def test_recent_awaiting_ocr_row_is_kept(self, media_root):
-        path = write_file(media_root, STAGED, age_days=1)
-        scan = make_scan(image=STAGED, status="awaiting_ocr", age_days=1)
-
-        run("--days=30", "--stale-ocr-days=7", "--apply")
+        run("--days=30", "--apply")
 
         assert ScanResult.objects.filter(pk=scan.pk).exists()
         assert path.exists()
@@ -201,22 +197,21 @@ class TestDryRun:
         orphan = write_file(media_root, STAGED, age_days=40)
         kept = write_file(media_root, "staging/2026/09/01/keep.jpg")
         discarded = make_scan(status="discarded", age_days=40)
-        stale = make_scan(
+        awaiting = make_scan(
             image="staging/2026/09/01/keep.jpg",
             status="awaiting_ocr",
             age_days=8,
         )
 
-        output = run("--days=30", "--stale-ocr-days=7")
+        output = run("--days=30")
 
         assert orphan.exists()
         assert kept.exists()
         assert ScanResult.objects.filter(pk=discarded.pk).exists()
-        assert ScanResult.objects.filter(pk=stale.pk).exists()
+        assert ScanResult.objects.filter(pk=awaiting.pk).exists()
 
         assert "REPORT ONLY" in output
         assert "--apply" in output
         summary = counts(output)
         assert summary["Discarded scans"] == 1
-        assert summary["Stale awaiting_ocr scans"] == 1
         assert summary["Orphaned images"] == 1

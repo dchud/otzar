@@ -164,8 +164,14 @@ From the queue, you can:
 - **Discard** a scan: reject it if it was a mistake or if no usable match was
   found.
 
-Discarded scans are cleaned up automatically after 30 days (configurable via
-the `cleanup_staging` management command).
+Discarding a scan takes it out of the queue but keeps its row and its
+photograph, so the queue can tell a scan you rejected from one that was
+never taken. An administrator removes them, and the images with them, by
+running the `cleanup_staging` command. Nothing removes them on a schedule.
+
+A scan you photographed but never confirmed or discarded is kept for as
+long as it takes you to come back to it. It is unfinished work rather
+than rejected work, and nothing deletes it.
 
 ### Using your phone
 

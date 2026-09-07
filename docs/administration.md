@@ -152,21 +152,28 @@ when search returns nothing for queries that should match.
 
 ### `cleanup_staging`
 
-Deletes old discarded scan results and orphaned staging images.
+Deletes old discarded scan results and orphaned staging images. It
+reports what it would delete and removes nothing unless `--apply` is
+passed, because none of these deletions can be undone.
 
 ```bash
-uv run python manage.py cleanup_staging [--days N]
+uv run python manage.py cleanup_staging [--days N] [--apply]
 ```
 
 | Option | Default | Description |
 |---|---|---|
-| `--days` | 30 | Retention period in days. Discarded `ScanResult` records older than this and staging image files older than this are deleted. |
+| `--days` | 30 | Retention period in days. Discarded `ScanResult` records and orphaned staging images older than this are removed. |
+| `--apply` | off | Delete. Without it the command writes nothing. |
 
 This removes:
 1. `ScanResult` objects with status `discarded` where `updated_at` is older
-   than the cutoff.
-2. Image files in `tmp/title_pages/` with filesystem modification times older
-   than the cutoff.
+   than the cutoff, and the image file each one holds.
+2. Files under `MEDIA_ROOT/staging/` that no `ScanResult` references, whose
+   filesystem modification time is older than the cutoff.
+
+Scans awaiting OCR are left alone at any age. They are unfinished work
+rather than rejected work, and nothing else in the application removes
+them.
 
 Run periodically (e.g. weekly via cron or an equivalent scheduler) to reclaim
 storage.
