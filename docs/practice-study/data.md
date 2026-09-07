@@ -162,11 +162,29 @@ and catalog. The record content is as retrieved; the bytes are not,
 since the records were re-serialised into a single collection element
 with those comments added.
 
+## The scripts
+
+The code that drew the corpus, built the feature vector, ran the
+clustering, computed every table and generated the figures and the files
+above is in the repository under
+[`studies/cataloging-practice/`](https://github.com/dchud/otzar/tree/main/studies/cataloging-practice).
+Its README gives the order the scripts ran in, what each produced, and
+what they expect to find on disk.
+
+The scripts are kept as they ran rather than tidied, so that the
+committed code is the code the published numbers came from.
+
 ## Regenerating everything
 
 The endpoints are listed in the [overview](index.md). Requests were
 spaced at least four seconds per host, 50 records per query, with
 `recordSchema=marcxml` except DNB, which requires `MARC21-xml`.
+
+Running the scripts needs the corpus, which is not in the repository —
+`corpus-features.csv` is a structural description of each record, not
+the records. The corpus and the feature vector are distributed as a
+separate archive; unpack it to `tmp/vagf/` and the pipeline runs from
+`featurize.py` onward.
 
 [^lcterms]: **Not verified here.** That works of the United States
     federal government are not subject to domestic copyright is
