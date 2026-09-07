@@ -1,14 +1,19 @@
 """Management command to reclaim staging storage.
 
-Three things accumulate in the staging area and nothing else removes
+Two things accumulate in the staging area and nothing else removes
 them:
 
 - ``discarded`` scans, whose rows stay so the queue can tell a rejected
   scan from one never taken;
-- ``awaiting_ocr`` scans nobody ever confirmed or discarded, which hold
-  a row and a photo indefinitely;
 - image files no row references, which is what deleting a ScanResult
   through the ORM leaves behind -- Django does not delete the file.
+
+A scan awaiting OCR is left alone however long it has sat there. It is
+unfinished work rather than rejected work: somebody photographed a book
+and did not come back to it, and the difference between that and a scan
+they discarded is the whole reason the two statuses exist. Reclaiming
+the space is not worth deleting a photograph its owner never chose to
+throw away.
 
 Staged images live under ``MEDIA_ROOT/staging/``: ``ScanResult.image``
 is written by ``staging_image_path``, which returns
@@ -64,9 +69,8 @@ def staging_files():
 
 class Command(BaseCommand):
     help = (
-        "Delete old discarded scans, stale awaiting_ocr scans, and "
-        "orphaned staging images. Reports what it would delete; pass "
-        "--apply to delete."
+        "Delete old discarded scans and orphaned staging images. "
+        "Reports what it would delete; pass --apply to delete."
     )
 
     def add_arguments(self, parser):
@@ -80,15 +84,6 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
-            "--stale-ocr-days",
-            type=int,
-            default=7,
-            help=(
-                "Days a scan may sit in awaiting_ocr untouched before "
-                "it is deleted (default: 7)."
-            ),
-        )
-        parser.add_argument(
             "--apply",
             action="store_true",
             help="Delete. Without it nothing is removed.",
@@ -98,7 +93,6 @@ class Command(BaseCommand):
         apply_changes = options["apply"]
         now = timezone.now()
         cutoff = now - timedelta(days=options["days"])
-        stale_cutoff = now - timedelta(days=options["stale_ocr_days"])
 
         if not apply_changes:
             self.stdout.write("REPORT ONLY — nothing will be deleted.\n")
@@ -113,24 +107,13 @@ class Command(BaseCommand):
             ),
             apply_changes,
         )
-        # updated_at, not created_at: a scan someone retried an hour ago
-        # is not stuck, however long ago it was uploaded.
-        stale, stale_files = self._delete_rows(
-            "stale awaiting_ocr",
-            ScanResult.objects.filter(
-                status="awaiting_ocr", updated_at__lt=stale_cutoff
-            ),
-            apply_changes,
-        )
         orphans = self._delete_orphans(referenced, cutoff, apply_changes)
 
-        total = discarded + stale + orphans
+        total = discarded + orphans
         self.stdout.write("\n--- Summary ---")
         self.stdout.write(f"{'Discarded scans:':<27}{discarded}")
-        self.stdout.write(f"{'Stale awaiting_ocr scans:':<27}{stale}")
         self.stdout.write(
-            f"{'Images held by those rows:':<27}"
-            f"{discarded_files + stale_files}"
+            f"{'Images held by those rows:':<27}{discarded_files}"
         )
         self.stdout.write(f"{'Orphaned images:':<27}{orphans}")
 
