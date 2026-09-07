@@ -1,14 +1,17 @@
 """End-to-end tests for the review queue."""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 from playwright.sync_api import expect
 
 from catalog.models import Record
 from catalog.search import ensure_fts_table
 from ingest.models import ScanResult
+from ingest.views import LONG_PENDING_DAYS
 from tests.e2e.conftest import login
 
 CANDIDATE = {
@@ -47,6 +50,23 @@ def empty_scan(db, staff_user):
         candidate_records=[],
         scanned_by=staff_user,
     )
+
+
+@pytest.fixture
+def old_scan(db, staff_user):
+    """A scan well past LONG_PENDING_DAYS -- old enough that whoever
+    took it has plainly moved on."""
+    scan = ScanResult.objects.create(
+        scan_type="isbn",
+        isbn="9780000000099",
+        candidate_records=[CANDIDATE],
+        scanned_by=staff_user,
+    )
+    ScanResult.objects.filter(pk=scan.pk).update(
+        created_at=timezone.now() - timedelta(days=LONG_PENDING_DAYS + 5)
+    )
+    scan.refresh_from_db()
+    return scan
 
 
 @pytest.mark.django_db(transaction=True)
@@ -140,6 +160,18 @@ class TestSeeFullRecord:
         expect(page.locator("text=Rudolph, Wilhelm")).to_be_visible()
         expect(page.locator("text=Bible. Old Testament")).to_be_visible()
 
+    def test_candidate_never_travels_through_the_row(
+        self, page, live_server, staff_user, queued_scan
+    ):
+        """Every candidate on this page already lives on the scan
+        being rendered, so "See full record" names its pick by index
+        rather than carrying a copy of the record with it."""
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+        page.click(f"#scan-{queued_scan.pk}-row-0")
+
+        assert "candidate_data" not in page.content()
+
 
 @pytest.mark.django_db(transaction=True)
 class TestZeroCandidateScan:
@@ -198,3 +230,100 @@ class TestQueueVisibilityAcrossUsers:
 
         queued_scan.refresh_from_db()
         assert queued_scan.status == "discarded"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestLongPendingScans:
+    """A scan nobody finishes stays in the queue forever by design --
+    the badge and filter are what tell "kept forever" apart from "kept
+    and forgotten."
+    """
+
+    def test_the_queue_distinguishes_recent_from_old(
+        self, page, live_server, staff_user, queued_scan, old_scan
+    ):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        recent_card = page.locator(f"#scan-{queued_scan.pk}")
+        old_card = page.locator(f"#scan-{old_scan.pk}")
+        expect(recent_card.get_by_text("Long pending")).to_have_count(0)
+        expect(old_card.get_by_text("Long pending")).to_be_visible()
+
+    def test_a_recent_only_queue_offers_no_filter(
+        self, page, live_server, staff_user, queued_scan
+    ):
+        """Not a default filter: with nothing old to find, the queue
+        does not offer to narrow itself."""
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        expect(page.get_by_role("link", name="long-pending")).to_have_count(0)
+
+    def test_filtering_shows_only_the_old_ones(
+        self, page, live_server, staff_user, queued_scan, old_scan
+    ):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        page.get_by_role("link", name="long-pending").click()
+        page.wait_for_url("**/ingest/queue/?age=old", timeout=10000)
+
+        expect(page.locator(f"#scan-{old_scan.pk}")).to_be_visible()
+        expect(page.locator(f"#scan-{queued_scan.pk}")).to_have_count(0)
+
+        # Old scans stay visible without asking -- this is a filter a
+        # cataloger reaches for, not one applied on their behalf.
+        page.get_by_role("link", name="Show all pending scans").click()
+        expect(page.locator(f"#scan-{queued_scan.pk}")).to_be_visible()
+        expect(page.locator(f"#scan-{old_scan.pk}")).to_be_visible()
+
+    def test_discarding_from_the_filtered_view_removes_the_scan(
+        self, page, live_server, staff_user, old_scan
+    ):
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/queue/?age=old")
+
+        card = page.locator(f"#scan-{old_scan.pk}")
+        card.get_by_role("button", name="Discard").click()
+
+        page.wait_for_url("**/ingest/queue/?age=old", timeout=10000)
+        expect(page.locator(f"#scan-{old_scan.pk}")).to_have_count(0)
+
+        old_scan.refresh_from_db()
+        assert old_scan.status == "discarded"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestQueueControlsStayInViewport:
+    """The badge and the filter link are exactly the kind of addition
+    that pushes the narrowest phones still in use into sideways
+    scrolling; see TestNothingScrollsSideways in test_site_chrome.py
+    for the same check on the pages it covers.
+
+    The candidate table itself is allowed to overflow its own
+    ``overflow-x-auto`` wrapper -- that is the documented exception for
+    wide content -- so this checks the page, not every element on it.
+
+    Logged in as a plain cataloger rather than ``staff_user``: the
+    header's Admin link is a separate, pre-existing overflow at 320px
+    that has nothing to do with the queue, and mixing it in here would
+    make this test fail for a reason this change did not cause.
+    """
+
+    @pytest.mark.parametrize("width", [320, 360, 375, 414])
+    def test_the_queue_stays_inside_the_viewport(
+        self, page, live_server, queued_scan, old_scan, width
+    ):
+        User.objects.create_user(username="cataloger", password="testpass123")
+        login(page, live_server, username="cataloger", password="testpass123")
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(f"{live_server.url}/ingest/queue/")
+
+        overflow = page.evaluate(
+            "() => document.documentElement.scrollWidth"
+            " - document.documentElement.clientWidth"
+        )
+        assert overflow <= 0, (
+            f"{width}px: page scrolls sideways by {overflow}px"
+        )

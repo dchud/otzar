@@ -72,10 +72,20 @@ match. Shown whether or not the search found any candidates.{% endcomment %}
           <td class="py-2 text-right">
             <form method="post" action="{% url 'select_candidate' %}" class="inline">
               {% csrf_token %}
-              <textarea name="candidate_data" class="hidden">{{ item.json }}</textarea>
               {% if scan_id %}
+              {% comment %}The common case: the scan behind this search
+              already holds the candidate, so the pick travels as an
+              index rather than a copy of the record.{% endcomment %}
               <input type="hidden" name="scan_id" value="{{ scan_id }}">
               <input type="hidden" name="candidate_index" value="{{ forloop.counter0 }}">
+              {% else %}
+              {% comment %}No scan to key off -- select_candidate has
+              nothing to look the candidate up by, so the row falls
+              back to carrying it directly. The browser resolves the
+              character references when it reads the field back, so
+              the JSON arrives intact and a title carrying markup
+              cannot close the tag.{% endcomment %}
+              <textarea name="candidate_data" class="hidden">{{ item.json }}</textarea>
               {% endif %}
               <button type="submit"
                       class="text-sm px-3 py-1.5 inline-flex items-center bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">

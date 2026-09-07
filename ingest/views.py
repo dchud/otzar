@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+from datetime import timedelta
 
 import qrcode
 from django.conf import settings
@@ -13,6 +14,7 @@ from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -173,14 +175,17 @@ def _notice(request, message, status=200):
 
 
 def _candidates_with_json(candidates, matches=None):
-    """Pair each candidate with the JSON payload its row posts back.
+    """Pair each candidate with the JSON payload its row falls back to.
 
-    The candidate travels to ``select_candidate`` verbatim rather than
-    being looked up again, so the row a user picked and the record that
-    gets built describe the same thing. The template renders the payload
-    into a textarea under autoescaping: the browser resolves the
-    character references when it reads the field back, so the JSON
-    arrives intact and a title carrying markup cannot close the tag.
+    ``isbn_lookup_view`` and the title-page cascade search both always
+    have a ScanResult behind the search by the time this renders --
+    created or reused before the candidates come back -- so
+    ``_candidates.html``'s "Use" button ordinarily posts just
+    ``(scan_id, candidate_index)`` and ``select_candidate`` reads the
+    candidate back off the scan rather than out of the form. The JSON
+    payload stays on the item only for the row to fall back to if a
+    request ever reaches this view with no scan_id; nothing in the
+    application generates that case today.
 
     *matches*, when given, runs parallel to *candidates* and carries
     each one's :class:`sources.score.Match`. It rides on the item rather
@@ -191,6 +196,18 @@ def _candidates_with_json(candidates, matches=None):
     for item, match in zip(items, matches or ()):
         item["match"] = match
     return items
+
+
+def _candidates_for_display(candidates):
+    """Pair each candidate with the dict the row partial reads.
+
+    For the review queue, where every candidate already lives on the
+    scan being rendered: the row's "Confirm" and "See full record"
+    actions both name their pick by ``(scan_id, candidate_index)``, so
+    nothing here needs to travel back through the browser and there is
+    no JSON payload to carry.
+    """
+    return [{"data": c} for c in candidates or []]
 
 
 def _scan_for_repeat_search(scan_id):
@@ -328,26 +345,51 @@ _PREFILL_FIELDS = [
 
 @login_required
 def select_candidate(request):
-    """Store a selected candidate's full data in session, redirect to manual entry."""
+    """Resolve the candidate a "Use" or "See full record" button
+    picked, store it in session, and redirect to confirm_candidate.
+
+    The common case posts only ``(scan_id, candidate_index)``: the
+    candidate is read back off the ScanResult's own
+    ``candidate_records`` rather than out of the form, so nothing the
+    parser extracted has to round-trip through the browser. A
+    ``candidate_data`` payload is still accepted and used when the scan
+    lookup finds nothing -- not every candidate comes from a scan.
+    """
     if request.method != "POST":
         return redirect("ingest")
-    candidate_json = request.POST.get("candidate_data", "")
-    if candidate_json:
-        try:
-            candidate = json.loads(candidate_json)
-            request.session["candidate"] = candidate
-        except (json.JSONDecodeError, TypeError):
-            logger.exception("Failed to parse candidate JSON")
-    else:
-        logger.warning("select_candidate called with empty candidate_data")
+
+    scan_id = _parse_int(request.POST.get("scan_id"))
+    candidate_index = _parse_int(request.POST.get("candidate_index"))
+
+    candidate = None
+    if scan_id is not None and candidate_index is not None:
+        scan = ScanResult.objects.filter(pk=scan_id).first()
+        if scan is not None:
+            candidates = scan.candidate_records or []
+            if 0 <= candidate_index < len(candidates):
+                candidate = candidates[candidate_index]
+
+    if candidate is None:
+        candidate_json = request.POST.get("candidate_data", "")
+        if candidate_json:
+            try:
+                candidate = json.loads(candidate_json)
+            except (json.JSONDecodeError, TypeError):
+                logger.exception("Failed to parse candidate JSON")
+        else:
+            logger.warning(
+                "select_candidate found no candidate for scan_id=%r "
+                "candidate_index=%r and no candidate_data fallback",
+                scan_id,
+                candidate_index,
+            )
+
+    if candidate is not None:
+        request.session["candidate"] = candidate
 
     # The scan this candidate came from, so confirming can close it.
-    request.session["candidate_scan_id"] = _parse_int(
-        request.POST.get("scan_id")
-    )
-    request.session["candidate_index"] = _parse_int(
-        request.POST.get("candidate_index")
-    )
+    request.session["candidate_scan_id"] = scan_id
+    request.session["candidate_index"] = candidate_index
     return redirect("confirm_candidate")
 
 
@@ -1050,6 +1092,30 @@ def series_manage(request, series_id):
 # Review queue & QR handoff
 # ---------------------------------------------------------------------------
 
+# How long a pending scan can sit unconfirmed before the queue marks it
+# long-pending. A display threshold, not a deletion one: nothing about
+# the scan changes, it only becomes easier to find and act on
+# deliberately. Kept in the same range as cleanup_staging.py's own
+# --days default (30) for discarded scans, so a scan crossing into
+# "long pending" here is roughly the age that command would already be
+# willing to delete once somebody discards it -- the two numbers are
+# about the same kind of "nobody's coming back to this soon" judgment,
+# not independent guesses.
+LONG_PENDING_DAYS = 30
+
+
+def _is_long_pending(scan):
+    """True once a pending scan has sat unconfirmed long enough that
+    whoever took it has plainly moved on.
+
+    Read off ``created_at`` rather than ``updated_at``: a repeated
+    search (see ``_scan_for_repeat_search``) touches ``updated_at``
+    without anyone having looked at the scan since, and a scan that
+    keeps re-searching itself into looking fresh defeats the point.
+    """
+    cutoff = timezone.now() - timedelta(days=LONG_PENDING_DAYS)
+    return scan.created_at < cutoff
+
 
 @login_required
 def review_queue(request):
@@ -1060,15 +1126,57 @@ def review_queue(request):
     several people scan while one reviews, and that only works if the
     reviewer isn't limited to what they scanned themselves.
 
-    Each scan carries its candidates paired with their JSON payloads,
-    the shape the candidate table partial reads, so the queue renders
-    the same rows as the search results it came from.
+    Each scan carries its candidates paired for display, the shape the
+    candidate table partial reads, so the queue renders the same rows
+    as the search results it came from. Every candidate here already
+    lives on the scan being rendered, so unlike the search results
+    page, no candidate needs a JSON payload of its own -- "Confirm"
+    and "See full record" both name their pick by index.
+
+    ``?age=old`` narrows the list to scans past ``LONG_PENDING_DAYS``,
+    so the queue can be worked down deliberately rather than only from
+    the top. Filtering only removes rows; it never reorders what is
+    left, which stays newest-first exactly as the unfiltered queue
+    does.
     """
+    show_old_only = request.GET.get("age") == "old"
+
     scans = list(ScanResult.objects.filter(status="pending"))
     for scan in scans:
-        scan.candidates = _candidates_with_json(scan.candidate_records)
+        scan.candidates = _candidates_for_display(scan.candidate_records)
+        scan.is_long_pending = _is_long_pending(scan)
 
-    return render(request, "ingest/review_queue.html", {"scans": scans})
+    long_pending_count = sum(1 for scan in scans if scan.is_long_pending)
+    if show_old_only:
+        scans = [scan for scan in scans if scan.is_long_pending]
+
+    return render(
+        request,
+        "ingest/review_queue.html",
+        {
+            "scans": scans,
+            "show_old_only": show_old_only,
+            "long_pending_count": long_pending_count,
+        },
+    )
+
+
+def _queue_action_redirect(request):
+    """Return to wherever a confirm or discard on a queue row was
+    launched from.
+
+    The ISBN scan page carries its own inline confirm/discard, so an
+    action taken there returns to it rather than the queue. Otherwise
+    this returns to the queue, preserving an ``age=old`` filter so
+    working down the long-pending scans one at a time does not reset
+    to the full list after every row.
+    """
+    referer = request.META.get("HTTP_REFERER", "")
+    if "/ingest/scan/" in referer:
+        return redirect("isbn_scan")
+    if request.POST.get("age") == "old":
+        return redirect(f"{reverse('review_queue')}?age=old")
+    return redirect("review_queue")
 
 
 @login_required
@@ -1099,11 +1207,7 @@ def confirm_scan(request, scan_id):
     scan.created_record = record
     scan.save()
 
-    # Redirect back to where the user came from (scan page or review queue).
-    referer = request.META.get("HTTP_REFERER", "")
-    if "/ingest/scan/" in referer:
-        return redirect("isbn_scan")
-    return redirect("review_queue")
+    return _queue_action_redirect(request)
 
 
 @login_required
@@ -1115,11 +1219,7 @@ def discard_scan(request, scan_id):
     scan.status = "discarded"
     scan.save()
 
-    # Redirect back to where the user came from (scan page or review queue).
-    referer = request.META.get("HTTP_REFERER", "")
-    if "/ingest/scan/" in referer:
-        return redirect("isbn_scan")
-    return redirect("review_queue")
+    return _queue_action_redirect(request)
 
 
 _QR_TARGETS = ("isbn", "title")
