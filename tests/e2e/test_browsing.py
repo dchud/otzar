@@ -12,7 +12,7 @@ class TestHomePage:
 
     def test_search_bar_present(self, page, live_server):
         page.goto(live_server.url)
-        expect(page.locator('input[name="q"]')).to_be_visible()
+        expect(page.locator('main input[name="q"]')).to_be_visible()
 
     def test_browse_links_present(self, page, live_server):
         page.goto(live_server.url)

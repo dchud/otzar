@@ -65,6 +65,21 @@
           {% endif %}
         </div>
       </div>
+      {% comment %}
+        Its own row at every width, not tucked inside the `hidden
+        sm:flex` block above: those links disappear below `sm` with no
+        menu to collapse behind, and a phone user still needs to reach
+        search from wherever they landed.
+      {% endcomment %}
+      <div class="pb-3">
+        <form method="get" action="{% url 'catalog_search' %}" role="search" aria-label="Site search" class="max-w-sm">
+          <label for="nav-search-input" class="sr-only">Search the catalog</label>
+          <input type="search" name="q" id="nav-search-input"
+                 placeholder="Search the catalog"
+                 dir="auto"
+                 class="w-full min-h-[44px] rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded">
+        </form>
+      </div>
     </nav>
   </header>
 

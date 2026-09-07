@@ -42,6 +42,64 @@ class TestRepositoryLink:
 
 
 @pytest.mark.django_db(transaction=True)
+class TestHeaderSearch:
+    """The header carries its own search box, not just a link to
+    /search/, so a query can be sent from wherever a reader lands."""
+
+    def _search_box(self, page):
+        return page.locator("header").get_by_label("Search the catalog")
+
+    def test_search_box_is_present_on_every_page(
+        self, page, live_server, sample_record
+    ):
+        for path in ["/", "/browse/", "/search/"]:
+            page.goto(f"{live_server.url}{path}")
+            expect(self._search_box(page)).to_be_visible()
+
+    def test_search_box_meets_the_touch_target_size(self, page, live_server):
+        page.goto(live_server.url)
+
+        box = self._search_box(page).bounding_box()
+
+        assert box["height"] >= 44
+
+    def test_search_box_does_not_assume_left_to_right_input(
+        self, page, live_server
+    ):
+        page.goto(live_server.url)
+
+        expect(self._search_box(page)).to_have_attribute("dir", "auto")
+
+    def test_submitting_from_the_home_page_header_lands_on_results(
+        self, page, live_server, sample_record
+    ):
+        page.goto(live_server.url)
+
+        self._search_box(page).fill("social life")
+        self._search_box(page).press("Enter")
+
+        expect(page).to_have_url(f"{live_server.url}/search/?q=social+life")
+        expect(
+            page.locator("text=The social life of information")
+        ).to_be_visible()
+
+    def test_search_box_is_reachable_at_phone_width(self, page, live_server):
+        """base.html hides the Home/Browse/Ingest links below sm with
+        no menu to reveal them again, so the search box does not live
+        inside that same hidden block -- it stays visible here too."""
+        page.set_viewport_size({"width": 375, "height": 812})
+        page.goto(live_server.url)
+
+        expect(self._search_box(page)).to_be_visible()
+
+        overflow = page.evaluate(
+            "() => document.documentElement.scrollWidth"
+            " - document.documentElement.clientWidth"
+        )
+        assert overflow <= 0, f"page scrolls sideways by {overflow}px"
+
+
+@pytest.mark.django_db(transaction=True)
 class TestBuildIndicator:
     def test_footer_links_the_commit_to_github(
         self, page, live_server, settings

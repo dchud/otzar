@@ -92,6 +92,37 @@ class TestRecordDetailView:
 
 
 @pytest.mark.django_db
+class TestHeaderSearchBox:
+    """base.html carries a search form in the header, so a query can
+    be sent from wherever a reader lands, not only from /search/."""
+
+    def test_present_on_the_home_page(self, client):
+        response = client.get("/")
+        content = response.content.decode()
+        assert 'action="/search/"' in content
+        assert 'name="q"' in content
+        assert 'dir="auto"' in content
+
+    def test_present_on_a_record_page(self, client, sample_record):
+        url = f"/catalog/{sample_record.record_id}/{sample_record.slug}/"
+        response = client.get(url)
+        content = response.content.decode()
+        assert 'action="/search/"' in content
+        assert 'name="q"' in content
+
+    def test_does_not_assume_left_to_right_input(self, client):
+        response = client.get("/")
+        content = response.content.decode()
+        assert 'id="nav-search-input"' in content
+        # The header input carries dir="auto"; check it sits on the
+        # same element rather than merely appearing somewhere in the
+        # page.
+        start = content.index('id="nav-search-input"')
+        tag = content[max(0, start - 200) : start + 200]
+        assert 'dir="auto"' in tag
+
+
+@pytest.mark.django_db
 class TestRecordDetailImages:
     """The sidebar shows the cover and the scanned title page below it.
 
