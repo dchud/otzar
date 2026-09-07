@@ -4,7 +4,7 @@
 
 The largest practical finding is not which field marks a volume. It is
 that the same eight-volume commentary reaches otzar as **nine records
-from K10plus and one record from LC**.
+from K10plus and one record from LC**.[^onemany]
 
 The two PICA catalogs, K10plus and DNB, create a record per volume and
 declare it in leader/19, multipart resource record level: `a` for the
@@ -34,7 +34,7 @@ read from and scored against the same records, so it describes this
 corpus rather than predicting the next. And the two catalogs are the two
 running PICA — the fields are written together by one family of export
 software, so this measures internal consistency of that output, not two
-traditions agreeing.
+traditions agreeing.[^pica]
 
 In practice the test adds nothing where leader/19 is present, since it
 matches exactly the records that declare it, and it matches nothing
@@ -60,7 +60,7 @@ So a rule keyed to any one of these misses the other two. `773` alone
 conflates set volumes with articles and runs from none at all at LC to
 35% at K10plus. `leader/07=d` reaches 4 records out of 4,449, all at
 NLI, and MARC defines it for archival units described collectively
-elsewhere, which is what those four are. `800`/`810`/`811` is at or
+elsewhere,[^l07d] which is what those four are. `800`/`810`/`811` is at or
 below 3% everywhere.
 
 The only markers that appear at comparable rates in every catalog are
@@ -226,3 +226,24 @@ The corpus is regenerable: the query axes are language, subject,
 publisher and year, run against the five endpoints named in the
 [overview](index.md), 50 records per query, deduplicated on `003`
 plus `001`. Requests were spaced at least four seconds per host.
+
+[^onemany]: **Inference.** The counts behind it are real: books with a
+    volume count in `300 $a` run 3.3-6.2% at LC, NLI and Oxford against
+    0-0.5% at DNB and K10plus, and only the latter two declare
+    per-volume records. The nine-versus-one figure is illustrative
+    arithmetic, not an observed pair — the corpus holds no single set
+    with its records counted on both sides. Confirming it means picking
+    a known multi-volume work and counting the records each catalog
+    returns for it.
+
+[^l07d]: **Not verified here.** The MARC definition of `leader/07=d`
+    comes from format documentation. Confirming it means reading the
+    MARC 21 Bibliographic leader specification.
+
+[^pica]: **Inference.** See the [marker chapter](markers.md). The
+    corpus shows the two catalogs populating leader/19 are the two
+    running PICA and that their records agree; the shared export
+    routine is a reading of that, not a measurement. No K10plus record
+    here carries `DE-101` in `040 $d`, so record ingestion is not
+    evidenced either. Confirming it means reading the CBS
+    PICA-to-MARC 21 export documentation or asking the agencies.

@@ -68,7 +68,7 @@ LC and Oxford carry what is recognisably the *same record*:
 Both `040` chains begin `$aWEINB` and accumulate the same
 institutions, ending `$dDLC` for LC and `$dUkOxU` for Oxford. Neither
 library created this description; both received it and appended
-themselves.
+themselves.[^copycat]
 
 This qualifies the "institutional signature" finding in an important
 way. Part of what separates LC from Oxford in the clustering is not
@@ -87,7 +87,7 @@ The `$6` linkage syntax, however, is not shared:
 Three shapes for one field pair. Two name the script — LC by the
 MARC-8 escape `(2`, K10plus by the ISO 15924 code `Hebr` — and Oxford
 leaves the script position empty, carrying only the `/r` orientation
-flag. Any parser reading `$6` has to accept all three.
+flag.[^six] Any parser reading `$6` has to accept all three.
 
 NLI's record for this book is unrelated to the other three. It carries
 no `880` at all, puts `$a100 סיפורים ארץ-ישראליים` directly in `245`,
@@ -95,7 +95,7 @@ declares `040$b heb` — the record itself is *catalogued in Hebrew* —
 and has no `040$a` at all.
 
 K10plus's record is its own: `040$e rakwb` for RAK-WB, the German
-rules RDA replaced in 2015-16, `$4aut` relator codes rather than
+rules RDA replaced in 2015-16,[^rakwb] `$4aut` relator codes rather than
 `$e author`, and `$9` on `020` carrying the hyphenated ISBN alongside
 the plain one in `$a`.
 
@@ -237,3 +237,22 @@ None of the six shows a leader/19 value, because none of the six is a
 volume of a multipart resource. The mechanism the
 [marker chapter](markers.md) finds most reliable is not visible in
 these items, and the aggregate tables are the evidence for it.
+
+[^six]: **Not verified here.** That `(2` is the MARC-8 escape for the
+    Hebrew character set and `Hebr` the ISO 15924 script code, and that
+    the `$6` subfield is structured as tag-occurrence, optional script
+    identification and orientation, are taken from MARC 21
+    documentation. Confirming them means reading the `$6` linkage
+    specification and the MARC-8 character-set tables.
+
+[^rakwb]: **Not verified here.** That RAK-WB was the German cataloging
+    code superseded by RDA around 2015-16 is external to this study.
+    The corpus shows only the `040 $e rakwb` code itself.
+
+[^copycat]: **Inference.** What the records show is that both `040`
+    chains begin `$aWEINB` and share a long run of `$d` institutions,
+    and that the `245`, `246`, `264` and `880` content is identical.
+    Reading that as one description propagated through a shared
+    cataloging network is the standard meaning of an `040` chain, but
+    the chain is the only evidence here. Confirming it means checking
+    the record against the OCLC master record it derives from.

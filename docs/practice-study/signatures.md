@@ -23,7 +23,7 @@ below its own lower bound, as `040$a` does here.
 The features carrying that separation are administrative. NLI's
 clusters are marked by `903`, `939`, `919`, `964` and Alma's
 non-numeric `AVE`; LC's by `906` with its `$b` through `$g`; DNB's by
-`044` and `850`. These describe how a record was processed and where
+`044` and `850`.[^overrep] These describe how a record was processed and where
 it is held. The exception is `044`, a country-of-publication code DNB
 sets on nearly every record; none of the others describes a book.
 
@@ -89,7 +89,7 @@ K10plus alone 0.20-0.25.
 
 That is not a contradiction. A dependent-part record differs from an
 ordinary book on two features out of 442 and matches it on the rest,
-which does not move a Jaccard partition. Monographic component parts
+which does not move a Jaccard partition.[^twofeat2] Monographic component parts
 differ on many features, which is why a K10plus-only clustering scores
 0.558 on bibliographic level and 0.204 on multipart level at the same
 cut. Both results stand: exact where declared, and not an axis these
@@ -153,3 +153,16 @@ which is exactly the case for the all-fields clustering, whose stable
 clusters are stable because accession-number formats are consistent
 within an institution.
 
+
+[^overrep]: **Not reproducible from the published data.** These field
+    names come from the per-cluster over-representation output of the
+    clustering run. That output is not among the published
+    [data files](data.md), which carry tag presence but not the
+    feature vector the clustering used. The AMI figures in this chapter
+    are likewise not recomputable from the CSV. Confirming these names
+    means re-running the clustering from the corpus.
+
+[^twofeat2]: **Inference.** See the same footnote in the
+    [marker chapter](markers.md). The counts and the AMI values are
+    computed; that the feature difference is the cause is an
+    explanation consistent with them rather than a tested one.

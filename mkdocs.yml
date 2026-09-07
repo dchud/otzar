@@ -53,6 +53,7 @@ nav:
 
 markdown_extensions:
   - admonition
+  - footnotes
   - attr_list
   - tables
   - toc:

@@ -157,6 +157,22 @@ songbook is language material at NLI and notated music at LC and
 K10plus, and LC's record carries a uniform title, a song-level contents
 note and 18 name added entries that neither of the others has.
 
+## Two kinds of claim, marked
+
+Most of what follows is counted from the corpus and can be recomputed
+from the published [data](data.md). Some of it cannot, and those claims
+carry a footnote saying so. There are two kinds:
+
+**Not verified here** — a fact taken from MARC documentation, a
+cataloging rule, or an institution's stated terms, used to interpret the
+counts but not checked against a source in this work. The footnote names
+what would confirm it.
+
+**Inference** — a reading that goes beyond what the counts show. The
+footnote separates what the data establishes from what the reading adds.
+
+A claim with no footnote is counted from the corpus.
+
 ## How to read the rest
 
 - [Institutional signatures](signatures.md) — the clustering results,

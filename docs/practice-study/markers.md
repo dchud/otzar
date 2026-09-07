@@ -41,7 +41,8 @@ these are nearly all NLI sound-archive records, so the pattern may
 belong to that collection rather than to the material.
 
 MARC defines `leader/07=d` for a part of a collection described
-collectively elsewhere, and the corpus shows it used exactly that way.
+collectively elsewhere,[^l07d] and the corpus shows it used exactly
+that way.
 The confound is severe enough to invert a conclusion drawn without it:
 measured across all material, `leader/07=d` looks like a heavy NLI
 practice at 25% of NLI records. Restricted to books it falls to 4
@@ -55,7 +56,7 @@ therefore restricted to language material.
 MARC defines leader position 19, *multipart resource record level*, for
 exactly the distinction the set work needs: `a` for a set record, `b`
 for a part with an independent title, `c` for a part with a dependent
-title. Two catalogs populate it. Three leave it blank.
+title.[^l19def] Two catalogs populate it. Three leave it blank.
 
 | Catalog | Books | `a` set | `b` independent part | `c` dependent part | Populated |
 |---|---|---|---|---|---|
@@ -69,7 +70,7 @@ The two catalogs that populate it are the two that run PICA. They are
 not independent witnesses: whatever writes leader/19 in a PICA-to-MARC
 export writes the accompanying fields as well, so the consistency below
 is the consistency of one family of export software, not two cataloging
-traditions agreeing.
+traditions agreeing.[^pica]
 
 Where it is populated, each value carries a distinct and nearly
 exceptionless field pattern:
@@ -149,7 +150,7 @@ those partitions carry no information about it at all.
 Both that and the exact test are true, and they answer different
 questions. A dependent-part record differs from an ordinary book on two
 features out of 442, `tag:773` and `sub:245$n`/`$p`, and matches it on
-everything else, so it does not move a Jaccard partition. Monographic
+everything else, so it does not move a Jaccard partition.[^twofeat] Monographic
 component parts differ on many features — no `020`, no `300 $c`, no
 `490` — which is why a K10plus-only clustering scores 0.558 on
 bibliographic level and 0.204 on multipart level at the same cut. A
@@ -181,7 +182,7 @@ whose `300 $a` carries a volume count:
 The relationship is inverted. Where the PICA catalogs create a record
 per volume and declare it, the Anglo-American catalogs create one record
 for the whole set. The same eight-volume commentary arrives as nine
-records from K10plus and as one from LC.
+records from K10plus and as one from LC.[^onemany]
 
 NLI also links at the monograph level, in a third idiom again. Of its
 108 language-material records carrying `773`, 79 are component parts and
@@ -245,7 +246,9 @@ K10plus. `440` is 10% at LC and
 0% everywhere else. It was made obsolete in 2008 and only LC's
 unconverted legacy records carry it here; the German catalogs never
 emitted it, since their MARC output postdates the change, so their zero
-is format history rather than a cataloging choice. `740` is 13% at NLI and
+is format history rather than a cataloging choice.[^f440]
+
+`740` is 13% at NLI and
 essentially absent at DNB and K10plus.
 
 `880` is the sharpest division among the part-whole and script markers
@@ -298,8 +301,8 @@ era of the book, not of the record.
 closest thing here to a check that the era axis measures something
 real. The 6% on imprints published before 1940 is a reminder of that
 axis's limit rather than a contradiction: ISBNs did not exist before
-1967, and those rows are reprints, facsimiles and records whose `008`
-date refers to an original the item reproduces.
+1967,[^isbn] and those rows are reprints, facsimiles and records whose
+`008` date refers to an original the item reproduces.
 
 One apparent trend is absent. `773` does not decline; it is flat
 except for a bump in the 1970-89 bin. Pooled across all material it
@@ -320,3 +323,56 @@ One caveat governs this whole section. The `008` date is when the
 catalogued in 1998 under then-current rules appears in the first bin.
 The era axis therefore mixes a genuine change in cataloging convention
 with the era of the material, and cannot separate them.
+
+[^l19def]: **Not verified here.** The definitions of leader/19 and its
+    values, and that the position was redefined in 2007 from an earlier
+    "linked record requirement" meaning, are taken from MARC 21 format
+    documentation rather than checked against a source in this work.
+    Confirming them means reading the MARC 21 Bibliographic leader
+    specification and its change history.
+
+[^pica]: **Inference.** What the corpus shows is that the only two
+    catalogs populating leader/19 are the two running PICA, and that
+    their `leader/19=c` records agree on `773` and `245 $n`/`$p`. That
+    they share an export routine which writes the three together is a
+    reading of that agreement, not something measured here. No K10plus
+    record in the corpus carries `DE-101` in `040 $d`, so ingestion of
+    DNB records is not evidenced either. Confirming the mechanism means
+    reading the PICA-to-MARC 21 export documentation for CBS, or asking
+    the two agencies directly.
+
+[^l07d]: **Not verified here.** The MARC definition of `leader/07=d` as
+    a part of a collection described collectively elsewhere comes from
+    format documentation. Confirming it means reading the MARC 21
+    Bibliographic leader specification.
+
+[^f440]: **Not verified here, and partly inference.** That `440` was
+    made obsolete in 2008 comes from MARC 21 change documentation. That
+    the German catalogs' zero reflects their MARC output postdating the
+    change, rather than a cataloging decision, is a reading of the
+    zero: the corpus shows only the absence. Confirming it means
+    checking when each agency began emitting MARC 21 and whether their
+    conversion maps a series statement onto `440` at all.
+
+[^isbn]: **Not verified here.** That the ISBN was introduced in 1967
+    is external to this study. The claim that the pre-1940 rows are
+    reprints and facsimiles is an inference from the date mismatch, not
+    a count of those records.
+
+[^onemany]: **Inference.** The counts establish that books carrying a
+    volume count in `300 $a` run 3.3-6.2% at LC, NLI and Oxford against
+    0-0.5% at DNB and K10plus, and that only the latter two declare
+    per-volume records in leader/19. Reading that as one catalog
+    describing a set at set level while the other describes it at
+    volume level fits both figures, but the corpus contains no set
+    held by catalogs on both sides with its records counted, which is
+    what would settle it. The nine-versus-one example is illustrative
+    arithmetic, not an observed pair.
+
+[^twofeat]: **Inference.** The feature counts and the AMI figures are
+    computed. That the small feature difference is *why* the partitions
+    do not isolate these records is an explanation consistent with
+    them, supported by the contrast with monographic component parts,
+    which differ on many features and do separate. Testing it directly
+    would mean re-clustering with those two features upweighted and
+    seeing whether the records then separate.
