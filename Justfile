@@ -91,3 +91,11 @@ cleanup-staging days="30":
 # Delete what `cleanup-staging` reports. Not reversible.
 cleanup-staging-apply days="30":
     uv run python manage.py cleanup_staging --days {{days}} --apply
+
+# Serve the documentation locally with live reload
+docs:
+    uv run mkdocs serve
+
+# Build the documentation, failing on a broken internal link
+docs-build:
+    uv run mkdocs build --strict

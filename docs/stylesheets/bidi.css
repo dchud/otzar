@@ -1,0 +1,27 @@
+/* The documentation mixes Hebrew, Aramaic and Cyrillic with English,
+   often inside one table row or one line of a MARC example.
+
+   `unicode-bidi: plaintext` makes each element take its direction from
+   its own first strong character rather than from the page, which is
+   what the Unicode bidirectional algorithm calls the "first strong"
+   heuristic. A cell reading `תלמוד בבלי` then renders right-to-left
+   while the cell beside it reading `Talmud Bavli` renders left-to-right,
+   without either being marked up.
+
+   MARC examples are the case that needs it most: a subfield string can
+   begin with `$a` in Latin and continue in Hebrew, and without this the
+   punctuation migrates to the wrong end of the line. */
+
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th,
+.md-typeset li,
+.md-typeset p {
+  unicode-bidi: plaintext;
+}
+
+/* Code blocks hold MARC field strings rather than program source, so
+   they get the same treatment. `pre` keeps the whitespace; the direction
+   still has to come from the content. */
+.md-typeset pre > code {
+  unicode-bidi: plaintext;
+}
