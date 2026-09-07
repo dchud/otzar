@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from sources.marc import extract_marc_records
+from sources.marc import extract_marc_records, has_hebrew
 from tests.marc_fixtures import DEMONSTRATES, FIXTURE_DIR, load
 
 MARC = "{http://www.loc.gov/MARC21/slim}"
@@ -201,3 +201,63 @@ class TestEachStillShowsWhatItWasKeptFor:
         assert has_subfield(host, "w")
         assert not has_subfield(host, "t")
         assert not has_subfield(host, "g")
+
+
+class TestTheFixturesCarryWhatTheSurveyMeasured:
+    """The new field reading, against records rather than fixtures of it."""
+
+    def parsed(self, name):
+        from sources.marc import parse_record
+
+        return parse_record(extract_marc_records(load(name))[1][0])
+
+    def test_a_vintage_set_is_identified_by_its_uniform_title_alone(self):
+        """The 1895 Vilna Talmud, in eighteen volumes.
+
+        No ISBN, because ISO 2108 postdates it by seventy-five years.
+        No series statement. The uniform title is the only thing on the
+        record that names the work, which is the case for the older half
+        of a collection like this.
+        """
+        r = self.parsed("vilna_shas_1895_nli")
+
+        assert r["uniform_title"]["work"] == "Talmud Bavli"
+        assert r["isbns"] == []
+        assert r["series_title"] is None
+
+    def test_one_volume_can_name_the_several_works_inside_it(self):
+        """A 1910 Leipzig volume holding two tractates.
+
+        Its own uniform title says Sanhedrin; a 730 says Makkot. A
+        reader of 245 alone sees neither.
+        """
+        r = self.parsed("mishnah_leipzig_series_1910_nli")
+
+        assert r["uniform_title"]["work"] == "Mishnah"
+        assert r["uniform_title"]["part_name"] == "Sanhedrin"
+        assert [w["part_name"] for w in r["related_works"]] == ["Makkot"]
+
+    def test_an_old_analytic_points_at_a_catalog_not_a_title(self):
+        r = self.parsed("mishnah_leipzig_series_1910_nli")
+
+        assert r["host_item"] == {"control_number": "990010551080205171"}
+
+    def test_a_numbered_series_carries_no_issn(self):
+        """ISSN is for continuing resources.
+
+        A monographic series has one; a multipart monograph does not.
+        Six records of 1,027 carry it, which is why it decides identity
+        when present and is worthless as a filter.
+        """
+        assert (
+            self.parsed("mishnah_leipzig_series_1910_nli")["series_issn"]
+            is None
+        )
+
+    def test_the_variant_title_is_where_the_other_script_lives(self):
+        r = self.parsed("commentators_bible_nli")
+
+        assert r["variant_titles"]
+        assert any(has_hebrew(v["title"]) for v in r["variant_titles"]), [
+            v["title"] for v in r["variant_titles"]
+        ]

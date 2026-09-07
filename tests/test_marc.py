@@ -1156,3 +1156,220 @@ class TestSeriesTracingIndicator:
 
         assert parsed["series_traced"] is True
         assert parsed["series_title"] == "Some series"
+
+
+def _record_with(fields: list[tuple[str, str, str]]) -> mrrc.Record:
+    """Build a record from ``(tag, indicator1, subfield string)`` triples."""
+    parts = []
+    for tag, ind1, subs in fields:
+        body = "\n".join(
+            f'    <subfield code="{sub[0]}">{sub[1:]}</subfield>'
+            for sub in subs.split("$")
+            if sub
+        )
+        parts.append(
+            f'  <datafield tag="{tag}" ind1="{ind1}" ind2=" ">\n'
+            f"{body}\n  </datafield>"
+        )
+    xml = (
+        '<record xmlns="http://www.loc.gov/MARC21/slim">\n'
+        "  <leader>00000nam a2200000 i 4500</leader>\n"
+        '  <datafield tag="245" ind1="1" ind2="0">\n'
+        '    <subfield code="a">A volume</subfield>\n'
+        "  </datafield>\n" + "\n".join(parts) + "\n</record>"
+    )
+    return mrrc.xml_to_record(xml)
+
+
+class TestUniformTitle:
+    """The work a record is a manifestation of.
+
+    For rabbinic and liturgical texts this is authority-controlled and
+    exists to collocate a work across varying transcriptions, which is
+    why it is the most reliable set signal in the surveyed corpus and
+    more reliable the older the record is.
+    """
+
+    def test_130_names_the_work_and_its_part(self):
+        record = _record_with(
+            [("130", "0", "$aTalmud Bavli.$pPesahim.$lEnglish.")]
+        )
+        parsed = parse_record(record)
+
+        assert parsed["uniform_title"] == {
+            "work": "Talmud Bavli",
+            "part_name": "Pesahim",
+            "language": "English",
+            "source": "130",
+        }
+
+    def test_the_part_can_be_a_number_as_well_as_a_name(self):
+        record = _record_with([("130", "0", "$aTalmud Bavli.$nHelek 1.")])
+
+        assert parse_record(record)["uniform_title"]["part_number"] == (
+            "Helek 1"
+        )
+
+    def test_240_is_read_when_a_1XX_made_130_unavailable(self):
+        record = _record_with([("240", "1", "$aMishnah berurah.")])
+        parsed = parse_record(record)
+
+        assert parsed["uniform_title"]["work"] == "Mishnah berurah"
+        assert parsed["uniform_title"]["source"] == "240"
+
+    def test_130_wins_when_a_record_somehow_carries_both(self):
+        record = _record_with(
+            [("130", "0", "$aFrom 130."), ("240", "1", "$aFrom 240.")]
+        )
+
+        assert parse_record(record)["uniform_title"]["source"] == "130"
+
+    def test_a_record_without_one_says_so(self):
+        assert parse_record(_record_with([]))["uniform_title"] is None
+
+
+class TestRelatedWorks:
+    """Works a record names besides the one it is.
+
+    730 was the survey's biggest surprise: the most common set-bearing
+    field after the title itself, and the way a compilation says what is
+    inside it.
+    """
+
+    def test_730_carries_the_same_structure_as_130(self):
+        record = _record_with(
+            [("730", "0", "$aTalmud Bavli.$pSukkah.$kSelections.")]
+        )
+        works = parse_record(record)["related_works"]
+
+        assert works == [
+            {
+                "work": "Talmud Bavli",
+                "part_name": "Sukkah",
+                "form": "Selections",
+                "source": "730",
+            }
+        ]
+
+    def test_every_730_is_read_not_only_the_first(self):
+        record = _record_with(
+            [
+                ("730", "0", "$aMishnah.$pSanhedrin."),
+                ("730", "0", "$aMishnah.$pMakkot."),
+            ]
+        )
+        works = parse_record(record)["related_works"]
+
+        assert [w["part_name"] for w in works] == ["Sanhedrin", "Makkot"]
+
+    def test_a_name_title_entry_records_who_it_is_entered_under(self):
+        record = _record_with([("700", "1", "$aRashi,$tPerush ʻal ha-Torah.")])
+        works = parse_record(record)["related_works"]
+
+        assert works == [
+            {
+                "work": "Perush ʻal ha-Torah",
+                "entered_under": "Rashi",
+                "source": "700$t",
+            }
+        ]
+
+    def test_a_700_without_a_title_is_an_author_not_a_work(self):
+        record = _record_with([("700", "1", "$aHerczeg, Yisrael Isser Zvi.")])
+
+        assert parse_record(record)["related_works"] == []
+
+
+class TestVariantTitles:
+    """246, where NLI carries the other script.
+
+    On more than half of NLI's records and a seventh of LC's. A reader
+    looking only at 245 concludes the record has one script.
+    """
+
+    def test_the_variant_and_the_phrase_introducing_it_are_both_kept(self):
+        record = _record_with([("246", "1", "$iבשער גם:$aערוך השלחן")])
+        variants = parse_record(record)["variant_titles"]
+
+        # The colon stays. $i is a phrase written to introduce the title
+        # that follows it -- "on the title page also:" -- so the
+        # punctuation is part of how it reads rather than ISBD
+        # decoration on a value.
+        assert variants == [{"title": "ערוך השלחן", "note": "בשער גם:"}]
+
+    def test_a_variant_without_a_note_is_still_a_variant(self):
+        record = _record_with([("246", "3", "$aArukh ha-shulhan")])
+
+        assert parse_record(record)["variant_titles"] == [
+            {"title": "Arukh ha-shulhan"}
+        ]
+
+
+class TestHostItem:
+    """773, the analytic's pointer at the record it is part of."""
+
+    def test_a_host_with_a_title_and_a_part(self):
+        record = _record_with([("773", "0", "$tTalmud Bavli.$gv. 3")])
+
+        assert parse_record(record)["host_item"] == {
+            "title": "Talmud Bavli",
+            "part": "v. 3",
+        }
+
+    def test_a_host_named_only_by_control_number(self):
+        """Older analytics point at a catalog, not at a title.
+
+        Eleven of the fifteen such entries in the surveyed corpus are on
+        books published before 1970. The record says it belongs to
+        something without saying what, and that is still evidence.
+        """
+        record = _record_with([("773", "1", "$w990010551080205171")])
+
+        assert parse_record(record)["host_item"] == {
+            "control_number": "990010551080205171"
+        }
+
+    def test_no_773_means_no_host(self):
+        assert parse_record(_record_with([]))["host_item"] is None
+
+
+class TestObsoleteSeriesStatementAndIssn:
+    def test_440_stands_in_when_neither_490_nor_830_is_present(self):
+        """440 generated its own added entry, so it stands with 830.
+
+        One record in the surveyed corpus and none published before
+        1970 -- it was valid from the late 1960s until 2008, so it
+        belongs to a generation of catalogers rather than of books.
+        """
+        record = _record_with([("440", "0", "$aArtScroll series$vv. 2")])
+        parsed = parse_record(record)
+
+        assert parsed["series_title"] == "ArtScroll series"
+        assert parsed["series_volume"] == "v. 2"
+
+    def test_a_present_830_is_not_displaced_by_a_440(self):
+        record = _record_with(
+            [("830", " ", "$aAuthorized form."), ("440", "0", "$aOld form")]
+        )
+
+        assert parse_record(record)["series_title"] == "Authorized form."
+
+    def test_the_series_issn_is_read_from_either_field(self):
+        record = _record_with([("830", " ", "$aA series$x0075-4269")])
+
+        assert parse_record(record)["series_issn"] == "0075-4269"
+
+    def test_the_authorized_issn_is_preferred(self):
+        record = _record_with(
+            [
+                ("490", "1", "$aA series$x1111-1111"),
+                ("830", " ", "$aA series$x0075-4269"),
+            ]
+        )
+
+        assert parse_record(record)["series_issn"] == "0075-4269"
+
+    def test_no_issn_is_the_normal_case(self):
+        record = _record_with([("490", "1", "$aA series")])
+
+        assert parse_record(record)["series_issn"] is None

@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 import mrrc
 
+from catalog.utils import strip_marc_punctuation
+
 logger = logging.getLogger(__name__)
 
 # --- Namespace handling ---
@@ -199,6 +201,145 @@ def _unwrap(text: str) -> str:
     return text
 
 
+# A uniform title names a work and, in $n and $p, the part of it in
+# hand. For the material this catalog holds the part is usually a name
+# rather than a number -- Pesahim, Rosh ha-shanah, פרה -- so both are
+# kept as written rather than parsed into a position.
+#
+# $x is deliberately absent. In 6XX it is a topical subdivision and
+# belongs to the heading; in 4XX and 8XX it is an ISSN. Reusing the
+# subject codes here would append an identifier to a title.
+_NAME_TITLE_PARTS = {
+    "a": "work",
+    "n": "part_number",
+    "p": "part_name",
+    "l": "language",
+    "k": "form",
+    "f": "date",
+}
+
+
+def _name_title(field: mrrc.Field, source: str) -> dict | None:
+    """Read a uniform-title field into its labelled parts.
+
+    Used for 130 and 240, which carry the work in the main entry, and
+    for 730, which names a work the piece contains. All three share the
+    structure, which is why a compilation naming five tractates and a
+    volume that is one of them look alike to a reader and should look
+    alike here.
+    """
+    parts = {
+        name: strip_marc_punctuation(" ".join(_subfield_values(field, [code])))
+        for code, name in _NAME_TITLE_PARTS.items()
+    }
+    parts = {k: v for k, v in parts.items() if v}
+    if not parts.get("work"):
+        return None
+    parts["source"] = source
+    return parts
+
+
+def _uniform_title(record: mrrc.Record) -> dict | None:
+    """The work this record is a manifestation of, if it says.
+
+    130 is the main entry form, used when there is no 1XX author, which
+    is the normal case for Talmud and Mishnah. 240 is the form used
+    when a 1XX is present. A record has at most one of them.
+    """
+    for tag in ("130", "240"):
+        field = record.get_field(tag)
+        if field is not None:
+            title = _name_title(field, tag)
+            if title:
+                return title
+    return None
+
+
+def _related_works(record: mrrc.Record) -> list[dict]:
+    """Works this record names besides the one it is.
+
+    730 is the added-entry uniform title and the most common
+    set-bearing field in the surveyed corpus after the title itself.
+    700 $t and 710 $t are the name-title forms of the same idea, used
+    when the related work is entered under a person or a body.
+    """
+    works = [
+        title
+        for field in record.get_fields("730")
+        if (title := _name_title(field, "730"))
+    ]
+    for tag in ("700", "710"):
+        for field in record.get_fields(tag):
+            if not _subfield_values(field, ["t"]):
+                continue
+            work = strip_marc_punctuation(
+                " ".join(_subfield_values(field, ["t"]))
+            )
+            entry = {"work": work, "source": f"{tag}$t"}
+            name = strip_marc_punctuation(
+                " ".join(_subfield_values(field, ["a"]))
+            )
+            if name:
+                entry["entered_under"] = name
+            part = strip_marc_punctuation(
+                " ".join(_subfield_values(field, ["n", "p"]))
+            )
+            if part:
+                entry["part_name"] = part
+            works.append(entry)
+    return works
+
+
+def _variant_titles(record: mrrc.Record) -> list[dict]:
+    """Titles the piece also goes by, from 246.
+
+    NLI carries the cross-script variant here -- a Hebrew form against a
+    romanized 245, or the reverse -- which is why the field is on rather
+    more than half of its records and a seventh of LC's. $i holds the
+    phrase a cataloger wrote to introduce it, such as "on the title page
+    also", and is worth keeping: it says what kind of variant this is.
+    """
+    variants = []
+    for field in record.get_fields("246"):
+        title = strip_marc_punctuation(
+            " ".join(_subfield_values(field, ["a"]))
+        )
+        if not title:
+            continue
+        entry = {"title": title}
+        note = " ".join(_subfield_values(field, ["i"]))
+        if note:
+            entry["note"] = note
+        part = " ".join(_subfield_values(field, ["n", "p"]))
+        if part:
+            entry["part_name"] = part
+        variants.append(entry)
+    return variants
+
+
+def _host_item(record: mrrc.Record) -> dict | None:
+    """The record this one is an analytic of, from 773.
+
+    $t names the host and $g the part designation -- except where it
+    carries neither. Older analytics link by $w control number alone,
+    which points into a catalog rather than saying anything a reader can
+    match on. That case is reported rather than skipped, because a
+    record that says it belongs to something is evidence even when it
+    does not say what.
+    """
+    field = record.get_field("773")
+    if field is None:
+        return None
+    host = {}
+    for code, name in (("t", "title"), ("g", "part"), ("w", "control_number")):
+        value = strip_marc_punctuation(
+            " ".join(_subfield_values(field, [code]))
+        )
+        if value:
+            host[name] = value
+    return host or None
+
+
 def _series_is_traced(record: mrrc.Record) -> bool | None:
     """Whether a 490 says an authorized series heading should exist.
 
@@ -362,6 +503,11 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     - ``series_title_transcribed``, ``series_volume_transcribed`` -- the
       490 forms, kept alongside
     - ``series_traced`` -- the 490 first indicator, or None
+    - ``series_issn`` -- 830$x or 490$x
+    - ``uniform_title`` -- the work, from 130 or 240, with its part
+    - ``related_works`` -- works named in 730, 700$t and 710$t
+    - ``variant_titles`` -- 246, where NLI carries the other script
+    - ``host_item`` -- 773, the analytic's pointer at its host
     - ``source_marc`` -- the whole record as MARC-in-JSON, uncleaned
 
     Every value above except ``source_marc`` is cleaned for display.
@@ -491,6 +637,29 @@ def parse_record(marc_record: mrrc.Record) -> dict:
     result["series_title_transcribed"] = transcribed_title
     result["series_volume_transcribed"] = transcribed_volume
     result["series_traced"] = _series_is_traced(marc_record)
+
+    # The obsolete series statement. It generated its own added entry,
+    # so it is closer in function to 830 than to 490, and it stands in
+    # where neither is present. Rare -- one record in the surveyed
+    # corpus, and none published before 1970 -- but free to read.
+    if not result["series_title"]:
+        result["series_title"] = get_field_value(marc_record, "440", ["a"])
+        result["series_volume"] = get_field_value(marc_record, "440", ["v"])
+
+    # $x is the ISSN in a series field. The only assigned identifier
+    # anywhere in the set problem, and nearly absent: six records of
+    # 1,027, because ISSN is assigned to continuing resources and a
+    # multipart monograph is not one. Decisive when present, useless as
+    # a filter.
+    result["series_issn"] = get_field_value(
+        marc_record, "830", ["x"]
+    ) or get_field_value(marc_record, "490", ["x"])
+
+    # --- What the record says about the work, beyond its own title ---
+    result["uniform_title"] = _uniform_title(marc_record)
+    result["related_works"] = _related_works(marc_record)
+    result["variant_titles"] = _variant_titles(marc_record)
+    result["host_item"] = _host_item(marc_record)
 
     # --- Source record ---
     result["source_marc"] = record_to_marcjson(marc_record)
