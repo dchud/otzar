@@ -37,7 +37,7 @@ from ingest.authority import (
     single_strong_match,
 )
 from ingest.forms import RecordForm
-from ingest.models import OCR_LEASE_TIMEOUT, ScanResult
+from ingest.models import OCR_LEASE_TIMEOUT, APIUsageLog, ScanResult
 from ingest.ocr import extract_metadata_from_image
 from ingest.series_workflow import (
     create_series_volumes,
@@ -793,25 +793,62 @@ def run_ocr(request, scan_id):
     after the user found the previous extraction unusable). The image
     must still be present — the gate is image presence, not status.
     Returns 409 if the image has been discarded, or if another device
-    already has a run in flight on this scan.
+    already has a run in flight on this scan. Returns 429 if today's
+    OCR call cap has already been reached.
 
     The lease is taken before the vision call and released in a
     ``finally``, so the poll pane on every device showing this scan
     reports the run while it lasts. See ``ScanResult`` on why this is a
     timestamp and not a status.
+
+    The cap is checked before the lease is taken and before the vision
+    call is made — a cap enforced after the call would not stop the
+    call from costing money. It counts every OCR call logged today
+    across every user (see ``APIUsageLog.calls_today``), so a retry
+    loop against one bad photo counts against the same budget as
+    everyone else's cataloging that day.
     """
     scan = get_object_or_404(ScanResult, pk=scan_id)
     if not scan.image or scan.status == "discarded":
         return _notice(request, "Image is no longer available.", status=409)
+
+    cap = APIUsageLog.daily_cap()
+    if APIUsageLog.calls_today() >= cap:
+        return _notice(
+            request,
+            f"Today's OCR limit of {cap} scans has been reached. "
+            "Try again after midnight.",
+            status=429,
+        )
+
     if not _take_ocr_lease(scan):
         return _notice(request, "OCR is already running.", status=409)
 
     try:
         with scan.image.open("rb") as fh:
             image_bytes = fh.read()
-        metadata = extract_metadata_from_image(image_bytes)
+        metadata, usage = extract_metadata_from_image(image_bytes)
     finally:
         ScanResult.objects.filter(pk=scan.pk).update(ocr_started_at=None)
+
+    # ``usage`` is set whenever the call reached the API and came back
+    # with a response, which is the only time it cost anything -- so
+    # that is what gets logged, independent of whether the response
+    # produced a usable reading and independent of what happens to the
+    # scan below. A failure here must not cost the user a reading that
+    # already succeeded, so it is caught and logged rather than raised
+    # -- the same shape as the title-page image promotion in
+    # ``_attach_title_page_image``.
+    if usage is not None:
+        try:
+            APIUsageLog.objects.create(
+                api="ocr",
+                user=request.user,
+                produced_reading=metadata is not None,
+                **usage,
+            )
+        except Exception:
+            logger.exception("Failed to record OCR usage for scan %s", scan.pk)
 
     # The row was read before a call that runs 5-9 seconds. A discard
     # from the other device lands in that gap, and writing the result

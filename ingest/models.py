@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
@@ -13,6 +14,14 @@ JPEG_SUFFIXES = {".jpg", ".jpeg"}
 # stop believing it. Extraction takes 5-9 seconds against a title
 # page; the margin is for a slow model, not a crashed one.
 OCR_LEASE_TIMEOUT = timedelta(minutes=2)
+
+# Ceiling on OCR calls per day used when OCR_DAILY_CALL_CAP is not set
+# in the environment. The account has one Anthropic API key and one
+# bill, so the cap is a single number shared by every user rather than
+# a per-user allowance. High enough that a normal cataloging session
+# never approaches it; low enough that a retry loop left running
+# overnight cannot spend without bound.
+DEFAULT_DAILY_OCR_CALL_CAP = 500
 
 
 def staging_image_path(instance, filename):
@@ -120,7 +129,14 @@ class ScanResult(models.Model):
 
 
 class APIUsageLog(models.Model):
-    """Log of API calls for cost monitoring."""
+    """Log of API calls for cost monitoring.
+
+    One row per call that actually reached the provider and got a
+    response back. A call that never got that far -- a missing API key,
+    a network error, a rejected request -- spent nothing and is not
+    logged; there is no cost to monitor and nothing to count against
+    the daily cap.
+    """
 
     api = models.CharField(max_length=50)
     model = models.CharField(max_length=100, blank=True)
@@ -133,9 +149,41 @@ class APIUsageLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     input_tokens = models.IntegerField(default=0)
     output_tokens = models.IntegerField(default=0)
+    produced_reading = models.BooleanField(default=False)
 
     class Meta:
         ordering: ClassVar[list[str]] = ["-created_at"]
 
     def __str__(self):
         return f"{self.api} ({self.created_at:%Y-%m-%d %H:%M})"
+
+    @classmethod
+    def daily_cap(cls):
+        """The configured ceiling on OCR calls per day.
+
+        Read from the environment on every call rather than cached, the
+        same way ``ingest.ocr`` reads ``CLAUDE_MODEL`` and
+        ``ANTHROPIC_API_KEY`` -- a changed value takes effect without a
+        restart, and a test can override it per case with
+        ``monkeypatch.setenv``.
+        """
+        return int(
+            os.environ.get(
+                "OCR_DAILY_CALL_CAP", str(DEFAULT_DAILY_OCR_CALL_CAP)
+            )
+        )
+
+    @classmethod
+    def calls_today(cls):
+        """Count of OCR calls logged since local midnight.
+
+        Counts every logged OCR row regardless of which user made the
+        call or whether it produced a reading -- the cap it feeds bounds
+        total daily spend across the whole app, not any one user's
+        usage, and a call that reached the model and came back empty
+        cost the same as one that came back with a title.
+        """
+        since = timezone.localtime().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return cls.objects.filter(api="ocr", created_at__gte=since).count()

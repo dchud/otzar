@@ -82,9 +82,14 @@ def test_schema_reaches_the_wire_under_output_config(vision):
     )
     vision(transport)
 
-    result = extract_metadata_from_image(b"jpeg bytes")
+    metadata, usage = extract_metadata_from_image(b"jpeg bytes")
 
-    assert result == SAMPLE
+    assert metadata == SAMPLE
+    assert usage == {
+        "model": "claude-sonnet-5",
+        "input_tokens": 1,
+        "output_tokens": 1,
+    }
     body = seen["body"]
     assert body["output_config"]["format"]["type"] == "json_schema"
     assert body["output_config"]["format"]["schema"] == OCR_RESPONSE_SCHEMA
@@ -104,7 +109,8 @@ def test_reads_past_a_thinking_block(vision):
     )
     vision(transport)
 
-    assert extract_metadata_from_image(b"jpeg bytes") == SAMPLE
+    metadata, _usage = extract_metadata_from_image(b"jpeg bytes")
+    assert metadata == SAMPLE
 
 
 def test_truncated_reply_is_not_treated_as_a_reading(vision):
@@ -116,7 +122,10 @@ def test_truncated_reply_is_not_treated_as_a_reading(vision):
     )
     vision(transport)
 
-    assert extract_metadata_from_image(b"jpeg bytes") is None
+    metadata, usage = extract_metadata_from_image(b"jpeg bytes")
+    assert metadata is None
+    # The reply was billed even though it was cut short.
+    assert usage is not None
 
 
 def test_refusal_is_not_treated_as_a_reading(vision):
@@ -129,7 +138,9 @@ def test_refusal_is_not_treated_as_a_reading(vision):
     )
     vision(transport)
 
-    assert extract_metadata_from_image(b"jpeg bytes") is None
+    metadata, usage = extract_metadata_from_image(b"jpeg bytes")
+    assert metadata is None
+    assert usage is not None
 
 
 def test_api_error_is_caught_by_the_declared_exception(vision):
@@ -143,4 +154,7 @@ def test_api_error_is_caught_by_the_declared_exception(vision):
     )
     vision(transport)
 
-    assert extract_metadata_from_image(b"jpeg bytes") is None
+    metadata, usage = extract_metadata_from_image(b"jpeg bytes")
+    assert metadata is None
+    # No response was received, so there is nothing to log.
+    assert usage is None
