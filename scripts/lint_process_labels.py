@@ -36,11 +36,6 @@ EXCLUDED_DIRS = {
     "tmp",
 }
 EXCLUDED_PATHS = {
-    # The long-term plan is a working artifact rather than a reference:
-    # it names beads, orders work, and records what was believed when it
-    # was written. Those are the shapes this lint exists to keep out of
-    # documentation that outlives the work.
-    Path("docs/plans/long-term-plan.md"),
     Path("static/css/tailwind.css"),
     Path("CHANGELOG.md"),
     # The instruction files define these conventions, so they have to

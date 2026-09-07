@@ -8,13 +8,6 @@ repo_name: dchud/otzar
 edit_uri: edit/main/docs/
 copyright: MIT licensed
 
-# The long-term plan is a working artifact: it carries bead IDs, orders
-# work, and records what was believed when it was written. Publishing it
-# would put the least durable writing in the project in front of the
-# most casual reader.
-exclude_docs: |
-  plans/
-
 theme:
   name: material
   language: en
