@@ -300,10 +300,10 @@
 
     {# Sidebar: cover image, and the scanned title page below it #}
     <div class="md:col-span-1">
-      {% if record.cover_url or record.title_page_images.all %}
+      {% if record.cover or record.title_page_images.all %}
       <div class="sticky top-8 space-y-4">
-        {% if record.cover_url %}
-        <img src="{{ record.cover_url }}"
+        {% if record.cover %}
+        <img src="{{ record.cover.image.url }}"
              alt="Cover of {{ record.title }}"
              class="w-full rounded shadow-md border border-gray-200 dark:border-gray-700">
         {% endif %}

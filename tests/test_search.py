@@ -352,7 +352,6 @@ RECORD_FORM_DEFAULTS = {
     "language": "",
     "source_marc": "",
     "source_catalog": "",
-    "cover_url": "",
     "notes": "",
     "provenance": "",
     "created_by": "",

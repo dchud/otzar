@@ -1,14 +1,16 @@
 """Open Library Covers API client.
 
-Looks up book cover images using ISBN, OCLC, or LCCN identifiers.
-Open Library returns a 1x1 transparent pixel (~43 bytes) when no cover
-exists. Since the server doesn't always include Content-Length, we do a
-small GET and check actual response body size.
+Looks up and downloads book cover images using ISBN, OCLC, or LCCN
+identifiers. Open Library returns a 1x1 transparent pixel (~43 bytes)
+when no cover exists. Since the server doesn't always include
+Content-Length, we do a small GET and check the actual response body
+size.
 """
 
 import logging
 import os
 import time
+from dataclasses import dataclass
 
 import httpx
 
@@ -33,15 +35,35 @@ def _get_base_url() -> str:
     return os.environ.get("COVER_API_URL", "https://covers.openlibrary.org/b")
 
 
-def fetch_cover_url(record) -> str:
-    """Look up a cover image URL for a catalog record.
+@dataclass
+class CoverResult:
+    """A cover image fetched from a third-party source.
+
+    ``url`` records where the image came from, for attribution and for
+    re-fetching. ``content`` is the image bytes already read off the
+    wire, so a caller that wants to keep the file does not have to ask
+    for it again. Both are empty when no cover was found -- no
+    identifier matched, every candidate was Open Library's placeholder,
+    or every request failed.
+    """
+
+    url: str = ""
+    content: bytes = b""
+
+    def __bool__(self):
+        return bool(self.url and self.content)
+
+
+def fetch_cover(record) -> CoverResult:
+    """Look up and download a cover image for a catalog record.
 
     Tries identifiers in order: ISBN, OCLC, LCCN. For each, sends a GET
     request to the Open Library Covers API and checks that the response
     body is a real image (> MIN_COVER_BYTES). Open Library doesn't always
     include Content-Length, so we read the actual body.
 
-    Returns the cover URL string if found, or empty string if no cover exists.
+    Returns a CoverResult carrying the source URL and the image bytes,
+    or an empty (falsy) CoverResult if no cover exists.
     """
     identifiers = {}
     for eid in record.external_identifiers.all():
@@ -49,7 +71,7 @@ def fetch_cover_url(record) -> str:
 
     if not identifiers:
         logger.debug("No external identifiers for record %s", record.record_id)
-        return ""
+        return CoverResult()
 
     base_url = _get_base_url()
 
@@ -63,7 +85,8 @@ def fetch_cover_url(record) -> str:
             response = httpx.get(
                 cover_url, timeout=COVER_TIMEOUT, follow_redirects=True
             )
-            body_size = len(response.content)
+            content = response.content
+            body_size = len(content)
             if body_size >= MIN_COVER_BYTES:
                 logger.info(
                     "Cover found for record %s via %s=%s (%d bytes)",
@@ -72,7 +95,7 @@ def fetch_cover_url(record) -> str:
                     value,
                     body_size,
                 )
-                return cover_url
+                return CoverResult(url=cover_url, content=content)
             else:
                 logger.debug(
                     "Cover too small (%d bytes) for %s=%s, skipping",
@@ -95,14 +118,14 @@ def fetch_cover_url(record) -> str:
             )
 
     logger.debug("No cover found for record %s", record.record_id)
-    return ""
+    return CoverResult()
 
 
-def fetch_cover_url_with_delay(record, delay: float = 0.5) -> str:
-    """Like fetch_cover_url but with a polite delay before the request.
+def fetch_cover_with_delay(record, delay: float = 0.5) -> CoverResult:
+    """Like fetch_cover but with a polite delay before the request.
 
     Used by the management command to respect rate limits.
     """
     if delay > 0:
         time.sleep(delay)
-    return fetch_cover_url(record)
+    return fetch_cover(record)

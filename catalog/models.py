@@ -1,6 +1,9 @@
+import os
 from typing import ClassVar
+from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.text import slugify
 
@@ -54,7 +57,6 @@ class Record(models.Model):
         choices=[("NLI", "NLI"), ("LC", "LC"), ("DNB", "DNB")],
         blank=True,
     )
-    cover_url = models.URLField(max_length=500, blank=True, default="")
     notes = models.TextField(blank=True)
     provenance = models.TextField(
         blank=True,
@@ -289,6 +291,55 @@ class TitlePageImage(models.Model):
         if self.record:
             return f"Title page for {self.record.record_id}"
         return f"Staged image ({self.uploaded_at:%Y-%m-%d})"
+
+
+class RecordCover(models.Model):
+    """An edition cover image fetched from a third-party source and
+    cached locally.
+
+    Kept under its own prefix (``covers/``) rather than sharing
+    ``title-pages/``: a cover belongs to Open Library, not to this
+    collection, and can be re-fetched at will if it is lost. A
+    photograph of a title page cannot be retaken once the book is sold,
+    so the two need different backup and retention rules -- one tree
+    cannot express both.
+
+    One record has at most one cover, hence a one-to-one rather than
+    the foreign key ``TitlePageImage`` uses: a record can carry several
+    photographs of the copy it holds, but Open Library offers a single
+    edition image.
+    """
+
+    record = models.OneToOneField(
+        Record, on_delete=models.CASCADE, related_name="cover"
+    )
+    image = models.ImageField(upload_to="covers/%Y/%m/%d/")
+    source_url = models.URLField(
+        max_length=500,
+        help_text=(
+            "Where the image was fetched from, kept for attribution "
+            "and for re-fetching if the stored file is lost."
+        ),
+    )
+    fetched_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Cover for {self.record.record_id}"
+
+    @classmethod
+    def store(cls, record, source_url, content):
+        """Save cover bytes a lookup already retrieved.
+
+        Takes the URL and bytes an :mod:`sources.covers` lookup already
+        holds, so nothing is fetched twice. Replaces any cover already
+        stored for this record.
+        """
+        extension = os.path.splitext(urlsplit(source_url).path)[1] or ".jpg"
+        filename = f"{record.record_id}{extension}"
+        cover, _ = cls.objects.get_or_create(record=record)
+        cover.source_url = source_url
+        cover.image.save(filename, ContentFile(content), save=True)
+        return cover
 
 
 class SeriesClaim(models.Model):

@@ -288,7 +288,7 @@ class TestCandidateRecordCreation:
             ),
         }
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_queue_confirm_matches_review_page_confirm(
         self, _cover, client_logged_in, user
     ):
@@ -317,7 +317,7 @@ class TestCandidateRecordCreation:
         assert via_queue is not None
         assert self._fields(via_queue) == self._fields(via_review)
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_queue_confirm_keeps_an_unparseable_date(
         self, _cover, client_logged_in, user
     ):
@@ -375,7 +375,7 @@ class TestScanClosedOnConfirm:
         client.post("/ingest/select-candidate/", payload)
         return client.post("/ingest/confirm/")
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_title_page_scan_is_confirmed(
         self, _cover, client_logged_in, user
     ):
@@ -394,7 +394,7 @@ class TestScanClosedOnConfirm:
         assert scan.created_record is not None
         assert scan.created_record.title == "Mishneh Torah"
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_confirmed_scan_leaves_the_poll_pane(
         self, _cover, client_logged_in, user
     ):
@@ -415,7 +415,7 @@ class TestScanClosedOnConfirm:
         after = client_logged_in.get("/ingest/scan-title/poll/")
         assert f"title-page-card-{scan.pk}".encode() not in after.content
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_isbn_lookup_scan_is_confirmed(
         self, _cover, client_logged_in, user
     ):
@@ -437,7 +437,7 @@ class TestScanClosedOnConfirm:
         assert scan.created_record is not None
         assert scan.selected_candidate_index == 0
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_confirm_without_a_scan_still_works(
         self, _cover, client_logged_in
     ):
@@ -446,7 +446,7 @@ class TestScanClosedOnConfirm:
         assert response.status_code == 302
         assert Record.objects.filter(title="Mishneh Torah").exists()
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_discarded_scan_is_not_resurrected(
         self, _cover, client_logged_in, user
     ):
@@ -460,7 +460,7 @@ class TestScanClosedOnConfirm:
         scan.refresh_from_db()
         assert scan.status == "discarded"
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_another_users_scan_is_confirmed_too(
         self, _cover, client_logged_in, django_user_model
     ):
@@ -528,7 +528,7 @@ class TestTitlePageImagePromotion:
         client.post("/ingest/select-candidate/", payload)
         return client.post("/ingest/confirm/")
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_review_page_confirm_promotes_the_image(
         self, _cover, client_logged_in, user, tmp_path, settings
     ):
@@ -552,7 +552,7 @@ class TestTitlePageImagePromotion:
         assert not scan.image
         assert not os.path.exists(staged_path)
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_queue_confirm_promotes_the_image(
         self, _cover, client_logged_in, user, tmp_path, settings
     ):
@@ -573,7 +573,7 @@ class TestTitlePageImagePromotion:
         assert not scan.image
         assert not os.path.exists(staged_path)
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_isbn_scan_image_is_left_alone(
         self, _cover, client_logged_in, user, tmp_path, settings
     ):
@@ -598,7 +598,7 @@ class TestTitlePageImagePromotion:
         assert TitlePageImage.objects.count() == 0
         assert scan.image  # left in place
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_no_image_means_no_title_page_row(
         self, _cover, client_logged_in, user
     ):
@@ -608,7 +608,7 @@ class TestTitlePageImagePromotion:
         assert response.status_code == 302
         assert TitlePageImage.objects.count() == 0
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_write_failure_loses_neither_the_record_nor_the_photo(
         self, _cover, client_logged_in, user, tmp_path, settings
     ):
@@ -721,7 +721,7 @@ class TestConfirmOffersExistingAuthors:
         assert len(response.context["author_matches"]) == 2
         assert response.context["author_match_default"] is None
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_choosing_an_existing_author_attaches_it(
         self, _cover, client_logged_in
     ):
@@ -743,7 +743,7 @@ class TestConfirmOffersExistingAuthors:
         assert list(record.authors.all()) == [existing]
         assert Author.objects.count() == 1
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_asking_for_a_new_author_still_creates_one(
         self, _cover, client_logged_in
     ):
@@ -756,7 +756,7 @@ class TestConfirmOffersExistingAuthors:
         assert record.authors.first() != existing
         assert Author.objects.count() == 2
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_the_queue_confirm_takes_a_single_strong_match(
         self, _cover, client_logged_in, user
     ):
@@ -814,7 +814,7 @@ class TestTitleStatementSurvivesConfirm:
         "source_catalog": "NLI",
     }
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_the_review_page_confirm_keeps_all_three(
         self, _cover, client_logged_in
     ):
@@ -832,7 +832,7 @@ class TestTitleStatementSurvivesConfirm:
             "Yisrael Isser Zvi Herczeg"
         )
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_the_queue_confirm_keeps_all_three(
         self, _cover, client_logged_in, user
     ):
@@ -855,7 +855,7 @@ class TestTitleStatementSurvivesConfirm:
         assert record.volume_part_title == "Sefer Mishpatim"
         assert record.statement_of_responsibility.endswith("Herczeg")
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_candidate_carrying_none_of_them_stores_blanks(
         self, _cover, client_logged_in
     ):
@@ -905,7 +905,7 @@ class TestSeriesOnConfirm:
         client.post("/ingest/confirm/")
         return Record.objects.order_by("-id").first()
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_first_confirm_creates_the_series_and_the_volume(
         self, _cover, client_logged_in
     ):
@@ -925,7 +925,7 @@ class TestSeriesOnConfirm:
         assert volume.volume_number == "1"
         assert volume.held is True
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_second_volume_joins_the_series_the_first_made(
         self, _cover, client_logged_in
     ):
@@ -956,7 +956,7 @@ class TestSeriesOnConfirm:
         assert series.volumes.get(volume_number="1").record == first
         assert series.volumes.get(volume_number="2").record == second
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_confirm_claims_a_gap_left_for_the_volume(
         self, _cover, client_logged_in
     ):
@@ -977,7 +977,7 @@ class TestSeriesOnConfirm:
         assert volume.record == record
         assert volume.held is True
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_a_candidate_with_no_series_confirms_cleanly(
         self, _cover, client_logged_in
     ):
@@ -999,7 +999,7 @@ class TestSeriesOnConfirm:
         assert Series.objects.count() == 0
         assert SeriesVolume.objects.count() == 0
 
-    @patch("ingest.views.fetch_cover_url", return_value=None)
+    @patch("ingest.views.fetch_cover", return_value=None)
     def test_the_queue_confirm_places_the_record_too(
         self, _cover, client_logged_in, user
     ):
