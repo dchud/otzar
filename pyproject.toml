@@ -38,6 +38,7 @@ dev = [
     "pytest-playwright>=0.7.2",
     "pytest-socket>=0.7.0",
     "ruff>=0.15.9",
+    "zizmor>=1.30.0",
 ]
 
 [tool.pytest.ini_options]

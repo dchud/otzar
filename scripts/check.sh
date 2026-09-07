@@ -21,6 +21,13 @@ uv run ruff check .
 step "process labels"
 uv run python scripts/lint_process_labels.py
 
+# The regular persona is the default and reports only findings with a
+# minimal false-positive rate. The pedantic persona reports the same
+# findings against this repository's workflows -- it adds nothing here
+# -- so there is no case for the noisier set.
+step "workflow lint"
+uv run zizmor .github/workflows/
+
 # The stylesheet is generated from the templates, not committed, so it
 # has to be built before anything renders a page. Both suites depend on
 # it: a unit test asserts the stylesheet URL carries a cache-busting
