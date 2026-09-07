@@ -1,24 +1,55 @@
 # What follows for otzar
 
-## No single field test identifies a volume within a set
+## Test leader/19 first, because it is decisive when it is there
 
-Every candidate marker is either concentrated in one or two catalogs or
-thin across all of them. Restricted to books:
+MARC position 19 of the leader records multipart resource level: `a`
+for a set, `b` for a part with its own title, `c` for a part whose
+title depends on the set. Where a catalog populates it, the three
+values carry three separate and nearly exceptionless field patterns:
 
-- `leader/07=d` reaches **4 records out of 4,449**, all at NLI. A rule
-  that reads the leader to find set volumes matches essentially
-  nothing. Its apparent strength at NLI is archival material.
-- `773` is 35% at K10plus, 12-14% at DNB and NLI, and effectively
-  absent at LC (0 of 1,164) and Oxford (6 of 662).
+| leader/19 | mechanism | in this corpus |
+|---|---|---|
+| `c` dependent part | `773` host link plus `245 $n`/`$p` enumeration | 273 records, both present on 100% and 99% |
+| `b` independent part | `490` on every record, `830` on four in five, no `773` | 57 records, `773` on none |
+| `a` set record | neither mechanism | 36 records, `773` on none |
+
+Two of those fields together are an exact test. Scored against declared
+leader/19 in the catalogs that populate it, "`773` present and
+`245 $n` or `$p` present" gives 272 true positives, **zero** false
+positives and one false negative — precision 1.000, recall 0.996.
+Neither field works alone: `773` by itself has precision 0.581, since
+it equally marks an article inside a host.
+
+This is the distinction the set work needs, declared in the record
+rather than inferred from it, and it is worth testing before anything
+else. It also separates the two uses of `773`, which are otherwise
+indistinguishable: of 378 K10plus book records carrying `773`, 195 are
+dependent parts of a multipart resource and 177 are `leader/07=a`
+component parts — articles inside a host, not volumes inside a set.
+
+## Everywhere else, no single field test works
+
+Leader/19 is populated on 24% of K10plus books and 14% of DNB's, on one
+Oxford record, and on nothing at LC or NLI. Where it is blank the
+distinction is not merely harder to recover — it was never recorded,
+and the remaining markers do not substitute for it:
+
+- `773` alone conflates set volumes with articles, and runs from none
+  at all at LC to 35% at K10plus. The two-field test that is exact at
+  K10plus and DNB matches **0 of 2,620** books at LC, NLI and Oxford.
+  Those catalogs do not express the distinction in the fields either.
+- `leader/07=d` reaches 4 records out of 4,449, all at NLI. MARC
+  defines it for archival units described collectively elsewhere, and
+  that is what those four are.
 - `800`/`810`/`811` is at or below 3% everywhere.
-- `245$n`/`$p` is 18% at K10plus and 1% at LC and NLI.
+- `245 $n`/`$p` is 18% at K10plus and 1% at LC and NLI.
 
-The only markers that behave consistently across institutions are `490`
-(13-26%, V=0.10), `830` (10-16%, V=0.08) and `130`/`240` (6-9%,
-V=0.04, not distinguishable from independence). Those are the ones a
-catalog-independent rule can rest on — and `490` is the weakest kind of
-evidence, since a transcribed series statement claims only that words
-appeared on a piece.
+The only markers that appear at comparable rates in every catalog are
+`490` (13-26%, V=0.10), `830` (10-16%, V=0.08) and `130`/`240` (6-9%,
+V=0.04, the one row where the chi-square test does not reject
+independence). Those are what a catalog-independent rule can rest on —
+and `490` is the weakest kind of evidence, since a transcribed series
+statement claims only that words appeared on a piece.
 
 ## Condition on the catalog, because it is free
 
@@ -45,25 +76,30 @@ catalogs for the identical fact — `245-02//r`, `245-02/(2/r` and
 optional script-identification code that may be a name or a character-set
 escape, and the `/r` orientation flag.
 
-NLI expresses the same information a fourth way, with `$9` carrying a
-language code and `$8 PreferredLanguageHeading` on the heading itself.
-Anything treating `880` as *the* mechanism for vernacular script will
-read NLI records as having no Hebrew.
+NLI carries no parallel representation at all. Its `$9` and
+`$8 PreferredLanguageHeading` mark the script of the one heading
+present, and the Hebrew sits in `245`. What a parser keyed to `880`
+misses at NLI is not the Hebrew but the absence of any romanized
+form.
 
 ## Series identity: the evidence is unevenly recorded
 
 For one series across four records, the ISSN appeared once, `$w`
-authority links appeared twice pointing at four different authority
-files, one catalog did not trace the series at all, and the series
+bibliographic-record links appeared twice pointing at four different
+databases, one catalog did not trace the series at all, and the series
 title differed by a typo between two of them.
 
 Consequences for matching two records to one set:
 
-- **An ISSN match is strong but rare.** Treat its presence as decisive
-  and its absence as uninformative.
-- **`$w` links are per-authority-file.** `(DE-627)` and `(DE-101)`
-  identifiers are not comparable; `(DE-600)` appeared in both German
-  records and is the only cross-walkable one seen.
+- **An ISSN match is strong but rare.** Treat its presence as strong
+  evidence and its absence as uninformative. It identifies the series
+  as a serial, and a subseries may carry its own.
+- **`$w` is a bibliographic record link, not an authority link.** It
+  carries the control number of the series' own record in a named
+  database, so `(DE-627)` and `(DE-101)` identifiers are not
+  comparable. `(DE-600)`, the ZDB, appeared in both German records and
+  is the only shared one seen. The authority identifier is `$0`, which
+  these records use on name headings with the GND prefix `(DE-588)`.
 - **Series-title string matching needs to tolerate error.** Exact
   comparison fails on a single transposed letter in a real record held
   by two major catalogs.
@@ -112,18 +148,20 @@ traditions.
 ## Limits of the evidence
 
 **The sample is stratified convenience, not random.** SRU returns
-relevance-ranked results, so each stratum is the first fifty records a
-server chose for that query. Sizes differ across catalogs by a factor
-of nearly two.
+results in a server-determined order, so each stratum is the first
+fifty records a server chose for that query. Sizes differ across
+catalogs by a factor of 2.1 for all records and 1.8 for books.
 
 **The era axis conflates two things.** The `008` date is when the book
 was published, not when the record was made. Retrospective cataloging
 puts modern records in early bins, and the study cannot separate a
 change in convention from a change in the material.
 
-**Judaica dominates.** Control strata are 447 of 5,252 records, so the
-finding that clusters do not track subject domain rests on much less
-evidence than the findings about catalogs.
+**Judaica dominates.** Control strata are 747 of 5,252 records, and
+adjusted mutual information between the clusters and the Judaica or
+control label never exceeds 0.07 at any cut. The finding that clusters
+do not track subject domain rests on much less evidence than the
+findings about catalogs.
 
 **The matched items are illustrations, not a sample.** Thirty-five
 ISBNs appear in more than one catalog. The six shown demonstrate
@@ -134,6 +172,26 @@ estimate anything.
 refused every request from this network, and one large research
 library's Alma institution code could not be resolved. Their inclusion
 would test the copy-cataloging finding directly.
+
+**The clustering choices are post hoc.** The number of clusters was
+chosen after seeing the results, stability was assessed at one cut
+only, and the per-catalog table reports the best cut for each catalog
+rather than a single cut for all. Each of those inflates the figures
+reported.
+
+**The bootstrap holds the partition fixed.** Intervals on adjusted
+mutual information resample the records against a clustering computed
+once on the whole corpus, so they describe the stability of the score
+and not the variability of the clustering itself.
+
+**Only three systems underlie the five catalogs.** NLI and Oxford run
+Alma, DNB and K10plus run PICA, and LC answers through a Z39.50
+gateway. The comparison has five institutions but fewer independent
+pieces of software than that.
+
+**One control stratum is books by construction.** The DNB control was
+drawn with `MAT=books`, which is why 739 of 779 DNB records are
+language material.
 
 **Interval estimates assume independent records.** Records reached
 through one query are not fully independent — a catalog may return

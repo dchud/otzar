@@ -32,9 +32,11 @@ would be worth knowing:
    says variation is institutional, and that knowing where a record
    came from predicts more than reading it does.
 
-The answer is that all three hold, at different levels, and which one
-applies depends on which fields are examined and which catalog
-answered.
+All three hold, at different levels, and which one applies depends on
+which fields are examined and which catalog answered. The first holds
+more strongly than expected in the two catalogs that declare multipart
+level in the leader, where the taxonomy is not imposed on the records
+but stated in them.
 
 ## The corpus
 
@@ -61,13 +63,16 @@ record carries. Query syntax differed per catalog — `alma.language`
 and `alma.main_pub_date`, `pica.spr` and `pica.jah`, `dc.subject` and
 `dc.date`, `SPR` and `JHR` — but the axis is the same in each.
 
-Four strata fall outside Judaica entirely: physics and agriculture at
-the Library of Congress, general monographs at DNB, English-language
-material at Oxford. They are a control on whether any group that
-appears is a property of cataloging or of the subject.
+Five strata fall outside Judaica entirely, 747 records in all: physics
+and agriculture at the Library of Congress, physics at K10plus, general
+monographs at DNB, English-language material at Oxford. They are a
+control on whether any group that appears is a property of cataloging
+or of the subject.
 
-Two catalogs, NLI and Oxford, run the same Alma software. That pairing
-is deliberate, and the signatures chapter turns on it.
+Two catalogs, NLI and Oxford, run the same Alma software on separate
+installations. That pairing is deliberate, and the signatures chapter
+turns on it. DNB and K10plus both run PICA, so the five catalogs
+represent three systems rather than five.
 
 ## What a record is reduced to
 
@@ -79,9 +84,11 @@ whether the second `008` date is set, blank, or open. Facts holding for
 under 2% or over 98% of records are dropped, leaving 725.
 
 Seven facts are held out of that vector and used only to interpret the
-result: which catalog answered, `040$a`, `040$e`, and leader positions
-06, 07 and 18. Leader/07 and `040$e` are the cataloger's own
-declaration of treatment and convention. Putting them in the vector
+result: which catalog answered, `040$a`, `040$e`, leader positions 06,
+07 and 18, and the decade of the query that found the record. That
+last one is the year asked for, not the `008` date the era chapter
+uses. Leader/07 and `040$e` are the cataloger's own declaration of
+treatment and convention. Putting them in the vector
 would let the clustering recover them by definition instead of testing
 whether the rest of the record predicts them.
 
@@ -95,30 +102,50 @@ cluster across 30 resamples at 80% of the corpus.
 
 ## What the study found
 
-**Structure identifies the institution, not the book.** With every
+**MARC has a field for this, and where it is used it is exact.** Leader
+position 19, multipart resource record level, separates a set record
+from a part with its own title from a part whose title depends on the
+set. The three values carry three separate mechanisms: dependent parts
+take a `773` host link and `245 $n`/`$p` enumeration on 100% and 99% of
+273 records across two catalogs; independent parts take `490` on all of
+them and `830` on four in five, and never `773`; set records take
+neither. Used as a test, `773` together with `245 $n`/`$p` predicts a
+declared dependent part with precision 1.000 and recall 0.996.
+
+**Two catalogs of five populate it.** K10plus on 24% of books, DNB on
+14%, Oxford on one record, LC and NLI on none. Where it is blank the
+distinction was not recorded, and the remaining evidence does not
+reconstruct it — `773` alone conflates volumes of a set with articles
+inside a host.
+
+**Structure identifies the institution before the book.** With every
 field included, clustering recovers which catalog answered at
 AMI 0.803 (95% CI 0.795–0.812), on administrative fields that describe
 a record's handling rather than its subject.
 
 **The fingerprint is institutional, not the software.** NLI and Oxford
-run the same Alma installation and separate from each other as sharply
-as five different platforms separate from one another.
+run the same Alma software on separate installations, and separate from
+each other almost as sharply (0.790) as the five catalogs separate from
+one another (0.803).
 
 **With only standard fields, nothing dominates.** Catalog, record type
-and bibliographic level all land near AMI 0.33 with overlapping
-intervals. No single organising principle wins.
+and bibliographic level all land near 0.33 with overlapping intervals.
 
-**The most-cited set marker barely exists in books.** `leader/07=d`,
-the subunit value, appears on 4 of 4,449 language-material records
-across all five catalogs. Its apparent prevalence at NLI comes almost
-entirely from archival and image material.
+**The clustering does not recover multipart level, and that does not
+contradict the exact test.** Adjusted mutual information between the
+partitions and leader/19 is 0.04 to 0.11 even within the catalogs that
+declare it. The partitions do not isolate 273 records out of 1,829 as a
+group; a two-field rule still identifies them without error. The two
+measures answer different questions and both answers stand.
 
-**Only `490` and `830` are near-universal**, at 13–26% and 10–16%. Every
-other part-whole marker is concentrated in one or two catalogs.
+**Only `490`, `830` and `130`/`240` appear at comparable rates in every
+catalog**, at 13–26%, 10–16% and 6–9%. Every other part-whole marker is
+concentrated in one or two.
 
-**The same item is catalogued as different things.** One sound-notation
-item is language material at NLI and notated music at LC, with 19 added
-name entries and a contents note at LC that NLI's record does not have.
+**The same item is catalogued as different things.** One printed
+songbook is language material at NLI and notated music at LC and
+K10plus, and LC's record carries a uniform title, a song-level contents
+note and 18 name added entries that neither of the others has.
 
 ## How to read the rest
 
@@ -130,3 +157,5 @@ name entries and a contents note at LC that NLI's record does not have.
   catalogs, with identifiers.
 - [What follows for otzar](implications.md) — the design consequences,
   and the limits of the evidence.
+- [The data](data.md) — the published corpus features, the query
+  manifest, and the case records.
