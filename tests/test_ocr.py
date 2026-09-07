@@ -525,20 +525,27 @@ class TestTitlePageUploadView:
         )
 
     @patch("ingest.views.extract_metadata_from_image")
-    def test_run_ocr_failure_after_success_resets_to_awaiting(
+    def test_run_ocr_failure_after_success_keeps_previous_reading(
         self, mock_ocr, client_logged_in, tmp_path, settings
     ):
-        """If a re-run produces no metadata, the scan returns to
-        awaiting_ocr so the queue card surfaces it again."""
-        mock_ocr.side_effect = [SAMPLE_OCR_RESPONSE, None]
+        """If a re-run produces no metadata, the prior good reading is
+        kept rather than discarded, with a notice about the failed
+        attempt shown alongside it."""
+        first = {**SAMPLE_OCR_RESPONSE, "title": "first attempt"}
+        mock_ocr.side_effect = [first, None]
         scan = self._upload_scan(client_logged_in, tmp_path, settings)
 
         client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
-        client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 200
+        assert b"Extracted metadata" in response.content
+        assert b"first attempt" in response.content
+        assert b"did not produce a new reading" in response.content
 
         scan.refresh_from_db()
-        assert scan.status == "awaiting_ocr"
-        assert scan.ocr_output is None
+        assert scan.status == "pending"
+        assert scan.ocr_output["title"] == "first attempt"
 
     @patch("ingest.views.extract_metadata_from_image")
     def test_run_ocr_response_includes_retry_and_discard_buttons(

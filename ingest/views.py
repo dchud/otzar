@@ -766,10 +766,27 @@ def run_ocr(request, scan_id):
     # pending with ocr_output set, which the poll pane offers to continue
     # editing — a form of eight empty boxes over an unreadable photo.
     if metadata is None or not any(metadata.values()):
-        # Reset to awaiting state so the card in the poll pane keeps its
-        # Run OCR button. The response is a notice rather than a card:
-        # the card is already on screen, and rendering a second one put
-        # the same photo up twice under a duplicated element id.
+        if scan.ocr_output:
+            # This scan already had a usable reading on screen. A
+            # transient failure on a re-run must not discard it, so
+            # neither ocr_output nor status is touched here — only a
+            # success overwrites them. The metadata form is shown
+            # again with the prior reading, plus a notice about this
+            # attempt.
+            return render(
+                request,
+                "ingest/_ocr_results.html",
+                {
+                    "metadata": scan.ocr_output,
+                    "scan": scan,
+                    "ocr_failed": True,
+                },
+            )
+        # Never had a reading to protect. Reset to awaiting state so
+        # the card in the poll pane keeps its Run OCR button. The
+        # response is a notice rather than a card: the card is
+        # already on screen, and rendering a second one put the same
+        # photo up twice under a duplicated element id.
         scan.status = "awaiting_ocr"
         scan.ocr_output = None
         scan.save(update_fields=["status", "ocr_output", "updated_at"])

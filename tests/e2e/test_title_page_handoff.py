@@ -350,6 +350,53 @@ class TestTitlePageHandoff:
         assert mock_ocr.call_count == 2
 
     @patch("ingest.views.extract_metadata_from_image")
+    def test_failed_re_run_keeps_previous_reading(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """A re-run that fails must not erase a good extraction already
+        on screen -- the form keeps showing the previous reading, with
+        a notice about the failed attempt."""
+        mock_ocr.side_effect = [
+            {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
+            None,
+        ]
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        page.get_by_role("button", name="Run OCR", exact=True).click()
+        expect(page.get_by_label("Title (romanized)")).to_have_value(
+            "First Title", timeout=10000
+        )
+
+        page.get_by_role("button", name="Re-run OCR", exact=True).click()
+        expect(
+            page.get_by_text("did not produce a new reading")
+        ).to_be_visible(timeout=10000)
+        expect(page.get_by_text("Extracted metadata")).to_be_visible()
+        expect(page.get_by_label("Title (romanized)")).to_have_value(
+            "First Title"
+        )
+        assert mock_ocr.call_count == 2
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output["title_romanized"] == "First Title"
+
+    @patch("ingest.views.extract_metadata_from_image")
     def test_discard_from_metadata_form(
         self, mock_ocr, page, live_server, staff_user
     ):
