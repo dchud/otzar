@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # pyproject.toml and uv.lock.
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+    # Weekly rather than daily because the cooldown below already
+    # decides when an update becomes eligible. Checking daily would
+    # only change how often the same grouped pull request is rewritten.
+    #
+    # Seven days, so a release that is yanked or hot-fixed two days
+    # later never becomes a pull request at all. For a catalog
+    # maintained by one person the cost of being a week behind is
+    # nothing; the cost of a pull request per point release is
+    # attention, which is the scarce thing here.
+    cooldown:
+      default-days: 7
+    # Patch and minor updates arrive as one pull request. Major updates
+    # fall outside the group and arrive on their own, because a major is
+    # a thing to read rather than a thing to merge, and burying one
+    # inside a group of eleven patches is how it gets merged unread.
+    groups:
+      minor-and-patch:
+        update-types:
+          - patch
+          - minor
+    open-pull-requests-limit: 5
+    # Dependabot writes "Bump x from a to b" by default, which is not
+    # the subject style the rest of the history uses.
+    commit-message:
+      prefix: chore
+
+  # .github/workflows/. These are pinned by tag today; when they are
+  # pinned by commit hash instead, this is what keeps them current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - patch
+          - minor
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
