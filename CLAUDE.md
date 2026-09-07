@@ -186,6 +186,26 @@ Unit tests cover internal logic: models, search indexing, SRU/VIAF clients, MARC
 parsing, form validation. E2e tests cover whether a user can complete the
 workflow in a browser. When in doubt, add both.
 
+### Locators in browser tests
+
+Prefer `get_by_role`, `get_by_label` and `get_by_text`. A locator built
+from a CSS class or an id asserts that a piece of markup exists, which is
+a fact about the templates rather than about what a person can do.
+
+The order to try:
+
+1. Role, label or text.
+2. `data-testid`, where a control genuinely has no accessible name.
+   Treat needing this as a question about the markup first: a control a
+   test cannot name is usually one a screen reader cannot announce.
+3. A styling class or an id -- no. The exception is an id carrying a
+   primary key, which answers *which* row rather than *what* it is. That
+   belongs in a `data-testid` too, not in an `id` doing double duty as a
+   style hook.
+
+Existing markup-coupled locators are not being converted in a sweep.
+Convert one when you are already editing its file for another reason.
+
 ## Linting and formatting
 
 ```bash
