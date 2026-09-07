@@ -47,10 +47,16 @@ DEMONSTRATES = {
         "the same facts in different shapes."
     ),
     "miqraot_gedolot_parallel_script_nli": (
-        "NLI's parallel-script mechanism on a work-set: $9 and $8 across "
-        "the record, a 130 whose $p names the part, an 830 naming a "
-        "series that is a work rather than an imprint, and a contents "
-        "note in the basic form that 39 of 40 surveyed records use."
+        "NLI's parallel-script mechanism: $9 and $8 across the record, "
+        "a 130 whose $p names the part in hand, and a contents note in "
+        "the basic form that 39 of 40 surveyed records use.\n\n"
+        "Its 490 and 830 state the same series two ways -- a spaced "
+        "hyphen against a double one -- which is why the authorized "
+        "form has to decide identity. That series is Judaica Press's "
+        "line rather than a work: the work this volume belongs to is "
+        "named in its 130, not in its series statement. A record can "
+        "carry both, and reading the series statement as the work is "
+        "the mistake the imprint distinction exists to prevent."
     ),
     "bavli_analytic_entries_nli": (
         "Analytic added entries: 730 name-title entries for the works "
