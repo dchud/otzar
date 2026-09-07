@@ -6,12 +6,18 @@ lets the browser reach a CDN proves nothing about a phone at the
 shelves whose wifi cannot.
 """
 
+import os
 import re
 
 import pytest
 from playwright.sync_api import expect
 
+from catalog.models import RecordCover
 from tests.e2e.conftest import login
+
+FIXTURE_IMAGE = os.path.join(
+    os.path.dirname(__file__), "..", "fixtures", "title_pages", "blank.jpg"
+)
 
 
 @pytest.fixture
@@ -169,3 +175,47 @@ class TestResponsesAreCompressed:
         response = page.goto(url)
         assert response.status == 200
         assert response.all_headers().get("content-encoding") == "gzip"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCoverImagesComeFromTheApplication:
+    """A stored cover has to render without the browser ever reaching
+    Open Library -- that is the point of storing it in the first
+    place.
+    """
+
+    def test_record_page_serves_a_stored_cover_with_no_off_origin_request(
+        self, offline_page, live_server, sample_record
+    ):
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            cover = RecordCover.store(
+                sample_record,
+                "https://covers.openlibrary.org/b/isbn/0875847625-M.jpg",
+                fh.read(),
+            )
+
+        url = (
+            f"{live_server.url}/catalog/{sample_record.record_id}/"
+            f"{sample_record.slug}/"
+        )
+        offline_page.goto(url)
+        offline_page.wait_for_load_state("load")
+
+        img = offline_page.get_by_role(
+            "img", name=f"Cover of {sample_record.title}"
+        )
+        expect(img).to_be_visible()
+        img_src = img.get_attribute("src")
+        assert img_src and img_src.startswith("/media/covers/"), (
+            f"cover src looks wrong: {img_src!r}"
+        )
+
+        img_response = offline_page.request.get(f"{live_server.url}{img_src}")
+        assert img_response.status == 200
+
+        assert offline_page.blocked_urls == [], (
+            f"the page reached off-origin for: {offline_page.blocked_urls}"
+        )
+        assert cover.source_url == (
+            "https://covers.openlibrary.org/b/isbn/0875847625-M.jpg"
+        )

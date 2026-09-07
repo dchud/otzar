@@ -230,10 +230,13 @@ class TestRecordDetailImages:
         self, client, sample_record, tmp_path, settings
     ):
         settings.MEDIA_ROOT = str(tmp_path)
-        from catalog.models import TitlePageImage
+        from catalog.models import RecordCover, TitlePageImage
 
-        sample_record.cover_url = "https://covers.example/edition.jpg"
-        sample_record.save(update_fields=["cover_url"])
+        cover = RecordCover.store(
+            sample_record,
+            "https://covers.example/edition.jpg",
+            b"fake cover bytes",
+        )
         image = TitlePageImage(record=sample_record, staged=False)
         image.image.save(
             "title.jpg", ContentFile(b"fake jpeg data"), save=True
@@ -243,6 +246,10 @@ class TestRecordDetailImages:
         content = response.content.decode()
         assert 'alt="Cover of' in content
         assert f'alt="Title page of {sample_record.title}"' in content
+        # The image is served from local media, not the third-party URL
+        # it was fetched from.
+        assert cover.image.url in content
+        assert "covers.example" not in content
         # The title page appears after the cover, so it renders below it.
         assert content.index("Cover of") < content.index("Title page of")
 

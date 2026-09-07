@@ -21,6 +21,7 @@ from catalog.models import (
     Location,
     Publisher,
     Record,
+    RecordCover,
     Series,
     TitlePageImage,
 )
@@ -42,7 +43,7 @@ from ingest.series_workflow import (
     link_record_to_series,
 )
 from sources.cascade import isbn_lookup, search_lc, search_nli
-from sources.covers import fetch_cover_url
+from sources.covers import fetch_cover
 from sources.score import rank_candidates
 
 logger = logging.getLogger(__name__)
@@ -302,10 +303,9 @@ def _create_record_from_candidate(
 
     # Best-effort; a missing cover must not cost the user the record.
     try:
-        cover_url = fetch_cover_url(record)
-        if cover_url:
-            record.cover_url = cover_url
-            record.save(update_fields=["cover_url"])
+        result = fetch_cover(record)
+        if result:
+            RecordCover.store(record, result.url, result.content)
     except Exception:
         logger.exception("Cover fetch failed for record %s", record.record_id)
 

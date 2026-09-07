@@ -40,18 +40,18 @@ def pytest_collection_modifyitems(items):
 def no_cover_lookup():
     """Keep the confirm path from reaching Open Library.
 
-    ``confirm_scan`` calls ``fetch_cover_url``, which issues a live GET
-    to covers.openlibrary.org. No end-to-end test asserts anything about
-    a cover, so every one of them was paying for a request to a third
+    ``confirm_scan`` calls ``fetch_cover``, which issues a live GET to
+    covers.openlibrary.org. No end-to-end test exercises a live cover
+    fetch, so every one of them was paying for a request to a third
     party -- and the ones that remembered to patch it were the only
     thing keeping the rest of the suite polite.
 
     Patching here rather than per test makes the rule uniform: an
-    end-to-end test does not fetch covers. A test that ever needs a real
-    one overrides this fixture rather than being the exception that
-    quietly works.
+    end-to-end test does not fetch covers over the network. A test that
+    needs a stored cover creates a ``RecordCover`` directly instead of
+    overriding this fixture.
     """
-    with patch("ingest.views.fetch_cover_url", return_value=""):
+    with patch("ingest.views.fetch_cover", return_value=None):
         yield
 
 

@@ -56,7 +56,6 @@ class TestTextFieldNames:
             "place_of_publication",
             "language",
             "source_catalog",
-            "cover_url",
             "notes",
         ):
             assert expected in names
