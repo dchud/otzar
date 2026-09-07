@@ -44,7 +44,7 @@ corpus, are wrong in a measurable direction.
 
 | | Pattern | Strength |
 |---|---|---|
-| 1 | [Two catalogs create hierarchical descriptions](sets.md) — a set record with linked volume records — and three never do | **Strong** for the absence, weaker for the presence |
+| 1 | [The same set is one record from some catalogs and thirty from others](sets.md), and each side signals which it is doing in a different field | **Strong** |
 | 2 | [House style is institutional](signatures.md), and survives holding the tradition constant | **Strong** |
 | 3 | [Type of material overrides the part-whole markers](markers.md) entirely | **Strong** |
 | 4 | [The vocabulary shifted across eras](markers.md#change-over-publication-era) | **Moderate** |

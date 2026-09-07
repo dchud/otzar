@@ -18,10 +18,15 @@ will be wrong on precisely the material otzar exists to catalogue. That
 is a data-model consequence and it belongs in the design before the
 matching rules are written.
 
-## Read leader/19, and expect it from two sources
+## Read leader/19 where it arrives, which is not most places
 
 *From [pattern 1](sets.md). Strong for its absence, weaker for its
-presence.*
+presence, and narrow in reach.*
+
+Of the three sources otzar queries today, only DNB codes leader/19, and
+DNB is reached by ISBN lookup rather than by the title cascade. K10plus,
+where coding is strongest, is not yet a source. This is the study's
+cleanest measurement and its least immediately actionable one.
 
 Leader/19 records the level at which a multipart resource is described:
 `a` set, `b` part with an independent title, `c` part with a dependent
