@@ -166,7 +166,7 @@ class TestTitlePageHandoff:
 
         expect(page.locator("h1")).to_contain_text("Title page capture")
         # Phone view: no QR sidebar.
-        expect(page.locator("text=Capture on your phone")).to_have_count(0)
+        expect(page.get_by_text("Capture on your phone")).to_have_count(0)
         # Capture form is present.
         expect(page.locator("#image-input")).to_have_count(1)
         # Guard against multi-line {# ... #} comment leaks: Django's
@@ -209,7 +209,7 @@ class TestTitlePageHandoff:
         desktop_page.goto(f"{live_server.url}/ingest/scan-title/")
 
         # Initial poll shows empty state.
-        expect(desktop_page.locator("text=Waiting for photos")).to_be_visible()
+        expect(desktop_page.get_by_text("Waiting for photos")).to_be_visible()
 
         # Phone context — authenticates via QR token.
         phone = browser.new_context()
@@ -292,7 +292,7 @@ class TestTitlePageHandoff:
 
         # Click Run OCR; the metadata edit partial appears.
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=10000
         )
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
@@ -302,7 +302,7 @@ class TestTitlePageHandoff:
         # The metadata form must survive a poll cycle (>3s) without being
         # wiped by the polling div.
         page.wait_for_timeout(4000)
-        expect(page.locator("text=Extracted metadata")).to_be_visible()
+        expect(page.get_by_text("Extracted metadata")).to_be_visible()
         expect(page.locator('input[name="title_romanized"]')).to_have_value(
             "Mishneh Torah"
         )
@@ -350,6 +350,53 @@ class TestTitlePageHandoff:
         assert mock_ocr.call_count == 2
 
     @patch("ingest.views.extract_metadata_from_image")
+    def test_failed_re_run_keeps_previous_reading(
+        self, mock_ocr, page, live_server, staff_user
+    ):
+        """A re-run that fails must not erase a good extraction already
+        on screen -- the form keeps showing the previous reading, with
+        a notice about the failed attempt."""
+        mock_ocr.side_effect = [
+            {**SAMPLE_OCR_RESPONSE, "title_romanized": "First Title"},
+            None,
+        ]
+
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="awaiting_ocr",
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+        page.goto(f"{live_server.url}/ingest/scan-title/")
+        expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+            timeout=10000
+        )
+
+        page.get_by_role("button", name="Run OCR", exact=True).click()
+        expect(page.get_by_label("Title (romanized)")).to_have_value(
+            "First Title", timeout=10000
+        )
+
+        page.get_by_role("button", name="Re-run OCR", exact=True).click()
+        expect(
+            page.get_by_text("did not produce a new reading")
+        ).to_be_visible(timeout=10000)
+        expect(page.get_by_text("Extracted metadata")).to_be_visible()
+        expect(page.get_by_label("Title (romanized)")).to_have_value(
+            "First Title"
+        )
+        assert mock_ocr.call_count == 2
+
+        scan.refresh_from_db()
+        assert scan.status == "pending"
+        assert scan.ocr_output["title_romanized"] == "First Title"
+
+    @patch("ingest.views.extract_metadata_from_image")
     def test_discard_from_metadata_form(
         self, mock_ocr, page, live_server, staff_user
     ):
@@ -375,7 +422,7 @@ class TestTitlePageHandoff:
         )
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=10000
         )
 
@@ -383,7 +430,7 @@ class TestTitlePageHandoff:
         # Use the Discard button inside the metadata form (avoid card-level Discard).
         page.locator('#title-page-metadata button:text("Discard")').click()
 
-        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+        expect(page.get_by_text("Extracted metadata")).to_have_count(0)
         scan.refresh_from_db()
         assert scan.status == "discarded"
         assert not scan.image
@@ -464,7 +511,7 @@ class TestTitlePageHandoff:
         expect(run_ocr.locator(".btn-idle")).to_be_hidden()
         expect(run_ocr).to_be_disabled()
 
-        expect(page.locator("text=Extracted metadata")).to_be_visible(
+        expect(page.get_by_text("Extracted metadata")).to_be_visible(
             timeout=15000
         )
         expect(page.locator(".btn-busy:visible")).to_have_count(0)
@@ -494,7 +541,7 @@ class TestTitlePageHandoff:
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(
-            page.locator("text=OCR could not extract metadata")
+            page.get_by_text("OCR could not extract metadata")
         ).to_be_visible(timeout=10000)
 
         expect(page.locator("img[alt='Uploaded title page']")).to_have_count(1)
@@ -531,10 +578,10 @@ class TestTitlePageHandoff:
 
         page.click('button:has(.btn-idle:text-is("Run OCR"))')
         expect(
-            page.locator("text=OCR could not extract metadata")
+            page.get_by_text("OCR could not extract metadata")
         ).to_be_visible(timeout=10000)
-        expect(page.locator("text=Try OCR again")).to_be_visible()
-        expect(page.locator("text=Extracted metadata")).to_have_count(0)
+        expect(page.get_by_text("Try OCR again")).to_be_visible()
+        expect(page.get_by_text("Extracted metadata")).to_have_count(0)
 
         # The card keeps its Run OCR button, so the photo stays workable.
         scan.refresh_from_db()
@@ -676,7 +723,7 @@ class TestTitlePageHandoff:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
                 timeout=10000
             )
             page.click('#search-controls button[type="submit"]')
@@ -708,6 +755,54 @@ class TestTitlePageHandoff:
             f"visible area of the table"
         )
         assert overflow["pageOverflow"] <= 0, "page scrolls horizontally"
+
+    def test_candidate_results_show_matched_cascade_step(
+        self, page, live_server, staff_user
+    ):
+        """A broad title-only fallback is labeled as such in the results
+        header, rather than looking identical to a precise match on
+        publisher, place, and date."""
+        with open(FIXTURE_IMAGE, "rb") as fh:
+            from django.core.files.base import ContentFile
+
+            scan = ScanResult.objects.create(
+                scan_type="ocr",
+                status="pending",
+                ocr_output=SAMPLE_OCR_RESPONSE,
+                scanned_by=staff_user,
+            )
+            scan.image.save("blank.jpg", ContentFile(fh.read()))
+
+        login(page, live_server)
+
+        with (
+            patch("ingest.views.search_nli") as mock_nli,
+            patch("ingest.views.search_lc") as mock_lc,
+        ):
+            mock_nli.return_value = CascadeResult(
+                query_used='alma.title="Mishneh Torah"',
+                step="title",
+                records=WIDE_CANDIDATES[:1],
+            )
+            mock_lc.return_value = CascadeResult(records=[])
+
+            page.goto(f"{live_server.url}/ingest/scan-title/")
+            expect(page.locator(f"#title-page-card-{scan.pk}")).to_be_visible(
+                timeout=10000
+            )
+            page.click('button:text("Continue editing")')
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
+                timeout=10000
+            )
+            page.click('#search-controls button[type="submit"]')
+            expect(page.get_by_text("matched on")).to_be_visible(timeout=10000)
+
+        results = page.locator("#title-page-metadata")
+        expect(results.get_by_text("matched on")).to_contain_text("title")
+        expect(
+            results.get_by_text('alma.title="Mishneh Torah"')
+        ).to_be_visible()
+        expect(results.get_by_text("no step matched")).to_be_visible()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -820,7 +915,7 @@ class TestSharedOCRProgress:
                 timeout=10000
             )
             page.click('button:text("Continue editing")')
-            expect(page.locator("text=Extracted metadata")).to_be_visible(
+            expect(page.get_by_text("Extracted metadata")).to_be_visible(
                 timeout=10000
             )
 

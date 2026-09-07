@@ -650,21 +650,42 @@ def title_page_upload(request):
                 "author_romanized", ""
             ).strip(),
         }
+        # cascade_info carries which step matched (or didn't) for each
+        # catalog, so the template can tell a precise match from a
+        # broad title-only fallback -- the two look identical in the
+        # candidate list itself.
+        cascade_info = []
         candidates = []
         try:
             nli_result = search_nli(metadata)
+            cascade_info.append(
+                {
+                    "source": "NLI",
+                    "step": nli_result.step,
+                    "query_used": nli_result.query_used,
+                }
+            )
             for rec in nli_result.records:
                 rec["source_catalog"] = "NLI"
                 candidates.append(rec)
         except Exception:
             logger.exception("NLI cascade search failed")
+            cascade_info.append({"source": "NLI", "failed": True})
         try:
             lc_result = search_lc(metadata)
+            cascade_info.append(
+                {
+                    "source": "LC",
+                    "step": lc_result.step,
+                    "query_used": lc_result.query_used,
+                }
+            )
             for rec in lc_result.records:
                 rec["source_catalog"] = "LC"
                 candidates.append(rec)
         except Exception:
             logger.exception("LC cascade search failed")
+            cascade_info.append({"source": "LC", "failed": True})
 
         # Order by agreement with what was read off the page, across
         # catalogs. Each cascade returns its rows in that catalog's own
@@ -693,6 +714,7 @@ def title_page_upload(request):
                 "scored": True,
                 "metadata": metadata,
                 "scan_id": scan_id,
+                "cascade_info": cascade_info,
             },
         )
 
@@ -766,10 +788,27 @@ def run_ocr(request, scan_id):
     # pending with ocr_output set, which the poll pane offers to continue
     # editing — a form of eight empty boxes over an unreadable photo.
     if metadata is None or not any(metadata.values()):
-        # Reset to awaiting state so the card in the poll pane keeps its
-        # Run OCR button. The response is a notice rather than a card:
-        # the card is already on screen, and rendering a second one put
-        # the same photo up twice under a duplicated element id.
+        if scan.ocr_output:
+            # This scan already had a usable reading on screen. A
+            # transient failure on a re-run must not discard it, so
+            # neither ocr_output nor status is touched here — only a
+            # success overwrites them. The metadata form is shown
+            # again with the prior reading, plus a notice about this
+            # attempt.
+            return render(
+                request,
+                "ingest/_ocr_results.html",
+                {
+                    "metadata": scan.ocr_output,
+                    "scan": scan,
+                    "ocr_failed": True,
+                },
+            )
+        # Never had a reading to protect. Reset to awaiting state so
+        # the card in the poll pane keeps its Run OCR button. The
+        # response is a notice rather than a card: the card is
+        # already on screen, and rendering a second one put the same
+        # photo up twice under a duplicated element id.
         scan.status = "awaiting_ocr"
         scan.ocr_output = None
         scan.save(update_fields=["status", "ocr_output", "updated_at"])
