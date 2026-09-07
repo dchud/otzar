@@ -28,6 +28,15 @@ uv run python scripts/lint_process_labels.py
 step "workflow lint"
 uv run zizmor .github/workflows/
 
+# `--strict` turns MkDocs warnings into failures, which is what CI does.
+# It catches a link to a file that is not in the built site: a page that
+# was renamed, or one whose target is present on disk but excluded from
+# the repository, where a local build succeeds and CI does not. This runs
+# in the quick pass too, since a documentation-only change reaches no
+# other gate here.
+step "docs"
+uv run mkdocs build --strict
+
 # The stylesheet is generated from the templates, not committed, so it
 # has to be built before anything renders a page. Both suites depend on
 # it: a unit test asserts the stylesheet URL carries a cache-busting
