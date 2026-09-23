@@ -308,7 +308,7 @@ def cataloger(db):
 @pytest.fixture
 def client_logged_in(cataloger):
     client = Client()
-    client.login(username="cataloger", password="testpass123")
+    client.force_login(cataloger)
     return client
 
 

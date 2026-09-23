@@ -382,10 +382,10 @@ class TestAdminIndexMaintenance:
 
     @pytest.fixture
     def superuser_client(self, client, django_user_model):
-        django_user_model.objects.create_superuser(
+        user = django_user_model.objects.create_superuser(
             username="admin", email="admin@example.com", password="pw"
         )
-        client.login(username="admin", password="pw")
+        client.force_login(user)
         ensure_fts_table()
         return client
 

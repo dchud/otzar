@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
@@ -22,7 +23,20 @@ urlpatterns = [
     path("health/", health_check, name="health_check"),
     path("", home, name="home"),
     path("admin/", admin.site.urls),
-    path("accounts/", include("django.contrib.auth.urls")),
+    # Login and logout only. django.contrib.auth.urls also mounts the
+    # password reset and change views, and password reset sends email,
+    # which is not configured: the form would accept an address and then
+    # fail. An administrator resets a password through the admin.
+    path(
+        "accounts/login/",
+        auth_views.LoginView.as_view(),
+        name="login",
+    ),
+    path(
+        "accounts/logout/",
+        auth_views.LogoutView.as_view(),
+        name="logout",
+    ),
     path("catalog/", include("catalog.urls")),
     path("ingest/", include("ingest.urls")),
     path("", include("catalog.search_urls")),

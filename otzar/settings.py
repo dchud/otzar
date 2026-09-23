@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 from otzar import build_info
@@ -14,9 +15,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # value that cannot change while the process runs.
 BUILD_INFO = build_info.resolve(BASE_DIR)
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-only-change-me")
+_DEV_SECRET_KEY = "django-insecure-dev-only-change-me"
+
+# An empty SECRET_KEY= line in .env reads as "", which falls back the
+# same way an absent one does.
+SECRET_KEY = os.environ.get("SECRET_KEY") or _DEV_SECRET_KEY
 
 DEBUG = os.environ.get("DEBUG", "true").lower() in ("true", "1", "yes")
+
+# The fallback is published in this file, so a production process
+# running on it signs sessions and CSRF tokens with a key anyone can
+# read. Refuse to start rather than run that way.
+if not DEBUG and SECRET_KEY == _DEV_SECRET_KEY:
+    raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is false.")
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -39,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_tailwind_cli",
     "django_extensions",
+    "axes",
     "catalog",
     "sources",
     "ingest",
@@ -74,6 +86,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "otzar.middleware.SitePasswordMiddleware",
+    # Last, as django-axes requires: it turns a lockout raised during
+    # authentication into the lockout response.
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "otzar.urls"
@@ -164,6 +179,27 @@ MEDIA_ROOT = DATA_DIR / "media"
 TAILWIND_CLI_SRC_CSS = "assets/input.css"
 TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 
+AUTHENTICATION_BACKENDS = [
+    # First, so a locked-out username and address are refused before
+    # any password is checked.
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Login throttling, on both the site login and the admin login. A
+# lockout is keyed on the username and the client address together, so
+# one person mistyping locks out that username from that address only,
+# not everyone behind the same address and not the same account
+# elsewhere. A successful login clears the count. `manage.py
+# axes_reset` clears a lockout by hand.
+AXES_FAILURE_LIMIT = 5
+# templates/registration/lockout.html states this period; change both.
+AXES_COOLOFF_TIME = 1  # hours
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = "registration/lockout.html"
+AXES_CLIENT_IP_CALLABLE = "otzar.client_ip.client_ip"
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -221,6 +257,18 @@ LOGGING = {
             "level": _APP_LOG_LEVEL,
             "propagate": False,
         },
+        # Django's own "django" logger has a console handler in
+        # DEFAULT_LOGGING, but it carries require_debug_true, so with
+        # DEBUG false a request traceback goes only to mail_admins,
+        # which is not configured. Naming "django" here replaces that
+        # configuration, so tracebacks reach stdout in production.
+        # "django.request" is where unhandled exceptions are logged;
+        # it propagates to "django" and needs no handler of its own.
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         # httpx logs one line per request at INFO and its own request
         # internals at DEBUG; the SRU cascade makes several calls per
         # lookup, so this stays at WARNING regardless of DEBUG.
@@ -229,3 +277,25 @@ LOGGING = {
         "httpcore": {"level": "WARNING"},
     },
 }
+
+# Production sits behind a reverse proxy that terminates TLS, so Django
+# sees plain HTTP. These apply whenever DEBUG is false; local
+# development keeps plain-http cookies and no HSTS.
+if not DEBUG:
+    # Trust the proxy's X-Forwarded-Proto. This is safe only because
+    # gunicorn is reachable from nothing but the proxy: the container
+    # publishes its port on the host's loopback interface. On a host
+    # where gunicorn answers directly, a client could send this header
+    # itself and be treated as having arrived over https.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # An hour: long enough to satisfy the check, short enough that a
+    # mistake in the TLS setup locks browsers out for an hour rather
+    # than a year. Raise it once the site has served https without
+    # incident.
+    SECURE_HSTS_SECONDS = 3600
+    # Caddy redirects http to https before a request reaches Django,
+    # so SECURE_SSL_REDIRECT stays off and check --deploy's W008 is
+    # expected. So are W005 and W021: HSTS covers this host only, not
+    # its subdomains, and the site is not submitted for preloading.

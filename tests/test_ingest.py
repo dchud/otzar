@@ -20,7 +20,7 @@ def user(db):
 @pytest.fixture
 def client_logged_in(user):
     c = Client()
-    c.login(username="cataloger", password="testpass123")
+    c.force_login(User.objects.get(username="cataloger"))
     return c
 
 

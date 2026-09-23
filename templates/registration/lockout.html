@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Too many attempts — otzar{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto">
+  <h1 class="text-2xl font-semibold mb-6">Too many attempts</h1>
+
+  <p class="mb-4">
+    Logging in with this username from this address has failed too many
+    times. Try again in an hour.
+  </p>
+
+  <p class="text-sm text-gray-600 dark:text-gray-400">
+    If you cannot wait, ask an administrator to clear the lockout.
+  </p>
+</div>
+{% endblock %}

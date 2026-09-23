@@ -1,3 +1,4 @@
+import hmac
 import os
 
 from django.http import HttpResponse
@@ -31,9 +32,9 @@ class SitePasswordMiddleware:
         if request.session.get("site_password_ok"):
             return self.get_response(request)
 
-        if (
-            request.method == "POST"
-            and request.POST.get("site_password") == self.password
+        if request.method == "POST" and hmac.compare_digest(
+            request.POST.get("site_password", "").encode(),
+            self.password.encode(),
         ):
             request.session["site_password_ok"] = True
             return self.get_response(request)

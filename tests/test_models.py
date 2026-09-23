@@ -165,10 +165,10 @@ class TestRecordFormProvenance:
 class TestRecordAdminProvenance:
     @pytest.fixture
     def superuser_client(self, client, django_user_model):
-        django_user_model.objects.create_superuser(
+        user = django_user_model.objects.create_superuser(
             username="root", password="rootpass123", email="root@example.com"
         )
-        client.login(username="root", password="rootpass123")
+        client.force_login(user)
         return client
 
     def test_change_form_offers_provenance(self, superuser_client):
@@ -280,10 +280,10 @@ class TestRecordFormOwnershipMarks:
 class TestRecordAdminOwnershipMarks:
     @pytest.fixture
     def superuser_client(self, client, django_user_model):
-        django_user_model.objects.create_superuser(
+        user = django_user_model.objects.create_superuser(
             username="root", password="rootpass123", email="root@example.com"
         )
-        client.login(username="root", password="rootpass123")
+        client.force_login(user)
         return client
 
     @pytest.mark.parametrize(

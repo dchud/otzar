@@ -37,3 +37,45 @@ class TestAuth:
         page.click('button:text("Log out")')
         page.wait_for_load_state("networkidle")
         expect(page.locator("text=Log in")).to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestLoginThrottle:
+    def _try(self, page, live_server, username, password):
+        page.goto(f"{live_server.url}/accounts/login/")
+        page.get_by_label("Username").fill(username)
+        page.get_by_label("Password").fill(password)
+        page.get_by_role("button", name="Log in").click()
+
+    def test_repeated_failures_show_the_lockout_page(
+        self, page, live_server, staff_user
+    ):
+        for _ in range(4):
+            self._try(page, live_server, "testadmin", "wrong")
+            expect(
+                page.get_by_text("Invalid username or password.")
+            ).to_be_visible()
+
+        self._try(page, live_server, "testadmin", "wrong")
+
+        expect(
+            page.get_by_role("heading", name="Too many attempts")
+        ).to_be_visible()
+        expect(page.get_by_text("Try again in an hour.")).to_be_visible()
+
+    def test_lockout_does_not_block_another_user(
+        self, page, live_server, staff_user, django_user_model
+    ):
+        django_user_model.objects.create_user(
+            username="second", password="second-pass-123"
+        )
+        for _ in range(5):
+            self._try(page, live_server, "testadmin", "wrong")
+        expect(
+            page.get_by_role("heading", name="Too many attempts")
+        ).to_be_visible()
+
+        self._try(page, live_server, "second", "second-pass-123")
+
+        expect(page).to_have_url(f"{live_server.url}/")
+        expect(page.get_by_role("button", name="Log out")).to_be_visible()

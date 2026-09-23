@@ -1355,7 +1355,13 @@ def phone_scan_auth(request, token):
     except (User.DoesNotExist, ValueError):
         return HttpResponse("User not found.", status=404)
 
-    auth_login(request, user)
+    # The signed token stands in for the password, so no backend
+    # authenticated this user, and login() has to be told which one
+    # the session belongs to: with django-axes installed there is more
+    # than one to choose from.
+    auth_login(
+        request, user, backend="django.contrib.auth.backends.ModelBackend"
+    )
     request.session["phone_scanner"] = True
     request.session["phone_scan_target"] = target
     return redirect("title_page_scan" if target == "title" else "isbn_scan")

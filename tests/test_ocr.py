@@ -25,7 +25,7 @@ def user(db):
 @pytest.fixture
 def client_logged_in(user):
     c = Client()
-    c.login(username="cataloger", password="testpass123")
+    c.force_login(User.objects.get(username="cataloger"))
     return c
 
 
@@ -653,7 +653,7 @@ class TestTitlePageUploadView:
 
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
-        c.login(username="other", password="testpass123")
+        c.force_login(User.objects.get(username="other"))
 
         response = c.post(f"/ingest/scan-title/{scan.pk}/ocr/")
         assert response.status_code == 200
@@ -722,7 +722,7 @@ class TestTitlePageUploadView:
 
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
-        c.login(username="other", password="testpass123")
+        c.force_login(User.objects.get(username="other"))
 
         response = c.post(f"/ingest/scan-title/{scan.pk}/discard/")
         assert response.status_code == 200
@@ -775,7 +775,7 @@ class TestTitlePagePoll:
             username="other", password="testpass123"
         )
         c_other = Client()
-        c_other.login(username="other", password="testpass123")
+        c_other.force_login(User.objects.get(username="other"))
         image = io.BytesIO(b"fake jpeg data")
         image.name = "x.jpg"
         c_other.post(
@@ -785,7 +785,7 @@ class TestTitlePagePoll:
 
         # Every cataloger sees every in-progress scan, not just their own.
         c = Client()
-        c.login(username="cataloger", password="testpass123")
+        c.force_login(User.objects.get(username="cataloger"))
         response = c.get("/ingest/scan-title/poll/")
         assert response.status_code == 200
         assert f"title-page-card-{other_scan.pk}".encode() in response.content
@@ -858,7 +858,7 @@ class TestTitlePagePoll:
 
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
-        c.login(username="other", password="testpass123")
+        c.force_login(User.objects.get(username="other"))
         response = c.post(f"/ingest/scan-title/{scan.pk}/edit/")
         assert response.status_code == 200
         assert b"Extracted metadata" in response.content
@@ -869,7 +869,7 @@ class TestTitlePagePoll:
         settings.MEDIA_ROOT = str(tmp_path)
         # Non-staff user uploads.
         c_user = Client()
-        c_user.login(username="cataloger", password="testpass123")
+        c_user.force_login(User.objects.get(username="cataloger"))
         image = io.BytesIO(b"fake jpeg data")
         image.name = "p.jpg"
         c_user.post(
@@ -882,7 +882,7 @@ class TestTitlePagePoll:
             username="admin", password="testpass123", is_staff=True
         )
         c_staff = Client()
-        c_staff.login(username="admin", password="testpass123")
+        c_staff.force_login(User.objects.get(username="admin"))
         response = c_staff.get("/ingest/scan-title/poll/")
         assert f"title-page-card-{scan.pk}".encode() in response.content
 
