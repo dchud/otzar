@@ -214,6 +214,26 @@ if AWS_S3_MEDIA_BUCKET:
         },
     }
 
+# Database backups, in a second bucket that the app never serves from.
+# Litestream, started by entrypoint.sh, replicates the database to
+# LITESTREAM_REPLICA_PATH in it; snapshot_db uploads a dated copy under
+# snapshots/ and checks that the replica is keeping up. Both read the
+# region, endpoint and credentials the media bucket uses.
+AWS_S3_BACKUP_BUCKET = os.environ.get("AWS_S3_BACKUP_BUCKET", "").strip()
+LITESTREAM_REPLICA_PATH = (
+    os.environ.get("LITESTREAM_REPLICA_PATH", "").strip().strip("/")
+    or "litestream/db"
+)
+# The same test entrypoint.sh applies: "1" or "true" turns replication
+# off, for an instance that must not write into the production replica.
+LITESTREAM_DISABLED = os.environ.get(
+    "LITESTREAM_DISABLED", ""
+).strip().lower() in ("1", "true", "yes")
+# A dead-man's switch: snapshot_db requests this URL after a good run
+# and the URL with /fail appended after a bad one. Anyone holding it
+# can send the success ping, so it is kept with the secrets.
+BACKUP_PING_URL = os.environ.get("BACKUP_PING_URL", "").strip()
+
 TAILWIND_CLI_SRC_CSS = "assets/input.css"
 TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 
