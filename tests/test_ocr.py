@@ -1435,6 +1435,27 @@ class TestOCRDailyCap:
         assert scan.ocr_started_at is None
 
     @patch("ingest.views.extract_metadata_from_image")
+    def test_refusal_names_the_zone_whose_midnight_resets_the_cap(
+        self, mock_ocr, client_logged_in, user, tmp_path, settings, monkeypatch
+    ):
+        """A cataloger in another zone would otherwise read "midnight"
+        as their own."""
+        settings.TIME_ZONE = "America/New_York"
+        monkeypatch.setenv("OCR_DAILY_CALL_CAP", "1")
+        APIUsageLog.objects.create(
+            api="ocr", user=user, input_tokens=1, output_tokens=1
+        )
+        scan = self._upload_scan(client_logged_in, tmp_path, settings)
+
+        response = client_logged_in.post(f"/ingest/scan-title/{scan.pk}/ocr/")
+
+        assert response.status_code == 429
+        assert (
+            b"Try again after midnight, America/New_York time."
+            in response.content
+        )
+
+    @patch("ingest.views.extract_metadata_from_image")
     def test_call_proceeds_just_under_the_cap(
         self, mock_ocr, client_logged_in, user, tmp_path, settings, monkeypatch
     ):

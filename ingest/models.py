@@ -175,7 +175,7 @@ class APIUsageLog(models.Model):
 
     @classmethod
     def calls_today(cls):
-        """Count of OCR calls logged since local midnight.
+        """Count of OCR calls logged since midnight in ``TIME_ZONE``.
 
         Counts every logged OCR row regardless of which user made the
         call or whether it produced a reading -- the cap it feeds bounds

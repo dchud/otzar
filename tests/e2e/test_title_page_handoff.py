@@ -8,6 +8,7 @@ from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
@@ -1056,7 +1057,11 @@ class TestConcurrentDeviceFeedback:
         expect(page.get_by_text("Today's OCR limit")).to_be_visible(
             timeout=10000
         )
-        expect(page.get_by_text("midnight")).to_be_visible()
+        expect(
+            page.get_by_text(
+                f"Try again after midnight, {settings.TIME_ZONE} time."
+            )
+        ).to_be_visible()
 
         # Refused before it ever reached the vision call.
         mock_ocr.assert_not_called()

@@ -817,10 +817,14 @@ def run_ocr(request, scan_id):
 
     cap = APIUsageLog.daily_cap()
     if APIUsageLog.calls_today() >= cap:
+        # The day ends at the site's midnight, which is not the
+        # reader's when they catalog from another zone; naming the
+        # zone keeps the message true for them too.
+        zone = timezone.get_current_timezone_name()
         return _notice(
             request,
             f"Today's OCR limit of {cap} scans has been reached. "
-            "Try again after midnight.",
+            f"Try again after midnight, {zone} time.",
             status=429,
         )
 
