@@ -65,3 +65,16 @@ def filesystem_media_storage():
         }
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def site_password_off():
+    """Start every test with the site password gate off.
+
+    ``settings.py`` reads ``SITE_PASSWORD`` from the developer's
+    ``.env``, and a password there would put every page, the login
+    pages included, behind the gate for the whole suite. Tests of the
+    gate set the password themselves.
+    """
+    with override_settings(SITE_PASSWORD=""):
+        yield

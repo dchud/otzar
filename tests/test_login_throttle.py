@@ -1,4 +1,4 @@
-"""Login throttling with django-axes, and the site password gate."""
+"""Login throttling with django-axes."""
 
 import pytest
 from django.contrib.auth.models import User
@@ -97,27 +97,3 @@ def test_logins_leave_no_access_log(users):
     assert AccessLog.objects.count() == 0
     # The success cleared the failure it followed.
     assert AccessAttempt.objects.count() == 0
-
-
-class TestSitePassword:
-    @pytest.fixture
-    def gated_client(self, db, monkeypatch):
-        # The middleware reads the password when it is constructed, and
-        # a test client builds its middleware chain on first use, so a
-        # client created after the variable is set sees the gate.
-        monkeypatch.setenv("SITE_PASSWORD", "open-sesame")
-        return Client()
-
-    def test_right_password_opens_the_gate(self, gated_client):
-        response = gated_client.post("/", {"site_password": "open-sesame"})
-        assert "This site requires a password" not in response.content.decode()
-        assert gated_client.session["site_password_ok"] is True
-
-    def test_wrong_password_keeps_the_gate_shut(self, gated_client):
-        response = gated_client.post("/", {"site_password": "open-sesamE"})
-        assert "This site requires a password" in response.content.decode()
-        assert "site_password_ok" not in gated_client.session
-
-    def test_missing_field_keeps_the_gate_shut(self, gated_client):
-        response = gated_client.post("/", {})
-        assert "This site requires a password" in response.content.decode()

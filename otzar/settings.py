@@ -54,10 +54,14 @@ INSTALLED_APPS = [
     "catalog",
     "sources",
     "ingest",
+    "otzar",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Near the top so the header reaches every response, including the
+    # static files WhiteNoise answers and the site password gate page.
+    "otzar.middleware.RobotsTagMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # Below WhiteNoise and above everything that writes a response body.
     #
@@ -242,6 +246,12 @@ AXES_CLIENT_IP_CALLABLE = "otzar.client_ip.client_ip"
 # into every backup. The lockout needs only AccessAttempt, which axes
 # clears after the cool-off period.
 AXES_DISABLE_ACCESS_LOG = True
+
+# The site password gate, otzar.middleware.SitePasswordMiddleware. When
+# set, every page except the health check, robots.txt and the phone
+# handoff URL asks for it, the login pages included. Empty turns the
+# gate off; with DEBUG false, the otzar.W001 system check says so.
+SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "").strip()
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"

@@ -1,6 +1,7 @@
 """End-to-end tests for authentication and authorization."""
 
 import pytest
+from django.core.signing import TimestampSigner
 from playwright.sync_api import expect
 
 from tests.e2e.conftest import login
@@ -103,3 +104,61 @@ class TestPasswordChange:
         page.get_by_role("button", name="Log out").click()
         login(page, live_server, "cataloger", "new-pass-7395")
         expect(page.get_by_role("button", name="Log out")).to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestSitePasswordGate:
+    @pytest.fixture(autouse=True)
+    def gate(self, settings):
+        settings.SITE_PASSWORD = "open-sesame"
+
+    def _pass_gate(self, page):
+        page.get_by_label("Site password").fill("open-sesame")
+        page.get_by_role("button", name="Enter").click()
+
+    def _log_in(self, page):
+        page.get_by_label("Username").fill("testadmin")
+        page.get_by_label("Password").fill("testpass123")
+        page.get_by_role("button", name="Log in").click()
+        expect(page.get_by_role("button", name="Log out")).to_be_visible()
+
+    def test_gate_stays_open_across_logout(
+        self, page, live_server, staff_user
+    ):
+        page.goto(f"{live_server.url}/accounts/login/?next=/ingest/")
+        expect(
+            page.get_by_text("This site requires a password.")
+        ).to_be_visible()
+        self._pass_gate(page)
+
+        expect(page).to_have_url(
+            f"{live_server.url}/accounts/login/?next=/ingest/"
+        )
+        self._log_in(page)
+        expect(page).to_have_url(f"{live_server.url}/ingest/")
+
+        page.get_by_role("button", name="Log out").click()
+        expect(page.get_by_role("link", name="Log in")).to_be_visible()
+
+        page.get_by_role("link", name="Log in").click()
+        self._log_in(page)
+        expect(
+            page.get_by_text("This site requires a password.")
+        ).to_have_count(0)
+
+    def test_phone_opens_the_qr_url_past_the_gate(
+        self, browser, live_server, staff_user
+    ):
+        desktop = browser.new_context().new_page()
+        desktop.goto(f"{live_server.url}/accounts/login/")
+        self._pass_gate(desktop)
+        self._log_in(desktop)
+
+        phone = browser.new_context().new_page()
+        token = TimestampSigner().sign(f"{staff_user.pk}:title")
+        phone.goto(f"{live_server.url}/ingest/phone-auth/{token}/")
+
+        expect(phone).to_have_url(f"{live_server.url}/ingest/scan-title/")
+        expect(
+            phone.get_by_role("heading", name="Title page capture")
+        ).to_be_visible()
