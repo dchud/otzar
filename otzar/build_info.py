@@ -5,11 +5,17 @@ bug report can be tied to code rather than to a date. The value cannot
 change while the process lives, so it is resolved once, at startup, and
 never inside a request.
 
-A tree with no git metadata -- an image built from an export, a source
+A container image carries no git metadata: ``.dockerignore`` leaves
+``.git`` out of the build. The image build passes the commit it was
+built from as ``GIT_COMMIT``, and that is read before git is asked.
+
+A tree with neither -- an image built without the argument, a source
 tarball -- has nothing to report and reports nothing. Showing an
 approximate commit would be worse than showing none.
 """
 
+import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +27,12 @@ GITHUB_URL = "https://github.com/dchud/otzar"
 DEFAULT_BRANCH = "main"
 
 _TIMEOUT_SECONDS = 5
+
+# The length git abbreviates a checkout's commit to, applied to
+# GIT_COMMIT too so the footer shows the same form either way.
+_SHORT_LENGTH = 7
+
+_COMMIT_PATTERN = re.compile(r"[0-9a-f]{7,40}")
 
 
 @dataclass(frozen=True)
@@ -57,11 +69,29 @@ def _git(root: Path, *args: str) -> str | None:
     return result.stdout.strip() or None
 
 
-def resolve(root: Path | str) -> BuildInfo | None:
-    """Read the git identity of the checkout at *root*.
+def from_environment(environ=os.environ) -> BuildInfo | None:
+    """Return the commit named by ``GIT_COMMIT``, if it names one.
 
-    Returns None when *root* is not a checkout or git cannot answer.
+    A value that is not a hexadecimal commit is ignored rather than
+    shown: the footer turns it into a link, and a link to a commit that
+    does not exist is the approximate answer this module avoids.
     """
+    value = environ.get("GIT_COMMIT", "").strip().lower()
+    if not _COMMIT_PATTERN.fullmatch(value):
+        return None
+    return BuildInfo(commit=value[:_SHORT_LENGTH])
+
+
+def resolve(root: Path | str, environ=os.environ) -> BuildInfo | None:
+    """Read the git identity of the running code.
+
+    ``GIT_COMMIT`` in *environ* is used when it is set; otherwise the
+    checkout at *root* is asked. Returns None when neither answers.
+    """
+    from_env = from_environment(environ)
+    if from_env is not None:
+        return from_env
+
     root = Path(root)
     # git searches upwards for a repository. Without this check, a source
     # tree unpacked inside an unrelated checkout would report that
@@ -69,7 +99,7 @@ def resolve(root: Path | str) -> BuildInfo | None:
     if not (root / ".git").exists():
         return None
 
-    commit = _git(root, "rev-parse", "--short=7", "HEAD")
+    commit = _git(root, "rev-parse", f"--short={_SHORT_LENGTH}", "HEAD")
     if not commit:
         return None
 
