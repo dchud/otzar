@@ -38,7 +38,7 @@ link the app renders is a presigned URL, valid for six hours.
 | `AWS_S3_REGION` | No | `us-east-1` | Region of the bucket. |
 | `AWS_ACCESS_KEY_ID` | With a bucket | (none) | Access key for the bucket, read by boto3. Can be omitted on a host with an instance role. |
 | `AWS_SECRET_ACCESS_KEY` | With a bucket | (none) | Secret for that key. |
-| `AWS_S3_ENDPOINT_URL` | No | (none) | Endpoint of another S3-compatible service, such as MinIO. Unset uses AWS. |
+| `AWS_S3_ENDPOINT_URL` | No | (none) | Endpoint of another S3-compatible service, such as the local rehearsal's stand-in. Unset uses AWS. |
 
 ### SRU catalog endpoints
 

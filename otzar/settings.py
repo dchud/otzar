@@ -190,7 +190,7 @@ MEDIA_ROOT = DATA_DIR / "media"
 #
 # Credentials are AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, which
 # boto3 reads from the environment itself. AWS_S3_ENDPOINT_URL points
-# the backend at another S3-compatible service, such as MinIO.
+# the backend at another S3-compatible service.
 AWS_S3_MEDIA_BUCKET = os.environ.get("AWS_S3_MEDIA_BUCKET", "").strip()
 AWS_S3_REGION = os.environ.get("AWS_S3_REGION", "").strip() or "us-east-1"
 # The name django-storages itself reads, so it has to be None, not an
