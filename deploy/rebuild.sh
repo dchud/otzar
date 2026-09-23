@@ -18,8 +18,10 @@
 # LITESTREAM_REPLICA_PATH in .env at a new, empty replica path, starts
 # the app and reports what it restored. Replication resumes into the
 # new path, so the history in the old one -- which may be needed if the
-# chosen point proves wrong -- is never written over. The old path is
-# left for the bucket's lifecycle rules to expire.
+# chosen point proves wrong -- is never written over. The old path
+# stays in the bucket until removed by hand: no lifecycle rule covers
+# litestream/, and no Litestream process prunes a path it no longer
+# writes to.
 #
 # Assumptions about the host, overridable from the environment:
 #

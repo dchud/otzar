@@ -325,8 +325,15 @@ script says where the previous database is.
 Replication resumes into the new path because resuming into the old one would
 write the restored, older database over the history that followed it, which
 is the history needed if the chosen point turns out to be wrong. The old path
-is left in place until the bucket's lifecycle rules expire it, and
-`--from <old path>` restores from it until then.
+stays in the backup bucket, and `--from <old path>` restores from it, until it
+is removed by hand: no lifecycle rule covers `litestream/`, and Litestream
+prunes only the path it is replicating to. `rebuild` prints the old path. Once
+the rebuilt site is known to be right, remove it with an administrator's AWS
+identity:
+
+```bash
+aws s3 rm --recursive s3://<backup bucket>/<old path>/
+```
 
 Images are not rolled back with the database. They stay in the media bucket,
 so a restored record points at an image that still exists unless the image was
