@@ -15,26 +15,31 @@ they discarded is the whole reason the two statuses exist. Reclaiming
 the space is not worth deleting a photograph its owner never chose to
 throw away.
 
-Staged images live under ``MEDIA_ROOT/staging/``: ``ScanResult.image``
+Staged images live under ``staging/`` in the default storage, which is
+``MEDIA_ROOT`` locally and the media bucket when one is configured:
+``ScanResult.image``
 is written by ``staging_image_path``, which returns
 ``staging/YYYY/MM/DD/<random>.jpg``. Nothing else writes there.
 ``catalog.TitlePageImage`` keeps confirmed title pages under
 ``title-pages/``, outside the swept tree, so the sweep never sees them.
+
+Everything here goes through the storage API -- listing, ageing and
+deleting -- so the sweep behaves the same on both backends. A walk of
+``MEDIA_ROOT`` would find nothing on S3 and report a clean sweep.
 
 The command reports what it would delete and writes nothing unless
 ``--apply`` is passed, because none of these deletions can be undone.
 """
 
 from datetime import timedelta
-from pathlib import Path
 
-from django.conf import settings
+from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from ingest.models import ScanResult
 
-# The one directory under MEDIA_ROOT that staged images land in.
+# The one directory in the default storage that staged images land in.
 STAGING_DIR = "staging"
 
 
@@ -52,19 +57,27 @@ def referenced_image_names():
     }
 
 
-def staging_files():
-    """Yield ``(path, storage name)`` for each file under ``staging/``.
+def staging_files(storage=None):
+    """Yield the storage name of each file under ``staging/``.
 
-    The storage name is the form ``ScanResult.image`` holds, so the two
-    can be compared directly. Sorted for a stable report.
+    The name is the form ``ScanResult.image`` holds, so the two can be
+    compared directly. Sorted within each directory for a stable
+    report.
     """
-    media_root = Path(settings.MEDIA_ROOT)
-    staging = media_root / STAGING_DIR
-    if not staging.is_dir():
+    yield from _walk(storage or default_storage, STAGING_DIR)
+
+
+def _walk(storage, directory):
+    try:
+        directories, files = storage.listdir(directory)
+    except FileNotFoundError:
+        # FileSystemStorage before anything has been staged. S3 has no
+        # directories to be missing and returns empty lists instead.
         return
-    for path in sorted(staging.rglob("*")):
-        if path.is_file():
-            yield path, path.relative_to(media_root).as_posix()
+    for name in sorted(files):
+        yield f"{directory}/{name}"
+    for name in sorted(directories):
+        yield from _walk(storage, f"{directory}/{name}")
 
 
 class Command(BaseCommand):
@@ -159,29 +172,27 @@ class Command(BaseCommand):
     def _delete_orphans(self, referenced, cutoff, apply_changes):
         """Delete staged files no row references, returning the count.
 
-        Age is the file's mtime rather than a row's timestamp, because
-        an orphan has no row to ask.
+        Age is the file's modification time rather than a row's
+        timestamp, because an orphan has no row to ask.
         """
-        cutoff_stamp = cutoff.timestamp()
+        storage = default_storage
         removed = 0
 
-        for path, name in staging_files():
+        for name in staging_files(storage):
             if name in referenced:
                 continue
             try:
-                if path.stat().st_mtime >= cutoff_stamp:
+                if storage.get_modified_time(name) >= cutoff:
                     continue
             except OSError:
-                # Vanished between the walk and the stat.
+                # Vanished between the walk and the lookup.
                 continue
             self.stdout.write(f"  orphan {name}")
             if not apply_changes:
                 removed += 1
                 continue
             try:
-                path.unlink()
-            except FileNotFoundError:
-                removed += 1
+                storage.delete(name)
             except OSError as exc:
                 self.stderr.write(f"    could not delete {name}: {exc}")
             else:
