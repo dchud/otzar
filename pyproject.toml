@@ -13,6 +13,7 @@ dependencies = [
     # once it has proven itself the cap can come off.
     "anthropic>=1.3.0,<2",
     "django>=6.0.3",
+    "django-axes>=8",
     "django-extensions>=4.1",
     "django-tailwind-cli>=4.5.1",
     "gunicorn>=25.3.0",

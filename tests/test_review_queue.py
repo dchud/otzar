@@ -22,7 +22,7 @@ def user(db):
 @pytest.fixture
 def client_logged_in(user):
     c = Client()
-    c.login(username="cataloger", password="testpass123")
+    c.force_login(User.objects.get(username="cataloger"))
     return c
 
 
@@ -156,7 +156,7 @@ class TestReviewQueue:
         the whole queue, not just what they scanned themselves."""
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
-        c.login(username="other", password="testpass123")
+        c.force_login(User.objects.get(username="other"))
         response = c.get("/ingest/queue/")
         assert response.status_code == 200
         assert b"978-0-13-110362-7" in response.content
@@ -195,7 +195,7 @@ class TestQueueCountInNav:
         scans, not just the current user's."""
         User.objects.create_user(username="other", password="testpass123")
         c = Client()
-        c.login(username="other", password="testpass123")
+        c.force_login(User.objects.get(username="other"))
         response = c.get("/ingest/scan/")
         assert b">1</span>" in response.content
 
