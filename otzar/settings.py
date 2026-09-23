@@ -199,6 +199,11 @@ AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = "registration/lockout.html"
 AXES_CLIENT_IP_CALLABLE = "otzar.client_ip.client_ip"
+# Axes otherwise writes an AccessLog row, with address and user agent,
+# for every login and never removes it, and those rows would travel
+# into every backup. The lockout needs only AccessAttempt, which axes
+# clears after the cool-off period.
+AXES_DISABLE_ACCESS_LOG = True
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"

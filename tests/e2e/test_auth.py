@@ -79,3 +79,27 @@ class TestLoginThrottle:
 
         expect(page).to_have_url(f"{live_server.url}/")
         expect(page.get_by_role("button", name="Log out")).to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestPasswordChange:
+    def test_cataloger_changes_their_own_password(
+        self, page, live_server, django_user_model
+    ):
+        django_user_model.objects.create_user(
+            username="cataloger", password="old-pass-4821"
+        )
+        login(page, live_server, "cataloger", "old-pass-4821")
+
+        page.get_by_role("link", name="cataloger").click()
+        page.get_by_label("Old password").fill("old-pass-4821")
+        page.get_by_label("New password", exact=True).fill("new-pass-7395")
+        page.get_by_label("New password confirmation").fill("new-pass-7395")
+        page.get_by_role("button", name="Change password").click()
+        expect(
+            page.get_by_role("heading", name="Password changed")
+        ).to_be_visible()
+
+        page.get_by_role("button", name="Log out").click()
+        login(page, live_server, "cataloger", "new-pass-7395")
+        expect(page.get_by_role("button", name="Log out")).to_be_visible()

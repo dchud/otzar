@@ -23,10 +23,12 @@ urlpatterns = [
     path("health/", health_check, name="health_check"),
     path("", home, name="home"),
     path("admin/", admin.site.urls),
-    # Login and logout only. django.contrib.auth.urls also mounts the
-    # password reset and change views, and password reset sends email,
+    # Login, logout and password change. django.contrib.auth.urls also
+    # mounts the password reset views, and password reset sends email,
     # which is not configured: the form would accept an address and then
-    # fail. An administrator resets a password through the admin.
+    # fail. An administrator resets a forgotten password through the
+    # admin. Password change stays because the admin's own change page
+    # requires staff status, which cataloging does not.
     path(
         "accounts/login/",
         auth_views.LoginView.as_view(),
@@ -36,6 +38,16 @@ urlpatterns = [
         "accounts/logout/",
         auth_views.LogoutView.as_view(),
         name="logout",
+    ),
+    path(
+        "accounts/password_change/",
+        auth_views.PasswordChangeView.as_view(),
+        name="password_change",
+    ),
+    path(
+        "accounts/password_change/done/",
+        auth_views.PasswordChangeDoneView.as_view(),
+        name="password_change_done",
     ),
     path("catalog/", include("catalog.urls")),
     path("ingest/", include("ingest.urls")),

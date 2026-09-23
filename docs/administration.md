@@ -75,9 +75,11 @@ just createsuperuser
 
 ### Password resets and lockouts
 
-The app sends no email, so there is no self-service password reset. An
-administrator sets a new password in the admin: open Users, choose the user,
-and use the password form linked from the Password field.
+A logged-in user changes their own password at `/accounts/password_change/`,
+linked from their username in the header. The app sends no email, so there is
+no self-service reset of a forgotten password. An administrator sets a new
+password in the admin: open Users, choose the user, and use the password form
+linked from the Password field.
 
 Five failed logins for one username from one address lock that username out
 from that address for an hour, on both the site login and the admin login.

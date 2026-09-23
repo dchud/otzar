@@ -87,6 +87,18 @@ def test_admin_login_is_throttled_too(users):
     assert response.status_code == 429
 
 
+def test_logins_leave_no_access_log(users):
+    from axes.models import AccessAttempt, AccessLog
+
+    client = Client()
+    _fail(client, "alice", 1)
+    assert _attempt(client, "alice", "right-password").status_code == 302
+
+    assert AccessLog.objects.count() == 0
+    # The success cleared the failure it followed.
+    assert AccessAttempt.objects.count() == 0
+
+
 class TestSitePassword:
     @pytest.fixture
     def gated_client(self, db, monkeypatch):

@@ -146,14 +146,17 @@ def test_qr_handoff_url_is_https_behind_the_proxy():
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "path",
-    [
-        "/accounts/password_reset/",
-        "/accounts/password_change/",
-        "/accounts/reset/done/",
-    ],
+    ["/accounts/password_reset/", "/accounts/reset/done/"],
 )
-def test_password_reset_and_change_views_are_not_mounted(client, path):
+def test_password_reset_views_are_not_mounted(client, path):
     assert client.get(path).status_code == 404
+
+
+@pytest.mark.django_db
+def test_password_change_is_open_to_a_non_staff_user(client):
+    user = User.objects.create_user(username="cataloger", password="pw")
+    client.force_login(user)
+    assert client.get("/accounts/password_change/").status_code == 200
 
 
 class TestClientIp:
