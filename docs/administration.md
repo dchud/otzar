@@ -26,16 +26,19 @@ template.
 | `ANTHROPIC_API_KEY` | For title page scanning | (none) | Anthropic API key. Required only if using title page photograph/OCR ingest. Not needed for ISBN scan or manual entry. |
 | `CLAUDE_MODEL` | No | `claude-sonnet-5` | Model used for OCR. Sonnet reads Hebrew decorative type more accurately than Haiku. |
 
-### S3 backups
+### Media storage on S3
 
-Placeholders for an S3-based backup mechanism. No application code reads them.
+Uploaded images are stored in `DATA_DIR/media` unless `AWS_S3_MEDIA_BUCKET` is
+set, in which case they go to that bucket. The bucket is private: every image
+link the app renders is a presigned URL, valid for six hours.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `AWS_ACCESS_KEY_ID` | No | (none) | AWS access key for an S3 backup bucket. |
-| `AWS_SECRET_ACCESS_KEY` | No | (none) | AWS secret key. |
-| `AWS_S3_BUCKET` | No | (none) | S3 bucket name for backups. |
-| `AWS_S3_REGION` | No | `us-east-1` | AWS region for the backup bucket. |
+| `AWS_S3_MEDIA_BUCKET` | No | (none) | S3 bucket for uploaded images. Unset keeps media on the local filesystem. |
+| `AWS_S3_REGION` | No | `us-east-1` | Region of the bucket. |
+| `AWS_ACCESS_KEY_ID` | With a bucket | (none) | Access key for the bucket, read by boto3. Can be omitted on a host with an instance role. |
+| `AWS_SECRET_ACCESS_KEY` | With a bucket | (none) | Secret for that key. |
+| `AWS_S3_ENDPOINT_URL` | No | (none) | Endpoint of another S3-compatible service, such as MinIO. Unset uses AWS. |
 
 ### SRU catalog endpoints
 
@@ -204,12 +207,14 @@ storage.
 
 ## Backup and restore
 
-Everything worth keeping lives under `DATA_DIR`:
+What is worth keeping:
 
-- `db.sqlite3` -- the catalog database, including the full-text search index.
-- `media/` -- uploaded title page images.
-- `cache/` -- the file-based cache. Derived from the database; no need to back
-  it up.
+- `DATA_DIR/db.sqlite3` -- the catalog database, including the full-text
+  search index.
+- Uploaded images -- in `DATA_DIR/media/`, or in the media bucket when
+  `AWS_S3_MEDIA_BUCKET` is set.
+- `DATA_DIR/cache/` -- the file-based cache. Derived from the database; no
+  need to back it up.
 
 ### Backing up the database
 
@@ -224,15 +229,29 @@ sqlite3 "$DATA_DIR/db.sqlite3" ".backup /path/to/backup.sqlite3"
 The alternative is to stop the app first and copy `db.sqlite3` along with any
 `db.sqlite3-wal` and `db.sqlite3-shm` files beside it.
 
-Media files are ordinary files. Copy `media/` with `rsync` or an equivalent
-tool.
+On the filesystem, media files are ordinary files. Copy `media/` with `rsync`
+or an equivalent tool.
+
+In the media bucket, the backup is the bucket's versioning: an overwritten or
+deleted image stays as a noncurrent version for 30 days. Recovering one means
+restoring that version with an administrator's AWS identity, since the key the
+app runs with cannot read old versions:
+
+```bash
+aws s3api list-object-versions --bucket <bucket> --prefix <image key>
+aws s3api copy-object --bucket <bucket> --key <image key> \
+    --copy-source "<bucket>/<image key>?versionId=<version id>"
+```
+
+Restoring the database does not require restoring the bucket: the records
+point at object keys, and the objects stay where they are.
 
 ### Restoring
 
 1. Stop the app.
 2. Put the database file back at `DATA_DIR/db.sqlite3`, deleting any stale
    `db.sqlite3-wal` and `db.sqlite3-shm` files next to it.
-3. Restore `media/`.
+3. Restore `media/`, if media is on the filesystem.
 4. Start the app.
 
 The FTS index (`catalog_fts`) is a table in the same database file, so it comes
