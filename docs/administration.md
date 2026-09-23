@@ -12,11 +12,12 @@ template.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `SECRET_KEY` | Yes (production) | Insecure dev fallback | Django secret key. Generate with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+| `SECRET_KEY` | Yes (production) | Insecure dev fallback | Django secret key. With `DEBUG` false the app refuses to start on the fallback or an empty value. Generate with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
 | `DEBUG` | No | `true` | Set to `false` in production. Accepts `true`, `1`, `yes` (case-insensitive). |
 | `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated list of hostnames the app will serve. In production, set to the hostname the site is served from. |
 | `CSRF_TRUSTED_ORIGINS` | No | (empty) | Comma-separated list of origins for CSRF validation. Set to the full site URL including scheme (e.g. `https://catalog.example.org`). |
 | `DATA_DIR` | No | Project root | Directory for the SQLite database, cache, and media files. In production, point it at storage that survives a restart or a rebuilt container. Locally, defaults to the project directory. |
+| `FORWARDED_ALLOW_IPS` | Yes (production) | `127.0.0.1` | Address of the reverse proxy, read by `entrypoint.sh` and passed to gunicorn's `--forwarded-allow-ips`. Gunicorn passes `X-Forwarded-*` headers through to Django only from this address. With the proxy on the host and the app in a container, set it to the Docker bridge address the proxy's requests arrive from. |
 
 ### Title page OCR through the Anthropic API
 
@@ -71,6 +72,26 @@ uv run python manage.py createsuperuser
 # or with just:
 just createsuperuser
 ```
+
+### Password resets and lockouts
+
+The app sends no email, so there is no self-service password reset. An
+administrator sets a new password in the admin: open Users, choose the user,
+and use the password form linked from the Password field.
+
+Five failed logins for one username from one address lock that username out
+from that address for an hour, on both the site login and the admin login.
+Other usernames, and the same username from another address, are not affected.
+A successful login clears the count. To clear a lockout before the hour is up:
+
+```bash
+uv run python manage.py axes_reset_username <username>
+# or every lockout at once:
+uv run python manage.py axes_reset
+```
+
+The lockout period is `AXES_COOLOFF_TIME` in `otzar/settings.py`; the lockout
+page, `templates/registration/lockout.html`, states it too.
 
 ### Setting or clearing the site-wide password
 
@@ -240,7 +261,9 @@ authentication.
 
 Gunicorn writes access and error logs to stdout and stderr
 (`--access-logfile -` and `--error-logfile -` in `entrypoint.sh`), where the
-process manager or container runtime collects them.
+process manager or container runtime collects them. The application writes
+its own log lines, and the traceback of any request that fails with a server
+error, to the same stream with a timestamp, level and logger name.
 
 
 ## Troubleshooting
