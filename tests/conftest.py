@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 from django.core.cache import cache
 from django.test import override_settings
 
@@ -41,3 +42,26 @@ def isolated_response_cache():
         cache.clear()
         yield
         cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def filesystem_media_storage():
+    """Keep media on the filesystem for every test.
+
+    ``settings.py`` switches media to S3 when ``AWS_S3_MEDIA_BUCKET`` is
+    set, and it loads the developer's ``.env``. A ``.env`` naming a
+    bucket -- for a local check against a scratch bucket -- would
+    otherwise move the whole suite onto S3: the tests that isolate media
+    by pointing ``MEDIA_ROOT`` at a temporary directory would write to
+    the bucket, or fail on the blocked socket. Tests of the S3 path
+    override this themselves.
+    """
+    with override_settings(
+        STORAGES={
+            **settings.STORAGES,
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage"
+            },
+        }
+    ):
+        yield

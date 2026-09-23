@@ -218,7 +218,8 @@ ID, or OCLC number. Compound unique constraint on (record, type, value).
 
 An uploaded image of a book's title page, linked to a Record. Has a `staged`
 flag for images not yet associated with a confirmed record. Images are stored
-under `media/title-pages/`.
+under `title-pages/` in the media storage: `DATA_DIR/media/` locally, or the
+media bucket when one is configured.
 
 ### ScanResult (ingest app)
 

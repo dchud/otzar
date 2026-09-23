@@ -176,6 +176,44 @@ STORAGES = {
 MEDIA_URL = "/media/"
 MEDIA_ROOT = DATA_DIR / "media"
 
+# Media goes to S3 when a bucket is named, and to MEDIA_ROOT otherwise,
+# so local development, CI and both test suites keep the filesystem.
+# The code reaches media only through the storage API (.open, .delete,
+# .url, default_storage), which is what makes the switch a setting.
+#
+# The bucket is private. .url returns a presigned URL, so an image is
+# reachable only through a link the app has just handed out. Six hours
+# covers a review page left open through a working session; a link
+# copied out of a page stops working after that. No ACL is sent:
+# buckets created with the default object ownership setting reject
+# ACLs, and privacy comes from the bucket's public access block.
+#
+# Credentials are AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, which
+# boto3 reads from the environment itself. AWS_S3_ENDPOINT_URL points
+# the backend at another S3-compatible service, such as MinIO.
+AWS_S3_MEDIA_BUCKET = os.environ.get("AWS_S3_MEDIA_BUCKET", "").strip()
+AWS_S3_REGION = os.environ.get("AWS_S3_REGION", "").strip() or "us-east-1"
+# The name django-storages itself reads, so it has to be None, not an
+# empty string, when unset: boto3 rejects "" as an endpoint.
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "").strip() or None
+
+if AWS_S3_MEDIA_BUCKET:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": AWS_S3_MEDIA_BUCKET,
+            "region_name": AWS_S3_REGION,
+            "endpoint_url": AWS_S3_ENDPOINT_URL,
+            "signature_version": "s3v4",
+            # Upload names carry a random component already; a clash
+            # gets a suffix rather than replacing someone's photograph.
+            "file_overwrite": False,
+            "default_acl": None,
+            "querystring_auth": True,
+            "querystring_expire": 6 * 60 * 60,
+        },
+    }
+
 TAILWIND_CLI_SRC_CSS = "assets/input.css"
 TAILWIND_CLI_DIST_CSS = "css/tailwind.css"
 
