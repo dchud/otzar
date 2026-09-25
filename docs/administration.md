@@ -51,7 +51,7 @@ endpoint and credentials of the media bucket above.
 |---|---|---|---|
 | `AWS_S3_BACKUP_BUCKET` | Yes (production) | (none) | Bucket for the Litestream replica and the snapshots. Read by `entrypoint.sh`, which starts Litestream only when it is set, and by `snapshot_db` and `fetch_snapshot`. Never served to browsers. |
 | `LITESTREAM_REPLICA_PATH` | No | `litestream/db` | Key prefix of the replica in the backup bucket. Read by `entrypoint.sh` and `snapshot_db`. Changed only by `just rebuild`, which writes a new path. |
-| `LITESTREAM_DISABLED` | No | (empty) | `1`, `true` or `yes` turns replication off: `entrypoint.sh` neither restores nor replicates, and `snapshot_db` skips its replication check. For an instance started from a copy of production, such as a restore drill, which must not write into production's replica. |
+| `LITESTREAM_MODE` | No | `replicate` | `replicate` restores a missing database and replicates every change. `restore-only` restores a missing database and serves without replicating, for an instance that must not write into production's replica, such as a restore drill. `off` does neither. `snapshot_db` tests the replica only under `replicate`. |
 | `BACKUP_PING_URL` | No | (none) | Check URL at a dead-man's-switch service such as healthchecks.io. `snapshot_db` requests it after a good run and requests it with `/fail` appended after a failed one. Unset, nothing is pinged. Anyone holding the URL can send the success ping and silence the alert, so treat it as a secret. |
 
 ### SRU catalog endpoints
@@ -244,19 +244,29 @@ storage.
 
 ### `snapshot_db`
 
-Uploads a dated copy of the database to the backup bucket and checks that
-Litestream is replicating. See [Backup and restore](#backup-and-restore).
+Uploads a dated copy of the database to the backup bucket and test-restores
+the Litestream replica. See [Backup and restore](#backup-and-restore).
 
 ```bash
 uv run python manage.py snapshot_db [--replica-timeout SECONDS]
+    [--restore-timeout SECONDS]
 ```
 
 | Option | Default | Description |
 |---|---|---|
 | `--replica-timeout` | 60 | Seconds to wait for Litestream to upload a write the command makes. |
+| `--restore-timeout` | 300 | Seconds to allow the test restore. |
 
-Exits non-zero when the snapshot, the replication check or the success ping
+Exits non-zero when the snapshot, the replica check or the success ping
 fails.
+
+### `check_replica`
+
+Run by `entrypoint.sh` at every start, before it restores the database. It
+compares `LITESTREAM_REPLICA_PATH` and the database on disk with the replicas
+in the backup bucket, and exits non-zero, stopping the start, when the start
+would serve or replicate the wrong data. See [Backup and
+restore](#backup-and-restore).
 
 ### `fetch_snapshot`
 
@@ -295,10 +305,30 @@ Litestream writes a full snapshot of the database there once a day and keeps
 seven days of history, so any moment in the last week can be restored. At
 start, before migrations run, the entrypoint restores the latest replicated
 copy if `DATA_DIR` holds no database; a new disk therefore starts from the
-backup rather than empty. When the replica is empty too, as on the very first
-start, migrations create an empty database. The entrypoint refuses to start
-when `DATA_DIR` is unset or inside `/app`, since a database there would be
-lost on the next deploy.
+backup rather than empty. When nothing under `litestream/` in the bucket holds
+an object, as on the very first start, migrations create an empty database.
+The entrypoint refuses to start when `DATA_DIR` is unset or inside `/app`,
+since a database there would be lost on the next deploy.
+
+Before restoring, the entrypoint runs `manage.py check_replica`, which stops
+the start in three cases, each of which would otherwise serve or replicate the
+wrong data without any check failing:
+
+- `LITESTREAM_REPLICA_PATH` names a path older than the newest under
+  `litestream/`. Each rebuild moves replication to a new path,
+  `litestream/db-<UTC timestamp>`, and records it only in the instance's
+  `.env`, so an instance rebuilt after losing the machine starts with a `.env`
+  naming `litestream/db`. The message names the path to set.
+- `DATA_DIR` holds no database and there is nothing under the configured path
+  to restore it from, while the bucket holds a replica elsewhere. Starting
+  would serve an empty catalog.
+- The database on disk is behind its replica, as after starting from an older
+  copy of the disk, such as a Lightsail snapshot. Litestream would replicate
+  the older state over the newer one. Run `just rebuild --latest`.
+
+When the database is on disk but the check cannot tell (the bucket or
+Litestream unreachable, no position recorded), it prints a warning and the
+start goes ahead, so a passing fault does not keep the site down.
 
 **Daily snapshots, for a mistake noticed later.** `manage.py snapshot_db`
 copies the database with SQLite's online backup API, compresses it, and
@@ -316,10 +346,13 @@ not the command's. The host's scheduler runs the command daily, as
 `docker compose exec app python manage.py snapshot_db`, and a deploy runs it
 before replacing the image.
 
-The same command checks the replication: it writes one row to the database and
-waits for Litestream to upload a new object under the replica path. When both
-the snapshot and the check succeed it requests `BACKUP_PING_URL`; on any
-failure it requests that URL with `/fail` appended and exits non-zero. The
+The same command tests the replica: it writes one row to the database, waits
+for Litestream to upload a new object under the replica path, then restores
+the replica to a scratch file beside the database and checks that the copy
+holds that row and passes SQLite's integrity check. A replica that uploads but
+no longer restores fails the day it breaks. When both the snapshot and the
+test succeed it requests `BACKUP_PING_URL`; on any failure it requests that URL
+with `/fail` appended and exits non-zero. The
 service behind the URL alerts when a day passes without a success ping, which
 also covers a scheduler that has stopped running the command.
 

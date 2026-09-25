@@ -1,15 +1,19 @@
-"""The daily snapshot, the replication check and the backup pings.
+"""The daily snapshot, the replica test restore and the backup pings.
 
 The bucket is moto, which intercepts boto3 in-process, so no socket is
 opened. Litestream does not run here: a test stands in for it by
-putting an object under the replica path, or by not doing so.
+putting an object under the replica path, or by not doing so, and by
+writing the copy a restore would produce.
 """
 
 import gzip
 import json
 import sqlite3
+import subprocess
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -59,7 +63,7 @@ def s3(monkeypatch, settings):
     settings.AWS_S3_REGION = "us-east-1"
     settings.AWS_S3_ENDPOINT_URL = None
     settings.LITESTREAM_REPLICA_PATH = REPLICA
-    settings.LITESTREAM_DISABLED = False
+    settings.LITESTREAM_MODE = "replicate"
     settings.BACKUP_PING_URL = ""
     settings.BUILD_INFO = BuildInfo(commit="abc1234")
     with mock_aws():
@@ -137,16 +141,68 @@ def test_dated_keys_are_utc_whatever_the_local_zone(s3, database):
     assert manifest["created_at"] == "2026-03-01T03:00:00+00:00"
 
 
-def litestream_uploads(client):
+def restored_copy(target, probe_written_at, records=3):
+    """Write what a restore of the replica produces: records, and the
+    probe row as Django stores it, UTC text without an offset."""
+    conn = sqlite3.connect(target)
+    conn.execute("CREATE TABLE catalog_record (id INTEGER PRIMARY KEY)")
+    conn.executemany(
+        "INSERT INTO catalog_record VALUES (?)",
+        [(n,) for n in range(1, records + 1)],
+    )
+    conn.execute(
+        "CREATE TABLE catalog_replicationprobe "
+        "(id INTEGER PRIMARY KEY, written_at TEXT)"
+    )
+    if probe_written_at is not None:
+        stored = probe_written_at.astimezone(UTC).replace(tzinfo=None)
+        conn.execute(
+            "INSERT INTO catalog_replicationprobe VALUES (1, ?)",
+            (stored.isoformat(sep=" "),),
+        )
+    conn.commit()
+    conn.close()
+
+
+def fake_litestream(write_copy):
+    """Stand in for the litestream and litestream-config binaries.
+    *write_copy* receives the restore's output path."""
+
+    def run(args, **kwargs):
+        if args[0] == "litestream-config":
+            kwargs["stdout"].write("dbs: []\n")
+        elif args[:2] == ["litestream", "restore"]:
+            write_copy(Path(args[args.index("-o") + 1]))
+        else:
+            raise AssertionError(f"unexpected command: {args}")
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    return patch("catalog.backups.subprocess.run", side_effect=run)
+
+
+@contextmanager
+def litestream_runs(client, write_copy=None):
     """Stand in for a running Litestream: the first wait after the
-    probe write finds a new object under the replica path."""
+    probe write finds a new object under the replica path, and a
+    restore produces a copy holding that write."""
 
     def sleep(seconds):
         client.put_object(
             Bucket=BUCKET, Key=f"{REPLICA}/ltx/0/0000000000000002.ltx"
         )
 
-    return patch("catalog.backups.time.sleep", side_effect=sleep)
+    if write_copy is None:
+
+        def write_copy(target):
+            restored_copy(
+                target, ReplicationProbe.objects.get(pk=1).written_at
+            )
+
+    with (
+        patch("catalog.backups.time.sleep", side_effect=sleep),
+        fake_litestream(write_copy),
+    ):
+        yield
 
 
 def run(*args):
@@ -161,7 +217,7 @@ def test_command_pings_success_when_both_checks_pass(s3, database, settings):
     s3.put_object(Bucket=BUCKET, Key=f"{REPLICA}/ltx/0/0000000000000001.ltx")
 
     with (
-        litestream_uploads(s3),
+        litestream_runs(s3),
         patch(f"{COMMAND}.httpx.get") as get,
         patch(f"{COMMAND}.httpx.post") as post,
     ):
@@ -171,7 +227,10 @@ def test_command_pings_success_when_both_checks_pass(s3, database, settings):
     post.assert_not_called()
     assert "3 records" in out
     assert f"s3://{BUCKET}/{REPLICA}/ received a new write" in out
+    assert "test restore: 3 records, integrity ok, holds the new write" in out
     assert ReplicationProbe.objects.count() == 1
+    # The scratch copy and its configuration are gone.
+    assert not list(database.parent.glob("restore-test*"))
 
 
 @pytest.mark.django_db
@@ -197,11 +256,66 @@ def test_a_replica_that_receives_nothing_is_a_failure(s3, database, settings):
 
 
 @pytest.mark.django_db
+def test_a_restore_without_the_new_write_is_a_failure(s3, database, settings):
+    """A copy that stops short of the write Litestream uploaded means
+    the files in the bucket do not restore to the present."""
+    settings.BACKUP_PING_URL = PING
+
+    def stale_copy(target):
+        restored_copy(target, datetime(2026, 1, 1, tzinfo=UTC))
+
+    with (
+        litestream_runs(s3, stale_copy),
+        patch(f"{COMMAND}.httpx.get") as get,
+        patch(f"{COMMAND}.httpx.post") as post,
+        pytest.raises(CommandError, match="lacks the write"),
+    ):
+        run()
+
+    get.assert_not_called()
+    assert post.call_args.args == (PING + "/fail",)
+    assert not list(database.parent.glob("restore-test*"))
+
+
+@pytest.mark.django_db
+def test_a_restore_litestream_refuses_is_a_failure(s3, database):
+    def refuse(args, **kwargs):
+        if args[0] == "litestream-config":
+            return subprocess.CompletedProcess(args, 0)
+        raise subprocess.CalledProcessError(
+            1, args, stderr="cannot find snapshot\n"
+        )
+
+    with (
+        litestream_runs(s3),
+        patch("catalog.backups.subprocess.run", side_effect=refuse),
+        pytest.raises(
+            CommandError, match="litestream restore failed: cannot find"
+        ),
+    ):
+        run()
+
+
+@pytest.mark.django_db
+def test_an_unreadable_restored_copy_is_a_failure(s3, database):
+    def garbage(target):
+        target.write_bytes(b"not a database" * 100)
+
+    with (
+        litestream_runs(s3, garbage),
+        pytest.raises(CommandError, match="restored copy cannot be read"),
+    ):
+        run()
+
+    assert not list(database.parent.glob("restore-test*"))
+
+
+@pytest.mark.django_db
 def test_a_failed_snapshot_pings_failure(s3, database, settings):
     settings.BACKUP_PING_URL = PING
 
     with (
-        litestream_uploads(s3),
+        litestream_runs(s3),
         patch.object(backups, "copy_database", side_effect=OSError("disk")),
         patch(f"{COMMAND}.httpx.get") as get,
         patch(f"{COMMAND}.httpx.post") as post,
@@ -216,7 +330,7 @@ def test_a_failed_snapshot_pings_failure(s3, database, settings):
 @pytest.mark.django_db
 def test_without_a_ping_url_nothing_is_requested(s3, database):
     with (
-        litestream_uploads(s3),
+        litestream_runs(s3),
         patch(f"{COMMAND}.httpx.get") as get,
         patch(f"{COMMAND}.httpx.post") as post,
     ):
@@ -227,16 +341,14 @@ def test_without_a_ping_url_nothing_is_requested(s3, database):
 
 
 @pytest.mark.django_db
-def test_disabled_litestream_skips_the_replication_check(
-    s3, database, settings
-):
-    settings.LITESTREAM_DISABLED = True
+def test_restore_only_mode_skips_the_replication_check(s3, database, settings):
+    settings.LITESTREAM_MODE = "restore-only"
     settings.BACKUP_PING_URL = PING
 
     with patch(f"{COMMAND}.httpx.get") as get:
         out = run("--replica-timeout", "0")
 
-    assert "replication check skipped" in out
+    assert "replication check skipped: LITESTREAM_MODE is restore-only" in out
     get.assert_called_once_with(PING, timeout=10)
     assert not ReplicationProbe.objects.exists()
 
@@ -259,7 +371,7 @@ def test_an_unreachable_ping_url_is_a_failure(s3, database, settings):
     settings.BACKUP_PING_URL = PING
 
     with (
-        litestream_uploads(s3),
+        litestream_runs(s3),
         patch(
             f"{COMMAND}.httpx.get", side_effect=httpx.ConnectError("refused")
         ),
@@ -276,7 +388,7 @@ def test_a_ping_the_service_rejects_is_a_failure(s3, database, settings):
     not_found = httpx.Response(404, request=httpx.Request("GET", PING))
 
     with (
-        litestream_uploads(s3),
+        litestream_runs(s3),
         patch(f"{COMMAND}.httpx.get", return_value=not_found),
         pytest.raises(CommandError, match="backup ping failed"),
     ):
@@ -371,11 +483,11 @@ def test_backup_status_says_what_is_missing(s3):
 
 
 def test_backup_status_with_replication_off(s3, settings):
-    settings.LITESTREAM_DISABLED = True
+    settings.LITESTREAM_MODE = "off"
 
     out = status()
 
-    assert "replica: replication is off (LITESTREAM_DISABLED is set)" in out
+    assert "replica: not replicating (LITESTREAM_MODE is off)" in out
 
 
 def test_backup_status_without_a_bucket_is_a_failure(settings):

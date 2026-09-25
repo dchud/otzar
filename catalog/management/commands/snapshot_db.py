@@ -1,4 +1,4 @@
-"""Take the daily database snapshot and check that replication runs.
+"""Take the daily database snapshot and test-restore the replica.
 
 Run once a day by the host's scheduler, and by the deploy before it
 replaces the image. It does two things and reports on both:
@@ -6,9 +6,11 @@ replaces the image. It does two things and reports on both:
 1. Copies the database with SQLite's online backup API, gzips it and
    uploads it to the backup bucket with a manifest, as laid out in
    ``catalog.backups``.
-2. Checks that Litestream is replicating: it writes one row and waits
-   for a new object under ``LITESTREAM_REPLICA_PATH``. Skipped when
-   ``LITESTREAM_DISABLED`` is set.
+2. Checks that the replica works: it writes one row, waits for
+   Litestream to upload a new object under ``LITESTREAM_REPLICA_PATH``,
+   then restores the replica to a scratch file and checks that the copy
+   holds that row and passes SQLite's integrity check. Skipped unless
+   ``LITESTREAM_MODE`` is ``replicate``.
 
 Both run even when the first fails, so one failure does not hide the
 state of the other. When ``BACKUP_PING_URL`` is set, the command
@@ -31,7 +33,7 @@ PING_TIMEOUT_SECONDS = 10
 class Command(BaseCommand):
     help = (
         "Upload a dated database snapshot to the backup bucket and "
-        "check that Litestream is replicating."
+        "test-restore the Litestream replica."
     )
 
     def add_arguments(self, parser):
@@ -43,6 +45,12 @@ class Command(BaseCommand):
                 "Seconds to wait for Litestream to upload a new write "
                 "(default 60)."
             ),
+        )
+        parser.add_argument(
+            "--restore-timeout",
+            type=float,
+            default=300.0,
+            help="Seconds to allow the test restore (default 300).",
         )
 
     def handle(self, *args, **options):
@@ -67,25 +75,35 @@ class Command(BaseCommand):
                     f"commit {m['commit'] or 'unknown'}"
                 )
 
-            if settings.LITESTREAM_DISABLED:
+            if settings.LITESTREAM_MODE != "replicate":
                 self.stdout.write(
-                    "replication check skipped: LITESTREAM_DISABLED is set"
+                    "replication check skipped: LITESTREAM_MODE is "
+                    f"{settings.LITESTREAM_MODE}"
                 )
             else:
                 path = settings.LITESTREAM_REPLICA_PATH
                 try:
-                    backups.check_replication(
+                    written_at = backups.check_replication(
                         client,
                         bucket,
                         path,
                         timeout=options["replica_timeout"],
                     )
+                    self.stdout.write(
+                        f"replication: s3://{bucket}/{path}/ received "
+                        "a new write"
+                    )
+                    count = backups.verify_restore(
+                        path,
+                        written_at,
+                        timeout=options["restore_timeout"],
+                    )
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"replication check failed: {exc}")
                 else:
                     self.stdout.write(
-                        f"replication: s3://{bucket}/{path}/ received "
-                        "a new write"
+                        f"test restore: {count} records, integrity ok, "
+                        "holds the new write"
                     )
 
         self._ping(errors)
