@@ -15,6 +15,9 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from sru_fetch import fetch, inspect, M
 
+# Each catalog is asked for at most this many records per work.
+MAX_RECORDS = 50
+
 VOL = re.compile(r"\b(\d+)\s*(v\.|vols?\b|volumes?\b|B(?:ä|ae)nde\b|Bde\b|"
                  r"כרכים|כר׳)", re.I)
 
@@ -179,87 +182,94 @@ WORKS = {
 }
 
 
+def describe_record(rec):
+    """Structural summary of one MARC record element."""
+    ldr = rec.findtext(f"{M}leader") or ""
+    tags = collections.Counter()
+    s245, a300 = set(), ""
+    title = title_b = ""
+    for df in rec.findall(f"{M}datafield"):
+        tag = df.get("tag")
+        tags[tag] += 1
+        subs = {s.get("code"): (s.text or "")
+                for s in df.findall(f"{M}subfield")}
+        if tag == "245":
+            s245 = set(subs)
+            title = " ".join(subs.get(c, "") for c in
+                             ("a", "n", "p"))
+            title_b = subs.get("b", "")
+        if tag == "300" and not a300:
+            a300 = subs.get("a", "")
+    agency = ""
+    rel4 = []
+    for df in rec.findall(f"{M}datafield"):
+        subs = {s.get("code"): (s.text or "")
+                for s in df.findall(f"{M}subfield")}
+        if df.get("tag") == "040" and not agency:
+            agency = subs.get("a", "")
+        if df.get("tag") == "773" and subs.get("4"):
+            rel4.append(subs["4"])
+    return {
+        "agency": agency,
+        "rel4": rel4,
+        "online": "online resource" in a300.lower(),
+        "t776": tags["776"] > 0,
+        "l19_any": (ldr[19] if len(ldr) > 19 and ldr[19] in "abc" else ""),
+        "l07": ldr[7] if len(ldr) > 7 else "?",
+        "l19": ldr[19] if len(ldr) > 19 and ldr[19].strip() else "-",
+        "np": bool(s245 & {"n", "p"}),
+        "t773": tags["773"] > 0,
+        "t505": tags["505"] > 0,
+        "volcount": bool(VOL.search(a300)),
+        "a300": a300[:34],
+        "title": title[:60],
+        "title_b": title_b[:60],
+    }
+
+
 def describe(xml_text):
     """Structural summary of the records in one response."""
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
         return None
-    out = []
-    for rec in root.findall(f".//{M}record"):
-        ldr = rec.findtext(f"{M}leader") or ""
-        tags = collections.Counter()
-        s245, a300 = set(), ""
-        title = ""
-        for df in rec.findall(f"{M}datafield"):
-            tag = df.get("tag")
-            tags[tag] += 1
-            subs = {s.get("code"): (s.text or "")
-                    for s in df.findall(f"{M}subfield")}
-            if tag == "245":
-                s245 = set(subs)
-                title = " ".join(subs.get(c, "") for c in
-                                 ("a", "n", "p"))
-                title_b = subs.get("b", "")
-            if tag == "300" and not a300:
-                a300 = subs.get("a", "")
-        agency = ""
-        rel4 = []
-        for df in rec.findall(f"{M}datafield"):
-            subs = {s.get("code"): (s.text or "")
-                    for s in df.findall(f"{M}subfield")}
-            if df.get("tag") == "040" and not agency:
-                agency = subs.get("a", "")
-            if df.get("tag") == "773" and subs.get("4"):
-                rel4.append(subs["4"])
-        out.append({
-            "agency": agency,
-            "rel4": rel4,
-            "online": "online resource" in a300.lower(),
-            "t776": tags["776"] > 0,
-            "l19_any": (ldr[19] if len(ldr) > 19 and ldr[19] in "abc" else ""),
-            "l07": ldr[7] if len(ldr) > 7 else "?",
-            "l19": ldr[19] if len(ldr) > 19 and ldr[19].strip() else "-",
-            "np": bool(s245 & {"n", "p"}),
-            "t773": tags["773"] > 0,
-            "t505": tags["505"] > 0,
-            "volcount": bool(VOL.search(a300)),
-            "a300": a300[:34],
-            "title": title[:60],
-            "title_b": title_b[:60],
-        })
-    return out
+    return [describe_record(rec) for rec in root.findall(f".//{M}record")]
 
 
-results = {}
-for work, queries in WORKS.items():
-    print(f"\n=== {work} ===")
-    results[work] = {}
-    for sv, q in queries.items():
-        try:
-            xml, cached = fetch(sv, q, max_records=50)
-        except Exception as exc:
-            print(f"  {sv:8} ERROR {type(exc).__name__}")
-            continue
-        got, total, diag = inspect(xml)
-        recs = describe(xml) or []
-        f = collections.Counter()
-        for r in recs:
-            if r["l19"] != "-":
-                f[f"l19={r['l19']}"] += 1
-            if r["np"]:
-                f["245$n/$p"] += 1
-            if r["t773"]:
-                f["773"] += 1
-            if r["volcount"]:
-                f["300 vol-count"] += 1
-            if r["t505"]:
-                f["505"] += 1
-        results[work][sv] = {"total": total, "returned": len(recs),
-                             "flags": dict(f), "records": recs}
-        print(f"  {sv:8} hits={str(total):>6}  returned={len(recs):>3}  "
-              f"{dict(f) or '(no set markers)'}")
+def main():
+    results = {}
+    for work, queries in WORKS.items():
+        print(f"\n=== {work} ===")
+        results[work] = {}
+        for sv, q in queries.items():
+            try:
+                xml, cached = fetch(sv, q, max_records=MAX_RECORDS)
+            except Exception as exc:
+                print(f"  {sv:8} ERROR {type(exc).__name__}")
+                continue
+            got, total, diag = inspect(xml)
+            recs = describe(xml) or []
+            f = collections.Counter()
+            for r in recs:
+                if r["l19"] != "-":
+                    f[f"l19={r['l19']}"] += 1
+                if r["np"]:
+                    f["245$n/$p"] += 1
+                if r["t773"]:
+                    f["773"] += 1
+                if r["volcount"]:
+                    f["300 vol-count"] += 1
+                if r["t505"]:
+                    f["505"] += 1
+            results[work][sv] = {"total": total, "returned": len(recs),
+                                 "flags": dict(f), "records": recs}
+            print(f"  {sv:8} hits={str(total):>6}  returned={len(recs):>3}  "
+                  f"{dict(f) or '(no set markers)'}")
 
-pathlib.Path("tmp/vagf/set_cases.json").write_text(
-    json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
-print("\nwrote tmp/vagf/set_cases.json")
+    pathlib.Path("tmp/vagf/set_cases.json").write_text(
+        json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("\nwrote tmp/vagf/set_cases.json")
+
+
+if __name__ == "__main__":
+    main()

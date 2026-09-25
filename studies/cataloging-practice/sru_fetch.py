@@ -14,7 +14,6 @@ import httpx
 
 MIN_GAP = 4.0
 CACHE = pathlib.Path(__file__).parent / "cache"
-CACHE.mkdir(exist_ok=True)
 
 SERVERS = {
     "nli": ("https://nli.alma.exlibrisgroup.com/view/sru/972NNL_INST",
@@ -30,9 +29,8 @@ M = "{http://www.loc.gov/MARC21/slim}"
 _last_hit: dict[str, float] = {}
 
 
-def fetch(server, query, max_records=50, start_record=1):
-    """Return (xml_text, from_cache). Raises on transport failure."""
-    base, version, schema = SERVERS[server]
+def _params(server, query, max_records, start_record):
+    _, version, schema = SERVERS[server]
     params = {
         "operation": "searchRetrieve",
         "version": version,
@@ -42,10 +40,28 @@ def fetch(server, query, max_records=50, start_record=1):
     }
     if start_record != 1:
         params["startRecord"] = str(start_record)
+    return params
+
+
+def cache_name(server, query, max_records=50, start_record=1):
+    """The file name under CACHE that fetch() uses for this request.
+
+    The key hashes the base URL and the sorted request parameters, so a
+    cached response can be found again without the network.
+    """
+    base = SERVERS[server][0]
+    params = _params(server, query, max_records, start_record)
     key = hashlib.sha256(
         (base + urllib.parse.urlencode(sorted(params.items()))).encode()
     ).hexdigest()[:24]
-    path = CACHE / f"{server}-{key}.xml"
+    return f"{server}-{key}.xml"
+
+
+def fetch(server, query, max_records=50, start_record=1):
+    """Return (xml_text, from_cache). Raises on transport failure."""
+    base = SERVERS[server][0]
+    params = _params(server, query, max_records, start_record)
+    path = CACHE / cache_name(server, query, max_records, start_record)
     if path.exists():
         return path.read_text(encoding="utf-8"), True
 
@@ -60,6 +76,7 @@ def fetch(server, query, max_records=50, start_record=1):
     text = resp.text
     if not text.strip().startswith("<"):
         raise ValueError(f"{server}: response is not XML")
+    CACHE.mkdir(exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return text, False
 

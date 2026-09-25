@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/"><zs:version>1.1</zs:version><zs:numberOfRecords>2</zs:numberOfRecords><zs:records><zs:record><zs:recordSchema>marcxml</zs:recordSchema><zs:recordPacking>xml</zs:recordPacking><zs:recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>01234cam a2200301 a 4500</leader>
+  <controlfield tag="001">1001</controlfield>
+  <datafield tag="245" ind1="0" ind2="0">
+    <subfield code="a">תלמוד בבלי :</subfield>
+    <subfield code="b">עם כל המפרשים.</subfield>
+  </datafield>
+  <datafield tag="300" ind1=" " ind2=" ">
+    <subfield code="a">20 v. ;</subfield>
+  </datafield>
+</record></zs:recordData><zs:recordPosition>1</zs:recordPosition></zs:record><zs:record><zs:recordSchema>marcxml</zs:recordSchema><zs:recordPacking>xml</zs:recordPacking><zs:recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>00987cam a2200241 a 4500</leader>
+  <controlfield tag="001">1002</controlfield>
+  <controlfield tag="003">DLC</controlfield>
+  <datafield tag="245" ind1="1" ind2="0">
+    <subfield code="a">Talmud Bavli.</subfield>
+    <subfield code="n">Volume 2.</subfield>
+  </datafield>
+  <datafield tag="300" ind1=" " ind2=" ">
+    <subfield code="a">312 p. ;</subfield>
+  </datafield>
+  <datafield tag="773" ind1="0" ind2="8">
+    <subfield code="w">1001</subfield>
+  </datafield>
+</record></zs:recordData><zs:recordPosition>2</zs:recordPosition></zs:record></zs:records></zs:searchRetrieveResponse>
