@@ -100,19 +100,29 @@ docs:
 docs-build:
     uv run mkdocs build --strict
 
-# Rebuilding the production database from a backup runs on the
-# instance, where the data and the containers are. DEPLOY_HOST is the
-# SSH destination, from the environment or the local .env. Arguments
-# pass through to deploy/rebuild.sh: exactly one of --latest,
-# --at TIME or --snapshot DATE, and optionally --from PATH.
+# The instance's host scripts run over SSH as root, through
+# scripts/on-host.sh. DEPLOY_HOST is the SSH destination, from the
+# environment or the local .env.
+
+# rebuild takes exactly one of --latest, --at TIME or --snapshot DATE,
+# and optionally --from PATH.
 
 # Rebuild the production database from a backup
+[positional-arguments]
 rebuild *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    host="${DEPLOY_HOST:-$(sed -n 's/^DEPLOY_HOST=//p' .env 2>/dev/null | tail -n 1)}"
-    if [ -z "$host" ]; then
-        echo "rebuild: set DEPLOY_HOST in .env or the environment" >&2
-        exit 1
-    fi
-    ssh "$host" sudo /opt/otzar/rebuild.sh {{args}}
+    scripts/on-host.sh rebuild.sh "$@"
+
+# Show or clear the maintenance page on the instance: on or off
+[positional-arguments]
+maintenance state:
+    scripts/on-host.sh maintenance.sh "$@"
+
+# Write a .env from the deployment's template: --local DIR
+[positional-arguments]
+configure *args:
+    scripts/configure.sh "$@"
+
+# Rehearse the deployment on this machine; `just rehearse` lists actions
+[positional-arguments]
+rehearse *args:
+    scripts/rehearsal/rehearse.sh "$@"

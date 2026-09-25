@@ -1,0 +1,31 @@
+# The maintenance page. maintenance.sh on copies this file over
+# /opt/otzar/maintenance.caddy, which the site block imports, and off
+# empties that file again. Every request except the health check gets
+# a 503, so the uptime check keeps reporting on the application itself.
+#
+# The heredoc needs Caddy 2.7 or later. Ubuntu 24.04's own caddy
+# package is 2.6.2, so the instance takes Caddy from Caddy's apt
+# repository, at the version scripts/rehearsal/compose.yml runs.
+@maintenance not path /health/
+header @maintenance {
+	Content-Type "text/html; charset=utf-8"
+	Cache-Control no-store
+	Retry-After 3600
+}
+respond @maintenance 503 {
+	body <<HTML
+		<!doctype html>
+		<html lang="en">
+		<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex">
+		<title>otzar: down for maintenance</title>
+		</head>
+		<body style="font-family: system-ui, sans-serif; max-width: 32rem; margin: 4rem auto; padding: 0 1rem">
+		<h1>otzar is down for maintenance</h1>
+		<p>The catalog is unavailable for a short time. Nothing you entered has been lost. Try again later.</p>
+		</body>
+		</html>
+		HTML
+}

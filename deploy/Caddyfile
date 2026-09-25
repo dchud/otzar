@@ -1,0 +1,22 @@
+# The site, served by Caddy on the instance. deploy.sh installs this
+# file as /opt/otzar/Caddyfile, which /etc/caddy/Caddyfile imports, and
+# reloads Caddy when it changes. Caddy obtains the certificate and
+# redirects http to https by itself.
+#
+# SITE_ADDRESS, from Caddy's environment, replaces the hostname for a
+# local rehearsal; Caddy issues a certificate from its own local
+# authority for a .localhost name.
+{$SITE_ADDRESS:otzar.onebiglibrary.net} {
+	# Django streams an upload to temporary disk with no size limit of
+	# its own. The browser resizes a photograph to 1500 px before
+	# sending it, so 15 MB is far above any legitimate upload.
+	request_body {
+		max_size 15MB
+	}
+
+	# Empty in normal running. maintenance.sh on fills it from
+	# maintenance-on.caddy, and every request but /health/ gets a 503.
+	import /opt/otzar/maintenance.caddy
+
+	reverse_proxy 127.0.0.1:8000
+}
