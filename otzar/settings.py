@@ -1,4 +1,5 @@
 import os
+import zoneinfo
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -149,7 +150,21 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+
+# The site's local zone: where a day begins and ends (the daily OCR
+# cap resets at its midnight) and how times are shown. USE_TZ keeps
+# every stored datetime in UTC whatever this says, so changing it moves
+# no data. An empty TIME_ZONE= line falls back to UTC, like an absent
+# one. A misspelled name is refused here, at startup, rather than left
+# to fail on the first request that needs the zone.
+TIME_ZONE = os.environ.get("TIME_ZONE") or "UTC"
+try:
+    zoneinfo.ZoneInfo(TIME_ZONE)
+except (zoneinfo.ZoneInfoNotFoundError, ValueError) as exc:
+    raise ImproperlyConfigured(
+        f"TIME_ZONE {TIME_ZONE!r} is not a known IANA time zone name, "
+        "such as America/New_York or UTC."
+    ) from exc
 USE_I18N = True
 USE_TZ = True
 

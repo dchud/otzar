@@ -17,6 +17,7 @@ template.
 | `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated list of hostnames the app will serve. In production, set to the hostname the site is served from. |
 | `CSRF_TRUSTED_ORIGINS` | No | (empty) | Comma-separated list of origins for CSRF validation. Set to the full site URL including scheme (e.g. `https://catalog.example.org`). |
 | `DATA_DIR` | No | Project root | Directory for the SQLite database, cache, and media files. In production, point it at storage that survives a restart or a rebuilt container. Locally, defaults to the project directory. |
+| `TIME_ZONE` | No | `UTC` | IANA time zone name for the site, e.g. `America/New_York`. Sets where a day begins and ends -- the daily OCR cap resets at midnight in this zone -- and how times are shown. Stored timestamps are UTC whatever this is set to, so changing it moves no data. The app refuses to start on a name it does not recognize. |
 | `FORWARDED_ALLOW_IPS` | Yes (production) | `127.0.0.1` | Address of the reverse proxy, read by `entrypoint.sh` and passed to gunicorn's `--forwarded-allow-ips`. Gunicorn passes `X-Forwarded-*` headers through to Django only from this address. With the proxy on the host and the app in a container, set it to the Docker bridge address the proxy's requests arrive from. |
 
 ### Title page OCR through the Anthropic API
