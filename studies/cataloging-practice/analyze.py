@@ -10,7 +10,7 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import pdist
 from sklearn.metrics import adjusted_mutual_info_score as ami
 
-HERE = pathlib.Path(__file__).parent
+HERE = pathlib.Path("tmp/vagf")
 M = "{http://www.loc.gov/MARC21/slim}"
 ADMIN = {"010", "016", "029", "035", "040", "042", "049", "850", "852",
          "883", "884"}
