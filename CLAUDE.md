@@ -311,25 +311,29 @@ EOF
 
 ## Model and effort discipline
 
-Default posture is Opus at medium effort. At the start of a task, classify it;
-if the active model or effort is clearly mismatched, say so in one line and
-suggest the switch, then proceed regardless.
+Two settings cover the work in this repository, and they replace any general
+model guidance:
 
-- Trivial edits, git operations, status or recall questions, simple lookups ->
-  suggest `/model haiku` at low effort.
-- Bead bookkeeping, structured writing, review of a bounded diff, most debugging
-  -> `/model sonnet`, medium effort.
-- Multi-layer implementation, open-ended design, debugging a cheaper model
-  stalled on -> `/model opus` with `/effort high`; `/fast` while editing
+- **Original work -> `/model opus` with `/effort xhigh`.** Implementation,
+  design, debugging, code review, and anything written to land in the repo:
+  code, tests, docs, new bead descriptions. `/fast` while editing
   interactively.
+- **Housekeeping and simple actions -> `/model sonnet`, medium effort.**
+  Post-merge cleanup, git operations, status or recall questions, simple
+  lookups, and tracker bookkeeping whose content is already decided.
 
-Match effort to reasoning difficulty, not task importance. When the hard part is
-delegated to a subagent, keep the main thread cheap.
+Haiku is not used. At the start of a task, classify it; if the active model or
+effort does not match, say so in one line and suggest the switch, then proceed
+regardless.
+
+Subagents follow the same split. A subagent that writes code or prose for the
+repo runs on Opus. A cheaper subagent gets only mechanical, verifiable work --
+git reconciliation, issue audits, link sweeps -- and the main thread reads its
+diff, not just its summary, before the work lands.
 
 **Do not cheap-draft reasoning-heavy work.** A cheap-drafts, strong-reviews
 split turns review into rewrite and costs more than drafting once with the
-stronger model. Hand cheaper subagents mechanical, verifiable work: git
-reconciliation, issue audits, link sweeps.
+stronger model.
 
 ## Design posture
 
