@@ -174,6 +174,36 @@ def replica_keys(client, bucket: str, replica_path: str) -> set[str]:
     return keys
 
 
+def newest_object(client, bucket: str, prefix: str):
+    """Return the listing entry of the newest object under *prefix*.
+
+    Returns None when there is none. Objects written in the same second
+    are ordered by key, which for Litestream's files is the order they
+    were written in.
+    """
+    newest = None
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for item in page.get("Contents", ()):
+            if newest is None or (item["LastModified"], item["Key"]) > (
+                newest["LastModified"],
+                newest["Key"],
+            ):
+                newest = item
+    return newest
+
+
+def latest_manifest(client, bucket: str) -> dict | None:
+    """Return the manifest of the newest snapshot, or None if none."""
+    try:
+        body = client.get_object(Bucket=bucket, Key=LATEST_KEY)["Body"]
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] in ("NoSuchKey", "404"):
+            return None
+        raise
+    return json.loads(body.read())
+
+
 def check_replication(
     client,
     bucket: str,

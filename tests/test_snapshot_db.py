@@ -8,7 +8,7 @@ putting an object under the replica path, or by not doing so.
 import gzip
 import json
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
@@ -328,3 +328,58 @@ def test_fetch_snapshot_reports_a_missing_snapshot(s3, tmp_path):
             "fetch_snapshot", "2020-01-01", "--output", str(tmp_path / "db")
         )
     assert list(tmp_path.iterdir()) == []
+
+
+def status():
+    out = StringIO()
+    call_command("backup_status", stdout=out)
+    return out.getvalue()
+
+
+def test_backup_status_names_the_newest_backups_and_their_ages(s3):
+    for n in (1, 2):
+        s3.put_object(Bucket=BUCKET, Key=f"{REPLICA}/ltx/0/{n:016d}.ltx")
+    taken = datetime.now(UTC).replace(microsecond=0) - timedelta(hours=2)
+    manifest = {
+        "created_at": taken.isoformat(),
+        "record_count": 3,
+        "commit": "abc1234",
+        "key": "snapshots/2026/09/24/db.sqlite3.gz",
+        "bytes": 100,
+    }
+    s3.put_object(
+        Bucket=BUCKET, Key=backups.LATEST_KEY, Body=json.dumps(manifest)
+    )
+
+    out = status()
+
+    assert (
+        f"replica s3://{BUCKET}/{REPLICA}/: newest object "
+        f"{REPLICA}/ltx/0/0000000000000002.ltx" in out
+    )
+    assert (
+        f"snapshot s3://{BUCKET}/snapshots/2026/09/24/db.sqlite3.gz: "
+        f"taken {taken:%Y-%m-%dT%H:%M:%SZ}, 2 hours ago, 3 records" in out
+    )
+
+
+def test_backup_status_says_what_is_missing(s3):
+    out = status()
+
+    assert f"replica s3://{BUCKET}/{REPLICA}/: no objects" in out
+    assert f"snapshot: no s3://{BUCKET}/{backups.LATEST_KEY}" in out
+
+
+def test_backup_status_with_replication_off(s3, settings):
+    settings.LITESTREAM_DISABLED = True
+
+    out = status()
+
+    assert "replica: replication is off (LITESTREAM_DISABLED is set)" in out
+
+
+def test_backup_status_without_a_bucket_is_a_failure(settings):
+    settings.AWS_S3_BACKUP_BUCKET = ""
+
+    with pytest.raises(CommandError, match="AWS_S3_BACKUP_BUCKET"):
+        status()

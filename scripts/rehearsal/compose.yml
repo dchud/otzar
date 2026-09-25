@@ -1,0 +1,100 @@
+# The local rehearsal's additions to deploy/compose.yml. The rehearsal
+# directory's .env names both files in COMPOSE_FILE, so `docker compose`
+# there, and the host scripts run there, see one project holding the
+# app, the S3 stand-in and Caddy.
+services:
+  app:
+    depends_on:
+      s3-init:
+        condition: service_completed_successfully
+
+  # moto in server mode as both buckets. Its state is in memory and
+  # lasts as long as this container: the rehearsal restarts the app,
+  # never this, when it tests a rebuild.
+  s3:
+    image: motoserver/moto:5.2.3
+    command: ["-p", "9000"]
+    environment:
+      # Otherwise the host name s3.otzar.localhost reads as a request
+      # for a bucket named "s3".
+      S3_IGNORE_SUBDOMAIN_BUCKETNAME: "true"
+    # A presigned URL has to be fetched from the host name it was
+    # signed for. s3.otzar.localhost is this container on the compose
+    # network, where the app signs, and the loopback address in the
+    # browser, where this port is published.
+    ports:
+      - "127.0.0.1:9000:9000"
+    networks:
+      default:
+        aliases:
+          - s3.otzar.localhost
+
+  # Creates both buckets with versioning on, as provisioning does, then
+  # exits. The app image carries boto3.
+  s3-init:
+    image: ${OTZAR_IMAGE:?OTZAR_IMAGE is not set in .env; deploy.sh sets it}
+    env_file: .env
+    depends_on:
+      - s3
+    entrypoint: ["python", "-c"]
+    command:
+      - |
+        import os
+        import time
+
+        import boto3
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=os.environ["AWS_S3_ENDPOINT_URL"],
+            region_name=os.environ["AWS_S3_REGION"],
+        )
+        for _ in range(60):
+            try:
+                s3.list_buckets()
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            raise SystemExit("s3-init: moto did not answer within 60 s")
+        for bucket in (
+            os.environ["AWS_S3_MEDIA_BUCKET"],
+            os.environ["AWS_S3_BACKUP_BUCKET"],
+        ):
+            try:
+                s3.create_bucket(Bucket=bucket)
+            except s3.exceptions.BucketAlreadyOwnedByYou:
+                pass
+            s3.put_bucket_versioning(
+                Bucket=bucket,
+                VersioningConfiguration={"Status": "Enabled"},
+            )
+            print(f"s3-init: {bucket}, versioned")
+
+  # Caddy with the production Caddyfile, on the host's network as Caddy
+  # on the instance is: it reaches the app through the published port,
+  # so requests arrive from the gateway address FORWARDED_ALLOW_IPS
+  # names. The rehearsal directory is mounted where /opt/otzar is on the
+  # instance, so the Caddyfile's import path is the production one.
+  caddy:
+    # The version the instance installs from Caddy's apt repository.
+    image: caddy:2.11.4
+    network_mode: host
+    # SITE_ADDRESS, as deploy.sh writes it from ALLOWED_HOSTS. Not
+    # required, so docker compose runs before the first deploy writes it.
+    env_file:
+      - path: caddy.env
+        required: false
+    command:
+      - caddy
+      - run
+      - --config
+      - /opt/otzar/Caddyfile
+      - --adapter
+      - caddyfile
+    volumes:
+      - .:/opt/otzar:ro
+      # Certificates and Caddy's local authority, whose root certificate
+      # a client needs to trust https://otzar.localhost.
+      - ./caddy:/data
+    restart: unless-stopped

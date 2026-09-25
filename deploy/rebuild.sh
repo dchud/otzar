@@ -41,6 +41,9 @@ APP_SERVICE=${APP_SERVICE:-app}
 HOST_DATA_DIR=${HOST_DATA_DIR:-$OTZAR_HOME/data}
 DEFAULT_REPLICA_PATH=litestream/db
 
+# shellcheck source=SCRIPTDIR/env-file.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env-file.sh"
+
 usage() {
     sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' >&2
     exit 2
@@ -93,30 +96,6 @@ fi
 cd "$OTZAR_HOME"
 [[ -f compose.yml ]] || die "no compose.yml in $OTZAR_HOME"
 [[ -f .env ]] || die "no .env in $OTZAR_HOME"
-
-# The last assignment of KEY in .env, without surrounding quotes.
-env_value() {
-    sed -n "s/^$1=//p" .env | tail -n 1 | sed "s/^[\"']//; s/[\"']\$//"
-}
-
-# Replace KEY's line in .env, or append one. The file is rewritten
-# with mode 0600, since it holds the instance's secrets.
-set_env_value() {
-    local key=$1 value=$2
-    (
-        umask 077
-        awk -v key="$key" -v value="$value" '
-            index($0, key "=") == 1 {
-                if (!done) print key "=" value
-                done = 1
-                next
-            }
-            { print }
-            END { if (!done) print key "=" value }
-        ' .env > .env.rebuild
-    )
-    mv .env.rebuild .env
-}
 
 current=$(env_value LITESTREAM_REPLICA_PATH)
 current=${current:-$DEFAULT_REPLICA_PATH}

@@ -1,0 +1,39 @@
+# The application on the instance, run from /opt/otzar, where deploy.sh
+# installs this file. Settings come from /opt/otzar/.env, which is both
+# the container's environment and the source of the values interpolated
+# here: OTZAR_IMAGE, which deploy.sh sets to the image it deploys, and
+# DATA_DIR.
+name: otzar
+
+services:
+  app:
+    image: ${OTZAR_IMAGE:?OTZAR_IMAGE is not set in .env; deploy.sh sets it}
+    env_file: .env
+    # The data directory is the host's /opt/otzar/data, mounted where
+    # DATA_DIR points, so the two cannot disagree. rebuild.sh assumes
+    # this path.
+    volumes:
+      - ./data:${DATA_DIR:?DATA_DIR is not set in .env}
+    # Loopback only: Caddy on the host is the one way in, which is what
+    # makes trusting its X-Forwarded-* headers safe.
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    # Docker keeps container logs without limit by default. At this
+    # size the logs, and the request details in them, last a few weeks
+    # of light use.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+# A fixed subnet, so the address Caddy's requests arrive from -- the
+# gateway, through the published port -- is known in advance and
+# FORWARDED_ALLOW_IPS can name it.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
