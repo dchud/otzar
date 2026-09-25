@@ -41,6 +41,19 @@ link the app renders is a presigned URL, valid for six hours.
 | `AWS_SECRET_ACCESS_KEY` | With a bucket | (none) | Secret for that key. |
 | `AWS_S3_ENDPOINT_URL` | No | (none) | Endpoint of another S3-compatible service, such as the local rehearsal's stand-in. Unset uses AWS. |
 
+### Database backups
+
+The container image replicates the database with Litestream and takes a daily
+snapshot; see [Backup and restore](#backup-and-restore). Both use the region,
+endpoint and credentials of the media bucket above.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AWS_S3_BACKUP_BUCKET` | Yes (production) | (none) | Bucket for the Litestream replica and the snapshots. Read by `entrypoint.sh`, which starts Litestream only when it is set, and by `snapshot_db` and `fetch_snapshot`. Never served to browsers. |
+| `LITESTREAM_REPLICA_PATH` | No | `litestream/db` | Key prefix of the replica in the backup bucket. Read by `entrypoint.sh` and `snapshot_db`. Changed only by `just rebuild`, which writes a new path. |
+| `LITESTREAM_DISABLED` | No | (empty) | `1`, `true` or `yes` turns replication off: `entrypoint.sh` neither restores nor replicates, and `snapshot_db` skips its replication check. For an instance started from a copy of production, such as a restore drill, which must not write into production's replica. |
+| `BACKUP_PING_URL` | No | (none) | Check URL at a dead-man's-switch service such as healthchecks.io. `snapshot_db` requests it after a good run and requests it with `/fail` appended after a failed one. Unset, nothing is pinged. Anyone holding the URL can send the success ping and silence the alert, so treat it as a secret. |
+
 ### SRU catalog endpoints
 
 | Variable | Required | Default | Description |
@@ -229,6 +242,32 @@ them.
 Run periodically (e.g. weekly via cron or an equivalent scheduler) to reclaim
 storage.
 
+### `snapshot_db`
+
+Uploads a dated copy of the database to the backup bucket and checks that
+Litestream is replicating. See [Backup and restore](#backup-and-restore).
+
+```bash
+uv run python manage.py snapshot_db [--replica-timeout SECONDS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--replica-timeout` | 60 | Seconds to wait for Litestream to upload a write the command makes. |
+
+Exits non-zero when the snapshot, the replication check or the success ping
+fails.
+
+### `fetch_snapshot`
+
+Downloads a snapshot from the backup bucket and unpacks it to the database
+path, or to `--output`. It refuses to write over an existing file.
+`deploy/rebuild.sh --snapshot` runs it; it is rarely run by hand.
+
+```bash
+uv run python manage.py fetch_snapshot YYYY-MM-DD|YYYY-MM [--output PATH]
+```
+
 
 ## Backup and restore
 
@@ -241,7 +280,91 @@ What is worth keeping:
 - `DATA_DIR/cache/` -- the file-based cache. Derived from the database; no
   need to back it up.
 
-### Backing up the database
+Static files are built into the container image and are not backed up either.
+
+### Database backups in the container image
+
+The image backs up the database by two mechanisms, both writing to the bucket
+named by `AWS_S3_BACKUP_BUCKET`. Both work on any Docker host with a local
+disk.
+
+**Continuous replication, for losing the machine.** `entrypoint.sh` runs the
+application under [Litestream](https://litestream.io), which copies every
+change to `s3://<bucket>/<LITESTREAM_REPLICA_PATH>` within about a second.
+Litestream writes a full snapshot of the database there once a day and keeps
+seven days of history, so any moment in the last week can be restored. At
+start, before migrations run, the entrypoint restores the latest replicated
+copy if `DATA_DIR` holds no database; a new disk therefore starts from the
+backup rather than empty. When the replica is empty too, as on the very first
+start, migrations create an empty database. The entrypoint refuses to start
+when `DATA_DIR` is unset or inside `/app`, since a database there would be
+lost on the next deploy.
+
+**Daily snapshots, for a mistake noticed later.** `manage.py snapshot_db`
+copies the database with SQLite's online backup API, compresses it, and
+uploads it:
+
+| Key | Contents | Kept |
+|---|---|---|
+| `snapshots/YYYY/MM/DD/db.sqlite3.gz` | The database | 35 days |
+| `snapshots/YYYY/MM/DD/manifest.json` | Record count, commit, time | 35 days |
+| `monthly/YYYY/MM/` | A copy of the pair taken on the 1st | 400 days |
+| `snapshots/latest.json` | The newest manifest | Replaced daily |
+
+Dates in keys are UTC. The retention periods are the bucket's lifecycle rules,
+not the command's. The host's scheduler runs the command daily, as
+`docker compose exec app python manage.py snapshot_db`, and a deploy runs it
+before replacing the image.
+
+The same command checks the replication: it writes one row to the database and
+waits for Litestream to upload a new object under the replica path. When both
+the snapshot and the check succeed it requests `BACKUP_PING_URL`; on any
+failure it requests that URL with `/fail` appended and exits non-zero. The
+service behind the URL alerts when a day passes without a success ping, which
+also covers a scheduler that has stopped running the command.
+
+### Rebuilding from a backup
+
+`just rebuild`, run from the operator's machine, runs `deploy/rebuild.sh` on
+the instance over SSH (the `DEPLOY_HOST` variable in the local `.env`) with
+exactly one of:
+
+| Option | Restores |
+|---|---|
+| `--latest` | The replica's current state |
+| `--at TIME` | The replica's state at `TIME`, an RFC 3339 time such as `2026-09-22T14:00:00Z`, within the last seven days |
+| `--snapshot YYYY-MM-DD` | The daily snapshot for that UTC date, within the last 35 days |
+| `--snapshot YYYY-MM` | The monthly snapshot for that month, within the last 13 months |
+
+`--latest` and `--at` also take `--from PATH` to restore from a replica path
+other than the one in use.
+
+The script stops the app; moves the database, its `-wal` and `-shm` files and
+Litestream's state directory to `DATA_DIR/pre-rebuild/<timestamp>/`;
+restores; sets `LITESTREAM_REPLICA_PATH` in the instance's `.env` to a new
+path, `litestream/db-<UTC timestamp>`; starts the app; and prints the record
+count, the newest record's creation time and the replica path in use. If the
+restore fails, the app is left stopped, `.env` is left unchanged, and the
+script says where the previous database is.
+
+Replication resumes into the new path because resuming into the old one would
+write the restored, older database over the history that followed it, which
+is the history needed if the chosen point turns out to be wrong. The old path
+stays in the backup bucket, and `--from <old path>` restores from it, until it
+is removed by hand: no lifecycle rule covers `litestream/`, and Litestream
+prunes only the path it is replicating to. `rebuild` prints the old path. Once
+the rebuilt site is known to be right, remove it with an administrator's AWS
+identity:
+
+```bash
+aws s3 rm --recursive s3://<backup bucket>/<old path>/
+```
+
+Images are not rolled back with the database. They stay in the media bucket,
+so a restored record points at an image that still exists unless the image was
+deleted more than 30 days earlier.
+
+### Backing up a local database
 
 SQLite runs in WAL mode, so copying `db.sqlite3` while the app is writing can
 capture an inconsistent file. Use the SQLite backup command, which is safe
@@ -271,7 +394,10 @@ aws s3api copy-object --bucket <bucket> --key <image key> \
 Restoring the database does not require restoring the bucket: the records
 point at object keys, and the objects stay where they are.
 
-### Restoring
+### Restoring a local database
+
+A deployment restores with `just rebuild`, above. For a database kept outside
+the container image:
 
 1. Stop the app.
 2. Put the database file back at `DATA_DIR/db.sqlite3`, deleting any stale

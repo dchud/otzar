@@ -99,3 +99,20 @@ docs:
 # Build the documentation, failing on a broken internal link
 docs-build:
     uv run mkdocs build --strict
+
+# Rebuilding the production database from a backup runs on the
+# instance, where the data and the containers are. DEPLOY_HOST is the
+# SSH destination, from the environment or the local .env. Arguments
+# pass through to deploy/rebuild.sh: exactly one of --latest,
+# --at TIME or --snapshot DATE, and optionally --from PATH.
+
+# Rebuild the production database from a backup
+rebuild *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    host="${DEPLOY_HOST:-$(sed -n 's/^DEPLOY_HOST=//p' .env 2>/dev/null | tail -n 1)}"
+    if [ -z "$host" ]; then
+        echo "rebuild: set DEPLOY_HOST in .env or the environment" >&2
+        exit 1
+    fi
+    ssh "$host" sudo /opt/otzar/rebuild.sh {{args}}

@@ -526,3 +526,20 @@ class SeriesClaimRow(models.Model):
 
     def __str__(self):
         return f"vol. {self.volume_number} ({self.search_status})"
+
+
+class ReplicationProbe(models.Model):
+    """One row that ``snapshot_db`` rewrites to test replication.
+
+    Litestream uploads only when the database changes, so on a day with
+    no cataloging the newest object in the replica is old even though
+    Litestream is running. The snapshot command writes this row and
+    then waits for a new object to appear under the replica path: a
+    change made just now either reaches the bucket or replication has
+    stopped. The row carries no catalog data.
+    """
+
+    written_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"replication probe at {self.written_at:%Y-%m-%d %H:%M:%S}"

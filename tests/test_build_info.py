@@ -17,6 +17,13 @@ def git(root, *args):
     ).stdout.strip()
 
 
+@pytest.fixture(autouse=True)
+def no_commit_in_environment(monkeypatch):
+    """Keep a GIT_COMMIT set in the developer's environment out of the
+    checkout tests, which read os.environ."""
+    monkeypatch.delenv("GIT_COMMIT", raising=False)
+
+
 @pytest.fixture
 def repo(tmp_path):
     """A checkout with one commit on the default branch."""
@@ -102,6 +109,34 @@ def test_slow_git_reports_nothing(repo, monkeypatch):
     monkeypatch.setattr(build_info.subprocess, "run", hangs)
 
     assert build_info.resolve(repo) is None
+
+
+def test_git_commit_from_the_environment_comes_first(repo):
+    """An image has no .git; the build passes the commit instead."""
+    sha = "0123456789abcdef0123456789abcdef01234567"
+
+    info = build_info.resolve(repo, environ={"GIT_COMMIT": sha})
+
+    assert info == build_info.BuildInfo(commit="0123456")
+
+
+def test_git_commit_without_a_checkout(tmp_path):
+    info = build_info.resolve(tmp_path, environ={"GIT_COMMIT": "ABCDEF1"})
+
+    assert info.commit == "abcdef1"
+    assert info.branch is None
+    assert info.version is None
+
+
+@pytest.mark.parametrize("value", ["", "  ", "unknown", "abc12", "g123456"])
+def test_a_value_that_is_not_a_commit_is_ignored(tmp_path, value):
+    assert build_info.resolve(tmp_path, environ={"GIT_COMMIT": value}) is None
+
+
+def test_an_invalid_git_commit_falls_back_to_the_checkout(repo):
+    info = build_info.resolve(repo, environ={"GIT_COMMIT": "unknown"})
+
+    assert info.commit == git(repo, "rev-parse", "HEAD")[:7]
 
 
 def test_context_carries_the_repository_url(settings):
