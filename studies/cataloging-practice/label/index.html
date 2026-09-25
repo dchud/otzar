@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Labeling</title>
+<link rel="stylesheet" href="marc.css">
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    font: 15px/1.4 system-ui, sans-serif;
+    color: #111;
+    background: #f6f6f6;
+  }
+  header {
+    display: flex;
+    gap: 1.5rem;
+    align-items: baseline;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+  }
+  #catalog { font-size: 1.4rem; font-weight: bold; }
+  #progress { color: #444; }
+  main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(22rem, 2fr);
+  }
+  #record { overflow: auto; padding: 1rem; background: #fff; }
+  #panel {
+    overflow: auto;
+    padding: 0.75rem 1rem;
+    border-left: 1px solid #ccc;
+  }
+  .field {
+    margin-bottom: 0.6rem;
+    padding: 0.3rem 0.5rem;
+    border: 2px solid transparent;
+    border-radius: 4px;
+  }
+  .field.current { border-color: #2a6fdb; background: #eef4ff; }
+  .field.skipped { opacity: 0.4; }
+  .field h2 {
+    display: flex;
+    gap: 0.6rem;
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+  }
+  .unsure-mark { color: #a64b00; font-weight: normal; }
+  .options { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .options button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    background: #fff;
+    color: #111;
+    cursor: pointer;
+  }
+  .options button[aria-pressed="true"] {
+    background: #2a6fdb;
+    border-color: #2a6fdb;
+    color: #fff;
+  }
+  .options kbd { font-family: monospace; font-weight: bold; }
+  #note {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.3rem;
+    font: inherit;
+  }
+  #message { min-height: 1.4em; margin: 0.4rem 0; color: #b00020; }
+  .help { color: #555; font-size: 0.85rem; }
+  #done { font-size: 1.2rem; }
+</style>
+</head>
+<body>
+<header>
+  <span id="catalog"></span>
+  <span id="progress" aria-live="polite"></span>
+</header>
+<main>
+  <section id="record" aria-label="Record"></section>
+  <aside id="panel" aria-label="Labels">
+    <div id="fields"></div>
+    <label for="note">Note</label>
+    <input id="note" type="text" autocomplete="off" spellcheck="false">
+    <p id="message" role="status" aria-live="polite"></p>
+    <p class="help">
+      The key beside each value records it for the highlighted field.
+      <kbd>u</kbd> marks the highlighted field unsure;
+      <kbd>n</kbd> moves to the note and <kbd>Esc</kbd> leaves it;
+      <kbd>&uarr;</kbd> <kbd>&darr;</kbd> move between fields;
+      <kbd>Enter</kbd> saves; <kbd>Backspace</kbd> returns to the
+      previous record.
+    </p>
+  </aside>
+</main>
+<script>
+"use strict";
+
+// A gap longer than this between keystrokes or clicks marks the
+// label idle, so its seconds can be left out of timing.
+const IDLE_MS = 5 * 60 * 1000;
+
+let S = null;          // the session: fields, rules, keys, progress
+let rec = null;        // the record shown, or null when none is
+let values = {};
+let conf = {};
+let current = 0;       // index of the highlighted field
+let total = 0;
+let renderedAt = 0;
+let lastActivity = 0;
+let idle = false;
+let busy = false;
+
+const $ = (id) => document.getElementById(id);
+const note = $("note");
+
+async function getJSON(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.statusText);
+  return data;
+}
+
+function message(text) {
+  $("message").textContent = text;
+}
+
+function touch() {
+  const now = performance.now();
+  if (now - lastActivity > IDLE_MS) idle = true;
+  lastActivity = now;
+}
+
+function asked(name) {
+  const r = S.rules;
+  if (name === r.own_title) return values[r.level] === r.volume;
+  if (name === r.relation) return values[r.work] !== r.none;
+  return true;
+}
+
+function firstOpen() {
+  const i = S.fields.findIndex(
+    (f) => asked(f.name) && values[f.name] == null);
+  if (i !== -1) return i;
+  for (let j = S.fields.length - 1; j >= 0; j--) {
+    if (asked(S.fields[j].name)) return j;
+  }
+  return 0;
+}
+
+function step(delta) {
+  let i = current + delta;
+  while (i >= 0 && i < S.fields.length && !asked(S.fields[i].name)) {
+    i += delta;
+  }
+  if (i >= 0 && i < S.fields.length) current = i;
+}
+
+function setProgress(p) {
+  total = p.total;
+  $("progress").textContent = `${p.done} of ${p.total} labeled`;
+}
+
+function choose(name, value) {
+  const r = S.rules;
+  const before = values[name];
+  values[name] = value;
+  if (!conf[name]) conf[name] = "sure";
+  if (name === r.work && value === r.none) {
+    values[r.relation] = r.unrelated;
+    conf[r.relation] = conf[r.work];
+  } else if (name === r.work && before === r.none) {
+    delete values[r.relation];
+    delete conf[r.relation];
+  }
+  if (name === r.level && value !== r.volume) {
+    delete values[r.own_title];
+    delete conf[r.own_title];
+  }
+  current = S.fields.findIndex((f) => f.name === name);
+  step(1);
+  message("");
+  draw();
+}
+
+function toggleUnsure() {
+  const r = S.rules;
+  const name = S.fields[current].name;
+  if (!asked(name)) return;
+  conf[name] = conf[name] === "unsure" ? "sure" : "unsure";
+  if (name === r.work && values[r.work] === r.none) {
+    conf[r.relation] = conf[r.work];
+  }
+  draw();
+}
+
+function draw() {
+  const box = $("fields");
+  box.replaceChildren();
+  S.fields.forEach((f, i) => {
+    const on = asked(f.name);
+    const div = document.createElement("div");
+    div.className = "field";
+    if (!on) div.classList.add("skipped");
+    if (rec && i === current) div.classList.add("current");
+    const h = document.createElement("h2");
+    h.textContent = f.name;
+    if (on && conf[f.name] === "unsure") {
+      const mark = document.createElement("span");
+      mark.className = "unsure-mark";
+      mark.textContent = "unsure";
+      h.append(mark);
+    }
+    const opts = document.createElement("div");
+    opts.className = "options";
+    opts.setAttribute("role", "group");
+    opts.setAttribute("aria-label", f.name);
+    for (const o of f.options) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.disabled = !on || !rec;
+      b.setAttribute("aria-pressed", String(values[f.name] === o.value));
+      b.setAttribute("aria-keyshortcuts", o.key);
+      const k = document.createElement("kbd");
+      k.textContent = o.key;
+      const v = document.createElement("span");
+      v.textContent = o.value;
+      b.append(k, " ", v);
+      b.addEventListener("click", () => {
+        current = i;
+        choose(f.name, o.value);
+      });
+      opts.append(b);
+    }
+    div.append(h, opts);
+    box.append(div);
+  });
+}
+
+async function show(index) {
+  const data = await getJSON(`/api/record?index=${index}`);
+  rec = data;
+  values = {};
+  conf = {};
+  if (data.label) {
+    for (const [k, v] of Object.entries(data.label.values)) {
+      if (v != null) values[k] = v;
+    }
+    for (const [k, v] of Object.entries(data.label.confidence)) {
+      if (v != null) conf[k] = v;
+    }
+  }
+  note.value = data.label ? data.label.note : "";
+  $("catalog").textContent = data.catalog;
+  $("record").innerHTML = data.html;
+  $("record").scrollTop = 0;
+  setProgress(data);
+  current = firstOpen();
+  message("");
+  renderedAt = performance.now();
+  lastActivity = renderedAt;
+  idle = false;
+  draw();
+}
+
+function finished(progress) {
+  rec = null;
+  values = {};
+  conf = {};
+  note.value = "";
+  $("catalog").textContent = "";
+  const p = document.createElement("p");
+  p.id = "done";
+  p.textContent = `All ${progress.total} records in this pass are labeled.`;
+  $("record").replaceChildren(p);
+  setProgress(progress);
+  draw();
+}
+
+async function save() {
+  if (!rec) return;
+  const missing = S.fields.findIndex(
+    (f) => asked(f.name) && values[f.name] == null);
+  if (missing !== -1) {
+    current = missing;
+    draw();
+    message(`Choose a value for ${S.fields[missing].name}.`);
+    return;
+  }
+  const needing = S.fields.find(
+    (f) => S.rules.note_required.includes(values[f.name]));
+  if (needing && !note.value.trim()) {
+    note.focus();
+    message(`A note is required with ${values[needing.name]}.`);
+    return;
+  }
+  const payload = {
+    record_id: rec.record_id,
+    values: Object.fromEntries(S.fields.map((f) => [
+      f.name,
+      f.name === S.rules.own_title && !asked(f.name)
+        ? null : (values[f.name] ?? null),
+    ])),
+    confidence: Object.fromEntries(S.fields
+      .filter((f) => values[f.name] != null)
+      .map((f) => [f.name, conf[f.name] || "sure"])),
+    note: note.value,
+    seconds: Math.round((performance.now() - renderedAt) / 100) / 10,
+    idle: idle,
+  };
+  const result = await getJSON("/api/label", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload),
+  });
+  note.blur();
+  if (result.next === null) finished(result);
+  else await show(result.next);
+}
+
+async function back() {
+  const target = rec ? rec.index - 1 : total - 1;
+  if (target >= 0) await show(target);
+}
+
+// One request at a time: a held-down Enter must not save twice.
+async function run(action) {
+  if (busy) return;
+  busy = true;
+  try {
+    await action();
+  } catch (err) {
+    message(err.message);
+  } finally {
+    busy = false;
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  touch();
+  if (!S || e.ctrlKey || e.metaKey || e.altKey) return;
+  const inNote = document.activeElement === note;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    run(save);
+    return;
+  }
+  if (inNote) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      note.blur();
+    }
+    return;
+  }
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    run(back);
+    return;
+  }
+  if (!rec) return;
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    step(e.key === "ArrowUp" ? -1 : 1);
+    draw();
+    return;
+  }
+  if (e.key.length !== 1) return;
+  const k = e.key.toLowerCase();
+  if (k === S.keys.note) {
+    e.preventDefault();
+    note.focus();
+    return;
+  }
+  if (k === S.keys.unsure) {
+    e.preventDefault();
+    toggleUnsure();
+    return;
+  }
+  const f = S.fields[current];
+  const o = f.options.find((x) => x.key === k);
+  if (o && asked(f.name)) {
+    e.preventDefault();
+    choose(f.name, o.value);
+  } else if (k.trim()) {
+    message(`${k} is not a key for ${f.name}.`);
+  }
+});
+document.addEventListener("mousedown", touch);
+
+run(async () => {
+  S = await getJSON("/api/session");
+  setProgress(S);
+  if (S.index === null) finished(S);
+  else await show(S.index);
+});
+</script>
+</body>
+</html>
