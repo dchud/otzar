@@ -31,8 +31,10 @@ records, fall outside Judaica as a control.
 
 **A targeted survey of 22 multi-volume works** — Talmud Bavli, Miqraot
 Gedolot, Shulhan Arukh, Mishneh Torah, Zohar, Mishnah Berurah and
-sixteen others — asked of all five catalogs by title. Every work is
-held by at least three of them.
+sixteen others — asked of all five catalogs by title. Its counts depend
+on filters that have not been scored against hand-labeled records, so
+the [set chapter](sets.md) reports the pattern and two works checked
+record by record rather than the counts.
 
 The two measure different things. Prevalence over a whole catalog and
 prevalence within multi-volume works are different quantities, and the

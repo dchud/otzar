@@ -4,10 +4,10 @@
 holding the cataloging tradition constant.**
 
 This is the pattern that disagrees with [pattern 1](sets.md). There,
-three catalogs converge completely on how they treat a set. Here, the
-same three separate from one another on general record structure at
-AMI 0.394. Both hold: the part-whole mechanism travels with the
-tradition, and everything else stays local.
+the three Anglo-American catalogs agree on how they signal a set: none
+of them codes leader/19. Here, the same three separate from one another
+on general record structure at AMI 0.394. Both hold: the part-whole
+mechanism travels with the tradition, and everything else stays local.
 
 ## Every field included: the clusters are the catalogs
 
@@ -203,5 +203,4 @@ indistinguishable:
 They stay distinguishable. So on general record structure the unit of
 variation is the institution, and the [set survey](sets.md) finding
 that three of them never code leader/19 is specific to that one
-position rather than a general convergence — their set-level extent
-rates differ widely, at 61%, 50% and 24%.
+position rather than a general convergence.

@@ -192,18 +192,18 @@ identifiable ones from the three catalogs that do not code the
 position, and none by design.
 
 The [set survey](sets.md) asked the same catalogs for 22 multi-volume
-works by name. Where the two disagree, they disagree in a measurable
-direction:
+works by name, and where the two disagree they disagree in one
+direction. In this corpus leader/19 is coded on 265 of 1,090 K10plus
+books (24%) and 101 of 739 DNB books (14%). In the survey, every
+K10plus and DNB volume record for the two works checked record by
+record codes it. The survey's own rates are withheld until its filters
+are scored against labeled records, so the comparison is stated here
+as a direction rather than as a second pair of figures.
 
-| | This corpus | Targeted at 22 sets |
-|---|---|---|
-| K10plus, leader/19 coded | 265 of 1,090 books (24%) | 235 of 295 records (79%) |
-| DNB, leader/19 coded | 101 of 739 books (14%) | 80 of 119 records (67%) |
-
-Both are correct. The first is a base rate across a catalog's books,
-most of which are not part of a set; the second is conditional on a
-multi-volume work. A marker that is uncommon overall can be the normal
-mechanism within the material that matters.
+Both are correct. The corpus figure is a base rate across a catalog's
+books, most of which are not part of a set; the survey is conditional
+on a multi-volume work. A marker that is uncommon overall can be the
+normal mechanism within the material that matters.
 
 The consequence for reading this chapter: its figures describe *these
 catalogs' holdings as sampled*, not their treatment of any particular
