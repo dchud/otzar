@@ -19,6 +19,11 @@ broke when they moved out of the directory they were written in. That directory 
 derived feature vector are distributed as a separate archive; unpack it
 to `tmp/vagf/` before running anything downstream of the draw.
 
+The one exception is the SRU response cache. `sru_fetch.py` keeps it in
+`studies/cataloging-practice/cache/`, next to itself, not under
+`tmp/vagf/`, and the set survey's 110 cached responses are there. That
+directory is not in the repository either: `cache/` is ignored.
+
 The analysis scripts need `numpy`, `scipy` and `scikit-learn`, and the
 figures need `matplotlib`. None is a project dependency, so they are
 pulled in per run:
@@ -45,7 +50,7 @@ whether it answers.
 
 | Script | Produces |
 |---|---|
-| `sru_fetch.py` | Not run directly. The paced, disk-cached fetcher the others import. Four seconds minimum between requests to any one host, responses cached under `tmp/vagf/cache/` so a re-run costs no requests |
+| `sru_fetch.py` | Not run directly. The paced, disk-cached fetcher the others import. Four seconds minimum between requests to any one host, responses cached under `studies/cataloging-practice/cache/` so a re-run costs no requests |
 | `draw_corpus.py` | `tmp/vagf/corpus.jsonl` — 5,252 records with their stratum labels. Holds the query list that defines the sample |
 
 **3. Representing a record.**
@@ -88,6 +93,17 @@ whether it answers.
 | `era_stability.py` | Whether the leader/19 divide changed over time, on both the publication and record-creation axes |
 | `build_data.py` | The three published files in `docs/practice-study/data/` |
 
+**8. Labels.** A hand-labeled sample of the set survey's records, to
+score the survey's filters against and to compare each catalog signal
+with a judgment of what the record describes. Run in this order; each
+reads what the one before it wrote.
+
+| Script | Produces |
+|---|---|
+| `frame.py` | `tmp/vagf/frame.jsonl` — every record the survey's queries returned, deduplicated within each catalog on `001`, with its MARCXML as retrieved and the pipeline's outcome — and `tmp/vagf/frame_counts.json`, the population per catalog and per sampling stratum. Reads the cached responses and fetches nothing |
+| `label/sample.py` | `tmp/vagf/sample.jsonl` — the stratified sample in labeling order, with its pilot and holdback — and `tmp/vagf/sample_weights.json`, each stratum's population, sample size and weight. Seeded, so a re-run writes the same bytes |
+| `label/serve.py` | The labeling tool, a local web page. Appends to `tmp/vagf/labels.jsonl` |
+
 ## Reading them
 
 They are as they ran, so they carry the marks of that. Several were
@@ -105,3 +121,52 @@ a comparable sample along the same axes, not the same records. The
 frozen corpus is what the published numbers were computed from; the
 [data page](../../docs/practice-study/data.md) says what is published
 and what is not.
+
+## The labeled sample
+
+The labels are drawn from the frame, not from the records the title
+filter accepted, so the filters' misses can be counted as well as their
+errors. The frame is the survey's population: every record the 110
+queries returned, with a record returned for more than one work kept
+once.
+
+| Catalog | Returned | After deduplication |
+|---|---|---|
+| LC | 888 | 868 |
+| Oxford | 646 | 617 |
+| NLI | 1,012 | 1,000 |
+| DNB | 476 | 476 |
+| K10plus | 1,068 | 1,029 |
+| Total | 4,090 | 3,990 |
+
+`label/GUIDE.md` is the labeling guide: the fields recorded for each
+record, their values and keys, the rule for uncertainty, and twelve
+worked examples. The sampler excludes every record the guide cites, and
+refuses to draw without the guide unless given `--no-guide`. The tool
+reads its fields, values and keys from the guide's tables, so an edit
+to the guide is an edit to the tool.
+
+```bash
+uv run python studies/cataloging-practice/frame.py
+uv run python studies/cataloging-practice/label/sample.py
+uv run python studies/cataloging-practice/label/serve.py
+```
+
+The tool uses only the standard library and serves
+`http://127.0.0.1:8765/`. It shows one record at a time, under the
+catalog's name, as the catalog returned it, and nothing derived from
+it. Leader/19 alone is masked, because it is the coded form of the
+judgment being labeled. `label/marc_html.py` does the rendering. A
+session can stop at any record; the next one starts at the first record
+without a label. `--pass holdback` runs the relabel pass over the
+held-back records, each no earlier than seven days after its main-pass
+label. `--sample`, `--labels` and `--port` point it elsewhere.
+
+## Tests
+
+`frame.py` and the scripts in `label/` have tests. They sit outside the
+application's test run and read no data from `tmp/vagf/`:
+
+```bash
+uv run pytest studies/cataloging-practice/tests studies/cataloging-practice/label/tests
+```
