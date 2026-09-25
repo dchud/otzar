@@ -12,12 +12,13 @@
 # Assumptions about the host, overridable from the environment:
 #
 #   OTZAR_HOME     /opt/otzar. Holds the Caddyfile and maintenance.caddy.
-#   CADDY_RELOAD   systemctl reload caddy. The command that makes Caddy
-#                  re-read its configuration.
+#   CADDY_RELOAD   systemctl reload-or-restart caddy. The command that
+#                  makes Caddy re-read its configuration, starting it if
+#                  it is not running.
 set -euo pipefail
 
 OTZAR_HOME=${OTZAR_HOME:-/opt/otzar}
-CADDY_RELOAD=${CADDY_RELOAD:-systemctl reload caddy}
+CADDY_RELOAD=${CADDY_RELOAD:-systemctl reload-or-restart caddy}
 
 cd "$OTZAR_HOME"
 live=$OTZAR_HOME/maintenance.caddy

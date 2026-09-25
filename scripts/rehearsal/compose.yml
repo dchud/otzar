@@ -80,8 +80,11 @@ services:
     # The version the instance installs from Caddy's apt repository.
     image: caddy:2.11.4
     network_mode: host
-    environment:
-      SITE_ADDRESS: otzar.localhost
+    # SITE_ADDRESS, as deploy.sh writes it from ALLOWED_HOSTS. Not
+    # required, so docker compose runs before the first deploy writes it.
+    env_file:
+      - path: caddy.env
+        required: false
     command:
       - caddy
       - run
