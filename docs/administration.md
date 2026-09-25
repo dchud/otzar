@@ -55,7 +55,7 @@ link the app renders is a presigned URL, valid for six hours.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `RECORD_ID_PREFIX` | No | `otzar-` | Prefix for generated record identifiers (e.g. `otzar-3f8a`). Change this if deploying for a different community. |
-| `SITE_PASSWORD` | No | (empty) | If set, all public pages require this password before access. Authenticated users (catalogers) and the admin, login, and health check pages bypass this gate. Clear the variable to disable the gate. |
+| `SITE_PASSWORD` | No | (empty) | If set, every page requires this password before access, including the login pages. Logged-in users pass without it. The health check, `/robots.txt` and the phone handoff URL are exempt. Leave it empty to turn the gate off; with `DEBUG` false, `manage.py check` then warns (`otzar.W001`). |
 
 
 ## Routine operations
@@ -99,19 +99,43 @@ uv run python manage.py axes_reset
 The lockout period is `AXES_COOLOFF_TIME` in `otzar/settings.py`; the lockout
 page, `templates/registration/lockout.html`, states it too.
 
+With `SITE_PASSWORD` set, both login pages sit behind the site password gate,
+so only someone who holds the shared password can reach them. The gate's check
+writes nothing to the database, and a wrong guess there costs no password hash
+and no lockout record.
+
 ### Setting or clearing the site-wide password
 
 The site-wide password is controlled entirely by the `SITE_PASSWORD`
-environment variable.
+environment variable, read at startup.
 
 - **Set it**: Add `SITE_PASSWORD=yourpassword` to `.env`, or set it in the
-  environment the app runs in. The app reads this at startup.
-- **Clear it**: Remove the variable or set it to an empty string. Restart the
-  app for the change to take effect.
+  environment the app runs in, and restart the app.
+- **Clear it**: Remove the variable or set it to an empty string, and restart
+  the app. With `DEBUG` false, `manage.py check` and the container's startup
+  output then show the warning `otzar.W001`, as a reminder that every page is
+  open to anyone.
 
-When active, unauthenticated visitors see a password prompt. Once entered
-correctly, the password is stored in the session. Logged-in catalogers bypass
-the gate entirely.
+When the gate is on, a visitor who is not logged in sees a password prompt on
+every page, including `/accounts/login/` and `/admin/login/`. A cataloger's
+first visit is the gate, then the login page. The right password is recorded
+in the visitor's session; logging out keeps it, so the gate does not reappear
+after logout. Logged-in users pass the gate without it.
+
+Three paths are exempt: `/health/` for the uptime check, `/robots.txt`, and
+`/ingest/phone-auth/`, the URL in the QR code a phone scans. That URL carries
+a signed token, valid for an hour, that logs the phone in as the user who
+generated the code; every other ingest page requires a login.
+
+**Rotating the password.** Change `SITE_PASSWORD` and restart. Sessions that
+passed the old password keep their access until the session expires
+(`SESSION_COOKIE_AGE`, two weeks). `manage.py clearsessions` removes only
+expired sessions. To end every session at once, which also logs every user out:
+
+```bash
+uv run python manage.py shell -c \
+  "from django.contrib.sessions.models import Session; Session.objects.all().delete()"
+```
 
 ### Applying code updates
 
@@ -365,6 +389,9 @@ styles or scripts are missing:
 
 ### Site password not working
 
-The `SitePasswordMiddleware` reads `SITE_PASSWORD` at startup. Changing the
-variable requires a restart to take effect. Clearing it disables the gate
-entirely.
+`SITE_PASSWORD` is read at startup. Changing the variable requires a restart
+to take effect. Clearing it disables the gate entirely; with `DEBUG` false,
+`manage.py check --deploy` then reports `otzar.W001`.
+
+A visitor who already entered the old password keeps access after a change;
+see "Rotating the password" above to end those sessions.

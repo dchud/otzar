@@ -8,6 +8,7 @@ from django.urls import include, path
 
 from catalog.home_views import home
 from catalog.language_views import language_search
+from otzar.views import LogoutView, robots_txt
 
 
 def health_check(request):
@@ -21,6 +22,7 @@ def health_check(request):
 
 urlpatterns = [
     path("health/", health_check, name="health_check"),
+    path("robots.txt", robots_txt, name="robots_txt"),
     path("", home, name="home"),
     path("admin/", admin.site.urls),
     # Login, logout and password change. django.contrib.auth.urls also
@@ -36,7 +38,7 @@ urlpatterns = [
     ),
     path(
         "accounts/logout/",
-        auth_views.LogoutView.as_view(),
+        LogoutView.as_view(),
         name="logout",
     ),
     path(
