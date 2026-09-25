@@ -48,7 +48,9 @@ pythonpath = ["."]
 # tmp/ is where CLAUDE.md sends all scratch, and .claude holds agent
 # worktrees -- checkouts of this repo whose tests are another branch's.
 # Collecting either turns a throwaway file into a suite failure.
-norecursedirs = ["tmp", ".claude", ".venv", "node_modules"]
+# studies/ is research code outside the application's gate; its tests
+# run when named by path, as each study's README says.
+norecursedirs = ["tmp", ".claude", ".venv", "node_modules", "studies"]
 # The suite exercises three remote services -- the Anthropic API for
 # OCR, the SRU catalogs at NLI, LC and DNB, and Open Library for covers
 # -- and every test of those paths mocks the client. Blocking sockets
