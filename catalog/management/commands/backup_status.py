@@ -36,9 +36,10 @@ class Command(BaseCommand):
         client = backups.s3_client()
         now = timezone.now()
 
-        if settings.LITESTREAM_DISABLED:
+        if settings.LITESTREAM_MODE != "replicate":
             self.stdout.write(
-                "replica: replication is off (LITESTREAM_DISABLED is set)"
+                "replica: not replicating (LITESTREAM_MODE is "
+                f"{settings.LITESTREAM_MODE})"
             )
         else:
             prefix = settings.LITESTREAM_REPLICA_PATH + "/"

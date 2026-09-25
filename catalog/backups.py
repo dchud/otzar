@@ -1,4 +1,4 @@
-"""Dated database snapshots in the backup bucket, and the replica check.
+"""Dated database snapshots in the backup bucket, and checks on the replica.
 
 Two mechanisms back up the database. Litestream, started by
 ``entrypoint.sh``, replicates every change to the bucket within
@@ -6,6 +6,11 @@ seconds and keeps seven days of history under
 ``LITESTREAM_REPLICA_PATH``. This module covers the second: a daily
 copy of the whole database, kept longer than Litestream's window, for a
 mistake noticed after Litestream's history has moved past it.
+
+It also checks the first: that Litestream uploads a new write and that
+the replica restores to the present (``snapshot_db``), and which
+replica path is current and whether the database on disk is behind it
+(``check_replica``, at every start).
 
 Layout in the backup bucket::
 
@@ -25,6 +30,7 @@ import json
 import re
 import shutil
 import sqlite3
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -222,26 +228,204 @@ def check_replication(
     unchanged and of any difference between this host's clock and the
     bucket's.
 
-    Returns the number of new keys seen. Raises BackupError when none
-    appears in time.
+    Returns the moment written into the probe row, which a restored
+    copy has to hold. Raises BackupError when no new key appears in
+    time.
     """
     from catalog.models import ReplicationProbe
 
     before = replica_keys(client, bucket, replica_path)
+    written_at = timezone.now()
     ReplicationProbe.objects.update_or_create(
-        pk=1, defaults={"written_at": timezone.now()}
+        pk=1, defaults={"written_at": written_at}
     )
     deadline = time.monotonic() + timeout
     while True:
         new = replica_keys(client, bucket, replica_path) - before
         if new:
-            return len(new)
+            return written_at
         if time.monotonic() >= deadline:
             raise BackupError(
                 f"no new object under s3://{bucket}/{replica_path}/ within "
                 f"{timeout:g}s of a database write; replication has stopped"
             )
         time.sleep(interval)
+
+
+def verify_restore(
+    replica_path: str, probe_written_at: datetime, *, timeout: float
+) -> int:
+    """Restore the replica to a scratch file and check the copy.
+
+    Uses the Litestream binary and ``litestream-config`` from the
+    image. The copy has to pass ``PRAGMA integrity_check`` and hold the
+    probe write that ``check_replication`` saw uploaded, which shows
+    that the whole chain of files in the bucket restores to the present.
+    The scratch files sit beside the database, on the same disk, and
+    are removed whatever happens. Returns the copy's record count.
+    Raises BackupError on any failure.
+    """
+    database = database_path()
+    target = database.with_name("restore-test.sqlite3")
+    config = database.with_name("restore-test.yml")
+    scratch = [config, target] + [
+        target.with_name(target.name + suffix) for suffix in ("-wal", "-shm")
+    ]
+    for path in scratch:
+        path.unlink(missing_ok=True)
+    try:
+        try:
+            with config.open("w") as out:
+                subprocess.run(
+                    ["litestream-config", replica_path],
+                    stdout=out,
+                    check=True,
+                    timeout=30,
+                )
+            subprocess.run(
+                [
+                    "litestream",
+                    "restore",
+                    "-config",
+                    str(config),
+                    "-o",
+                    str(target),
+                    str(database),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or "").strip() or f"exit {exc.returncode}"
+            raise BackupError(f"litestream restore failed: {detail}") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise BackupError(
+                f"litestream restore took longer than {exc.timeout:g}s"
+            ) from exc
+
+        conn = sqlite3.connect(f"file:{target}?mode=ro", uri=True)
+        try:
+            (integrity,) = conn.execute("PRAGMA integrity_check").fetchone()
+            probe = conn.execute(
+                "SELECT written_at FROM catalog_replicationprobe WHERE id = 1"
+            ).fetchone()
+            (count,) = conn.execute(
+                "SELECT count(*) FROM catalog_record"
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise BackupError(
+                f"the restored copy cannot be read: {exc}"
+            ) from exc
+        finally:
+            conn.close()
+    finally:
+        for path in scratch:
+            path.unlink(missing_ok=True)
+
+    if integrity != "ok":
+        raise BackupError(
+            f"the restored copy fails integrity_check: {integrity}"
+        )
+    # Django keeps datetimes in SQLite as UTC text without an offset.
+    restored = (
+        datetime.fromisoformat(probe[0]).replace(tzinfo=UTC) if probe else None
+    )
+    if restored != probe_written_at:
+        raise BackupError(
+            "the restored copy lacks the write the replica received; "
+            "the files in the bucket do not restore to the present"
+        )
+    return count
+
+
+# The replica paths a deployment writes: litestream/db, and the path
+# each rebuild moves replication to. The stamp orders them.
+REPLICA_ROOT = "litestream/"
+FIRST_REPLICA_PATH = "litestream/db"
+REBUILT_REPLICA_PATH = re.compile(r"litestream/db-(\d{8}T\d{6}Z)")
+LTX_NAME = re.compile(r"([0-9a-f]{16})-([0-9a-f]{16})\.ltx")
+
+
+def replica_path_age(path: str) -> str | None:
+    """A key that sorts replica paths oldest first, or None for a path
+    no deployment writes."""
+    if path == FIRST_REPLICA_PATH:
+        return ""
+    match = REBUILT_REPLICA_PATH.fullmatch(path)
+    return match.group(1) if match else None
+
+
+def replica_paths(client, bucket: str) -> set[str]:
+    """Return the paths under ``litestream/`` that hold a current object.
+
+    Read from the keys themselves rather than from grouped prefixes, so
+    a path whose objects have all been deleted, leaving only delete
+    markers in the versioned bucket, is not counted.
+    """
+    paths = set()
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=REPLICA_ROOT):
+        for item in page.get("Contents", ()):
+            name = item["Key"][len(REPLICA_ROOT) :].split("/", 1)[0]
+            if name:
+                paths.add(REPLICA_ROOT + name)
+    return paths
+
+
+def newest_replica_path(paths) -> str | None:
+    """The newest of *paths* that a deployment writes, or None."""
+    known = [p for p in paths if replica_path_age(p) is not None]
+    return max(known, key=replica_path_age, default=None)
+
+
+def local_txid(database: Path) -> int | None:
+    """The newest transaction Litestream recorded for *database* here.
+
+    Read from the names of the LTX files in Litestream's directory
+    beside the database, ``<min txid>-<max txid>.ltx``. None when there
+    are none.
+    """
+    state = database.with_name(f".{database.name}-litestream") / "ltx"
+    txids = [
+        int(match.group(2), 16)
+        for path in state.glob("*/*.ltx")
+        if (match := LTX_NAME.fullmatch(path.name))
+    ]
+    return max(txids, default=None)
+
+
+def replica_txid(database: Path, config: Path) -> int | None:
+    """The newest transaction in the replica *config* names for
+    *database*, from ``litestream ltx``. None when it holds no files.
+    Raises BackupError when Litestream cannot list them."""
+    try:
+        result = subprocess.run(
+            [
+                "litestream",
+                "ltx",
+                "-config",
+                str(config),
+                "-level",
+                "all",
+                str(database),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        detail = (getattr(exc, "stderr", "") or "").strip() or str(exc)
+        raise BackupError(f"litestream ltx failed: {detail}") from exc
+    # A header line, then: level, min_txid, max_txid, size, created.
+    txids = []
+    for line in result.stdout.splitlines()[1:]:
+        columns = line.split()
+        if len(columns) >= 3:
+            txids.append(int(columns[2], 16))
+    return max(txids, default=None)
 
 
 def parse_snapshot_date(value: str) -> str:

@@ -236,18 +236,27 @@ if AWS_S3_MEDIA_BUCKET:
 # Database backups, in a second bucket that the app never serves from.
 # Litestream, started by entrypoint.sh, replicates the database to
 # LITESTREAM_REPLICA_PATH in it; snapshot_db uploads a dated copy under
-# snapshots/ and checks that the replica is keeping up. Both read the
-# region, endpoint and credentials the media bucket uses.
+# snapshots/ and test-restores the replica. Both read the region,
+# endpoint and credentials the media bucket uses.
 AWS_S3_BACKUP_BUCKET = os.environ.get("AWS_S3_BACKUP_BUCKET", "").strip()
 LITESTREAM_REPLICA_PATH = (
     os.environ.get("LITESTREAM_REPLICA_PATH", "").strip().strip("/")
     or "litestream/db"
 )
-# The same test entrypoint.sh applies: "1" or "true" turns replication
-# off, for an instance that must not write into the production replica.
-LITESTREAM_DISABLED = os.environ.get(
-    "LITESTREAM_DISABLED", ""
-).strip().lower() in ("1", "true", "yes")
+# What entrypoint.sh does with Litestream, read the same way here.
+# "replicate" restores a missing database and replicates every change;
+# "restore-only" restores a missing database and serves without
+# replicating, for an instance that must not write into the production
+# replica, such as a restore drill; "off" does neither.
+LITESTREAM_MODES = ("replicate", "restore-only", "off")
+LITESTREAM_MODE = (
+    os.environ.get("LITESTREAM_MODE", "").strip().lower() or "replicate"
+)
+if LITESTREAM_MODE not in LITESTREAM_MODES:
+    raise ImproperlyConfigured(
+        f"LITESTREAM_MODE is {LITESTREAM_MODE!r}; expected one of "
+        + ", ".join(LITESTREAM_MODES)
+    )
 # A dead-man's switch: snapshot_db requests this URL after a good run
 # and the URL with /fail appended after a bad one. Anyone holding it
 # can send the success ping, so it is kept with the secrets.

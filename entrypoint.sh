@@ -5,10 +5,18 @@
 #   /entrypoint.sh serve    migrate and run gunicorn (what Litestream runs)
 #
 # With a backup bucket configured, the database is replicated to
-# s3://$AWS_S3_BACKUP_BUCKET/$LITESTREAM_REPLICA_PATH. LITESTREAM_DISABLED=1,
-# or an empty AWS_S3_BACKUP_BUCKET, skips both the restore and the
-# replication and serves directly: an instance started from a copy of
-# production for a restore drill must not write into production's replica.
+# s3://$AWS_S3_BACKUP_BUCKET/$LITESTREAM_REPLICA_PATH. LITESTREAM_MODE
+# chooses how much of that happens: replicate (the default) restores a
+# missing database and replicates; restore-only restores a missing
+# database and serves without replicating, so a restore drill cannot
+# write into production's replica; off, or an empty
+# AWS_S3_BACKUP_BUCKET, does neither and serves directly.
+#
+# Before restoring, manage.py check_replica refuses a start that would
+# serve or replicate the wrong data: a replica path a rebuild has moved
+# on from, an empty start against a bucket that holds a replica, or a
+# database behind its replica. The container then exits, and /health/
+# stops answering.
 set -eu
 
 serve() {
@@ -25,6 +33,10 @@ serve() {
     # proxy on the host and gunicorn in a container, requests arrive
     # from the Docker bridge, so the deployment sets FORWARDED_ALLOW_IPS
     # to that address.
+    #
+    # The access log's first field is X-Forwarded-For, which Caddy sets
+    # to the client's address; the connection itself always comes from
+    # the proxy. A request that bypasses Caddy logs "-".
     exec gunicorn otzar.wsgi:application \
         --bind 0.0.0.0:8000 \
         --worker-class gthread \
@@ -33,6 +45,7 @@ serve() {
         --timeout 120 \
         --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}" \
         --access-logfile - \
+        --access-logformat '%({x-forwarded-for}i)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"' \
         --error-logfile -
 }
 
@@ -58,17 +71,22 @@ case "$DATA_DIR" in
 esac
 mkdir -p "$DATA_DIR"
 
-case "$(printf '%s' "${LITESTREAM_DISABLED:-}" | tr '[:upper:]' '[:lower:]')" in
-    1 | true | yes) litestream_disabled=1 ;;
-    *) litestream_disabled= ;;
+mode=$(printf '%s' "${LITESTREAM_MODE:-replicate}" | tr '[:upper:]' '[:lower:]')
+case "$mode" in
+    replicate | restore-only | off) ;;
+    *)
+        echo "entrypoint: LITESTREAM_MODE is '$mode'; expected replicate, restore-only or off" >&2
+        exit 1
+        ;;
 esac
 
-if [ -n "$litestream_disabled" ] || [ -z "${AWS_S3_BACKUP_BUCKET:-}" ]; then
-    echo "entrypoint: Litestream is off (LITESTREAM_DISABLED set or no AWS_S3_BACKUP_BUCKET); the database is not replicated" >&2
+if [ "$mode" = off ] || [ -z "${AWS_S3_BACKUP_BUCKET:-}" ]; then
+    echo "entrypoint: Litestream is off (LITESTREAM_MODE=off or no AWS_S3_BACKUP_BUCKET); the database is neither restored nor replicated" >&2
     serve
 fi
 
 litestream-config > /etc/litestream.yml
+python manage.py check_replica
 
 # A fresh disk pulls the latest replicated copy before migrate runs. An
 # existing database is left alone, and an empty replica (the first
@@ -76,6 +94,11 @@ litestream-config > /etc/litestream.yml
 litestream restore -config /etc/litestream.yml \
     -if-db-not-exists -if-replica-exists \
     -o "$DATA_DIR/db.sqlite3" "$DATA_DIR/db.sqlite3"
+
+if [ "$mode" = restore-only ]; then
+    echo "entrypoint: LITESTREAM_MODE=restore-only; the database is not replicated" >&2
+    serve
+fi
 
 # Replication runs while migrations write, and Litestream exits when
 # gunicorn does. It forwards the container's stop signal to gunicorn and

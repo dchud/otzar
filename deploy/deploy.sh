@@ -25,11 +25,14 @@
 #      deployed last. If docker compose fails, OTZAR_IMAGE goes back to
 #      the previous image. The entrypoint migrates the database before
 #      gunicorn starts.
-#   6. Waits up to 60 s for /health/ to answer through Caddy, prints the
-#      moment to roll back to, and prints the age of the newest backups.
+#   6. Waits up to 60 s for /health/ to answer through Caddy, removes
+#      this repository's images other than the running one and the one
+#      before it, which a rollback needs, prints the moment to roll back
+#      to, and prints the age of the newest backups.
 #
 # Every failure up to the health check exits non-zero. The backup report
-# at the end only warns, since the deploy has succeeded by then.
+# and the image removal at the end only warn, since the deploy has
+# succeeded by then.
 #
 # Rolling back is `just rebuild --at <the printed moment>`, then `just
 # deploy <the previous commit>`. The pre-deploy snapshot is the same
@@ -183,6 +186,20 @@ until curl -fs -o /dev/null --max-time 5 \
     sleep 2
 done
 echo "deploy: https://$site/health/ answers"
+
+# Nothing else removes old images, and each deploy leaves one behind.
+if listed=$(docker image ls "$IMAGE_REPO" --format '{{.Repository}}:{{.Tag}}'); then
+    for old in $listed; do
+        case $old in
+            "$image" | "$previous" | *:"<none>") continue ;;
+        esac
+        docker image rm "$old" > /dev/null &&
+            echo "deploy: removed $old" ||
+            echo "deploy: could not remove $old" >&2
+    done
+else
+    echo "deploy: could not list the images of $IMAGE_REPO" >&2
+fi
 
 if [[ -n $previous ]]; then
     echo "deploy: to roll back: just rebuild --at $rollback_at, then just deploy ${previous##*:}"
